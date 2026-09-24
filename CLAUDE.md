@@ -87,8 +87,11 @@ Decisões da Fase 0:
   - frontend React 18 + TS 6 + Vite com os tokens do mock-up;
   - Docker Compose, Makefile, `.env.example` e CI (python, frontend, e2e, stack, pii-check);
   - anonimizador em tools/ (docx, xlsx, xlsm, xls, pdf), com 139 testes sobre ficheiros sintéticos.
-- Verificado: CI verde em tuu-pt/maestro-especiais (privado), incluindo `docker compose up --wait` e os testes de integração.
-  Localmente a stack ainda não correu (o motor do Docker Desktop não arrancou na sessão da Fase 0).
+- Verificado: CI verde em tuu-pt/maestro-especiais (privado) e stack local (`docker compose up --wait`,
+  `make test-integration` e ecrã inicial com os 4 serviços operacionais).
+- Docker Desktop no Windows: com o Resource Saver, o motor para ao fim de ~5 min sem contentores;
+  qualquer comando `docker` volta a acordá-lo. Se o arranque falhar com `sailor-ingest.sock`, basta
+  reiniciar o Docker Desktop.
 - Por fazer: a equipa corre `make anonymize` sobre R1/R2, revê os avisos, `make pii-check` limpo, e só então se versionam as fixtures.
 - Anonimizador, notas de funcionamento:
   - objetos OLE e VBA: são pesquisados os valores conhecidos e emails; se houver dados, falha; se não houver, fica aviso de revisão visual;

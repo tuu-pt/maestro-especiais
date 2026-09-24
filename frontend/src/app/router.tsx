@@ -1,6 +1,7 @@
 import { createBrowserRouter, type RouteObject } from "react-router";
 
 import { DashboardScreen } from "../screens/Dashboard";
+import { FichaScreen } from "../screens/Ficha";
 import { NewProjectScreen, ProjectFilesScreen } from "../screens/NewProject";
 import { NotFoundScreen } from "../screens/NotFound";
 import {
@@ -27,6 +28,7 @@ export const routes: RouteObject[] = [
       { index: true, element: <DashboardScreen /> },
       { path: "projetos/novo", element: <NewProjectScreen /> },
       { path: "projetos/:projectId/ficheiros", element: <ProjectFilesScreen /> },
+      ...scoped("ficha", <FichaScreen />),
       ...scoped("documentos", <EditorScreen />),
       ...scoped("validacao", <ValidationScreen />),
       ...scoped("equipamentos", <EquipmentScreen />),

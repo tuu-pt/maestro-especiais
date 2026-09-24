@@ -64,6 +64,7 @@ services:
       S3_SECRET_KEY: ${S3_SECRET_KEY}
       S3_BUCKET: ${S3_BUCKET:-maestro-especiais}
       S3_CREATE_BUCKET: "true"
+      DEV_AUTH: "true"
     volumes:
       - ./backend/app:/srv/backend/app:ro
       - ./backend/migrations:/srv/backend/migrations:ro

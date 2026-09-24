@@ -17,6 +17,8 @@ class Settings(BaseSettings):
     s3_region: str = "us-east-1"
     # Development only: create the bucket on startup if it does not exist.
     s3_create_bucket: bool = False
+    # Development only: simulated users chosen with the X-Dev-User header. OIDC replaces it (D6).
+    dev_auth: bool = False
 
 
 @lru_cache

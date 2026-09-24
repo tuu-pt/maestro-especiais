@@ -5,6 +5,7 @@ from typing import Annotated
 
 from fastapi import Depends, FastAPI, Response
 
+from app.api import api_router
 from app.config import get_settings
 from app.health import HealthResponse, ServiceCheck, get_checks, run_checks
 from app.storage import ensure_bucket, make_s3_client
@@ -36,6 +37,7 @@ def create_app() -> FastAPI:
         response.status_code = 200 if result.status == "ok" else 503
         return result
 
+    app.include_router(api_router)
     return app
 
 

@@ -6,11 +6,17 @@ from pathlib import Path
 import pytest
 from alembic import command
 from alembic.config import Config
+from fastapi import FastAPI
+from fastapi.testclient import TestClient
 from sqlalchemy import Connection, Engine, create_engine, text
 from sqlalchemy.engine import make_url
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session
 from support import test_database_url
+
+from app.config import Settings, get_settings
+from app.db import get_session
+from app.main import create_app
 
 BACKEND = Path(__file__).resolve().parents[1]
 
@@ -74,3 +80,34 @@ def db(connection: Connection) -> Iterator[Session]:
     session = Session(bind=connection, join_transaction_mode="create_savepoint")
     yield session
     session.close()
+
+
+@pytest.fixture
+def settings() -> Settings:
+    return Settings(dev_auth=True)
+
+
+@pytest.fixture
+def app(db: Session, settings: Settings) -> FastAPI:
+    application = create_app()
+    application.dependency_overrides[get_settings] = lambda: settings
+    application.dependency_overrides[get_session] = lambda: db
+    return application
+
+
+class Api:
+    """Test client that calls the API as one of the development users."""
+
+    def __init__(self, app: FastAPI) -> None:
+        self.client = TestClient(app)
+
+    def as_(self, login: str | None) -> TestClient:
+        self.client.headers.pop("X-Dev-User", None)
+        if login:
+            self.client.headers["X-Dev-User"] = login
+        return self.client
+
+
+@pytest.fixture
+def api(app: FastAPI) -> Api:
+    return Api(app)

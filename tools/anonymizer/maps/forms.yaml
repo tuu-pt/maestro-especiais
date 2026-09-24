@@ -1,0 +1,58 @@
+# Etiquetas das tabelas de dados do promotor e do técnico (identificação do projeto,
+# termo de responsabilidade, ficha eletrotécnica). Comparação sem acentos nem
+# maiúsculas; a etiqueta tem de começar por uma destas expressões.
+# O valor é procurado na célula à direita e, se estiver vazia, na célula de baixo.
+labels:
+  name:
+    - nome
+    - nome completo
+    - requerente
+    - promotor
+    - dono de obra
+    - tecnico responsavel
+    - autor do projeto
+    - projetista
+  nif:
+    - nif
+    - nipc
+    - numero de identificacao fiscal
+    - n.o de identificacao fiscal
+    - contribuinte
+  cc:
+    - cartao de cidadao
+    - n.o do cartao de cidadao
+    - bilhete de identidade
+    - documento de identificacao
+    - cc
+    - bi
+  address:
+    - morada
+    - residencia
+    - domicilio
+    - sede
+    - endereco postal
+  postal_code:
+    - codigo postal
+    - cod. postal
+    - c.p.
+  phone:
+    - telefone
+    - telemovel
+    - contacto telefonico
+    - tel
+    - fax
+  email:
+    - email
+    - e-mail
+    - correio eletronico
+    - endereco eletronico
+  dgeg_oet:
+    - n.o dgeg
+    - inscricao na dgeg
+    - dgeg
+    - oet
+    - n.o de membro
+    - ordem dos engenheiros
+    - associacao profissional
+    - n.o de inscricao
+    - cedula profissional

@@ -7,7 +7,7 @@ import re
 from collections.abc import Iterable
 from dataclasses import dataclass, field
 
-from anonymizer.detectors import detect, is_pseudonym_name
+from anonymizer.detectors import detect, detect_emails, is_pseudonym_name
 from anonymizer.pseudonyms import PseudonymMap, normalize, render
 from anonymizer.textnorm import fold, fold_simple, original_span
 
@@ -26,6 +26,8 @@ class Seed:
 
     kind: str
     value: str
+    # Local seeds (short numbers such as DGEG/OET) are replaced only in their own file.
+    local: bool = False
 
 
 @dataclass(frozen=True)
@@ -106,7 +108,8 @@ class TextAnonymizer:
         self._digit_seeds: dict[str, str] = {}  # normalized key -> kind
         self._literal_seeds: dict[str, tuple[str, str]] = {}  # folded literal -> (kind, key)
         self._matchers: _Matchers | None = None
-        for seed in seeds:
+        # Longer names first, so that "Maria Ferreira" becomes an alias of "Maria Sousa Ferreira".
+        for seed in sorted(seeds, key=lambda s: -len(s.value.split()) if s.kind == "name" else 0):
             self.add_seed(seed)
 
     @classmethod
@@ -123,11 +126,32 @@ class TextAnonymizer:
     # ------------------------------------------------------------ seeds
 
     def add_seed(self, seed: Seed) -> None:
-        if seed.value.strip():
-            self.mapping.number(seed.kind, seed.value)
-            self._add_key(seed.kind, normalize(seed.kind, seed.value))
+        if not seed.value.strip():
+            return
+        key = normalize(seed.kind, seed.value)
+        owner = self._name_variants.get(key) if seed.kind == "name" else None
+        names = self.mapping.entries.setdefault("name", {})
+        if owner and owner != key and key not in names:
+            # A shorter form of a known name is the same person: same pseudonym.
+            names[key] = names[owner]
+        self.mapping.number(seed.kind, seed.value)
+        # A local seed added here still only matches when long enough; its own file gets
+        # it through with_local_seeds().
+        self._add_key(seed.kind, key)
 
-    def _add_key(self, kind: str, key: str) -> None:
+    def with_local_seeds(self, seeds: Iterable[Seed]) -> "TextAnonymizer":
+        """Copy of this engine that also replaces the given file-local seeds."""
+        clone = TextAnonymizer(self.mapping, allowlist=self.allowlist)
+        clone._name_variants = dict(self._name_variants)
+        clone._digit_seeds = dict(self._digit_seeds)
+        clone._literal_seeds = dict(self._literal_seeds)
+        for seed in seeds:
+            if seed.value.strip():
+                self.mapping.number(seed.kind, seed.value)
+                clone._add_key(seed.kind, normalize(seed.kind, seed.value), force=True)
+        return clone
+
+    def _add_key(self, kind: str, key: str, force: bool = False) -> None:
         if kind == "name":
             if len(key.split()) < 2:
                 return
@@ -135,10 +159,13 @@ class TextAnonymizer:
                 owner = self._name_variants.get(variant)
                 if owner is None or variant == key:
                     self._name_variants[variant] = key
-                elif owner not in (key, variant):
-                    self._name_variants[variant] = ""
+                elif owner and owner != key:
+                    if owner in name_variants(key):
+                        self._name_variants[variant] = key
+                    elif key not in name_variants(owner):
+                        self._name_variants[variant] = ""  # two different people
         elif kind in _DIGIT_KINDS:
-            if len(re.sub(r"[^0-9]", "", key)) >= MIN_GLOBAL_DIGITS:
+            if len(re.sub(r"[^0-9]", "", key)) >= (3 if force else MIN_GLOBAL_DIGITS):
                 self._digit_seeds[key] = kind
         elif kind in _LITERAL_KINDS and len(key) >= 4:
             self._literal_seeds[fold_simple(key)] = (kind, key)
@@ -240,3 +267,15 @@ class TextAnonymizer:
             elif not is_pseudonym_name(d.value):
                 found.append(Residual(d.kind, "warning", d.value, heuristic=True))
         return found
+
+    def binary_hits(self, data: bytes) -> list[str]:
+        """Kinds of known values (and emails) found in binary data, in 8- and 16-bit text."""
+        kinds: list[str] = []
+        for text in (
+            data.decode("latin-1"),
+            data.decode("utf-16-le", "ignore"),
+            data[1:].decode("utf-16-le", "ignore"),
+        ):
+            kinds += [kind for _, _, kind, _ in self._seed_spans(text)]
+            kinds += ["email" for _ in detect_emails(text)]
+        return kinds

@@ -155,6 +155,10 @@ def _email(text: str) -> list[Detection]:
     ]
 
 
+def detect_emails(text: str) -> list[Detection]:
+    return _email(text)
+
+
 def _postal(text: str) -> list[Detection]:
     return [
         Detection("postal_code", m.start(), m.end(), m.group(0))
@@ -248,7 +252,8 @@ _STREET = (
 _ADDRESS = re.compile(
     rf"(?<![\w]){_STREET}\s+(?:(?:d[aoe]s?|de)\s+)?"
     rf"(?P<n>[{_UPPER}][\w'’.-]*(?:\s+(?:(?:d[aoe]s?|de|e)\s+)?[{_UPPER}0-9][\w'’.-]*){{0,6}})"
-    r"(?:\s*,?\s*(?:n\.?\s?[ºo°]\.?\s*)?\d+[A-Za-z]?(?:\s*[-/]\s*\d+)?(?![\w-]))?"
+    # house number (never a postal code such as 4100-456)
+    r"(?:\s*,?\s*(?:n\.?\s?[ºo°]\.?\s*)?(?!\d{4}-\d{3})\d+[A-Za-z]?(?:\s*/\s*\d+)?(?![\w-]))?"
     r"(?:\s*,?\s*\d+\.?\s?[ºo°]\.?\s*(?:Esq|Dto|Dt|Frt|Fte|Esquerdo|Direito)\.?)?"
 )
 

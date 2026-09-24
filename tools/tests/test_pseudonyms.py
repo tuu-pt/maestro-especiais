@@ -186,3 +186,13 @@ def test_residuals_find_real_values_and_accept_the_output() -> None:
     assert checker.residuals(out) == []
     kinds = {r.kind for r in checker.residuals(original)}
     assert {"name", "nif", "email", "phone", "postal_code"} <= kinds
+
+
+def test_short_form_of_a_known_name_is_the_same_person() -> None:
+    engine = TextAnonymizer(PseudonymMap(), [Seed("name", "Maria Ferreira"), MARIA])
+    out, _ = engine.anonymize("Eng.ª Maria Ferreira; M. Ferreira; Maria Sousa Ferreira")
+    full = engine.mapping.pseudonym("name", MARIA.value)
+    first, *_, last = full.split()
+
+    assert f"{first} {last}" in out and f"{first[0]}. {last}" in out and full in out
+    assert "Ferreira" not in out

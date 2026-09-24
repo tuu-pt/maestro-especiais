@@ -9,4 +9,5 @@ known-first-party = ["app", "anonymizer"]
 
 [lint.per-file-ignores]
 # Detectors match typographic characters on purpose (’ ′ – …).
-"tools/anonymizer/**" = ["RUF001"]
+"tools/anonymizer/**" = ["RUF001", "RUF003"]
+"tools/tests/**" = ["RUF001", "RUF003"]

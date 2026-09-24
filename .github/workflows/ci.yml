@@ -86,7 +86,7 @@ jobs:
       - run: python tools/make_dev_env.py
       - run: docker compose up -d --build --wait
       - run: pip install -e "backend[dev]"
-      - run: pytest -m integration
+      - run: pytest -m integration backend/tests
       - if: failure()
         run: docker compose logs
       - if: always()

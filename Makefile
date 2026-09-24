@@ -57,7 +57,7 @@ test:
 	$(NPM) run test
 
 test-integration:
-	$(VENV_PY) -m pytest -m integration
+	$(VENV_PY) -m pytest -m integration backend/tests
 
 e2e:
 	$(NPM) run e2e

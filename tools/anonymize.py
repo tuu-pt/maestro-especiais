@@ -63,6 +63,8 @@ def _validate(private_root: Path, fixtures_root: Path, projects: list[str]) -> N
             raise UsageError(f"código de projeto inválido: {code!r}")
         if not (private_root / code).is_dir():
             raise UsageError(f"não existe a pasta do projeto {code} na raiz privada")
+        if not any(p.is_file() for p in (private_root / code).rglob("*")):
+            raise UsageError(f"a pasta do projeto {code} não tem ficheiros")
     if _inside(fixtures_root, private_root) or _inside(private_root, fixtures_root):
         raise UsageError("a raiz privada e a raiz das fixtures não podem estar uma dentro da outra")
     if _git_ignored(private_root) is False:

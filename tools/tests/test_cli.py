@@ -142,6 +142,27 @@ def test_usage_errors(roots: tuple[Path, Path], args: list[str]) -> None:
     assert cli(private, fixtures, *args) == 2
 
 
+def test_empty_project_folder_is_a_usage_error(roots: tuple[Path, Path]) -> None:
+    private, fixtures = roots
+    (private / "R8" / "vazia").mkdir(parents=True)
+
+    assert cli(private, fixtures, "R8") == 2
+    assert not (fixtures / "R8").exists()
+
+
+def test_project_with_nothing_to_anonymize_is_not_promoted(
+    roots: tuple[Path, Path], capsys: pytest.CaptureFixture[str]
+) -> None:
+    private, fixtures = roots
+    (private / "R8").mkdir()
+    (private / "R8" / "originais.rar").write_bytes(b"Rar!\x1a\x07\x00")
+
+    assert cli(private, fixtures, "R8") == 1
+    assert not (fixtures / "R8").exists()
+    printed = capsys.readouterr().out
+    assert "R8 · FALHOU" in printed and "0 anonimizados · 1 não copiados" in printed
+
+
 def test_fixtures_inside_the_private_root_are_refused(roots: tuple[Path, Path]) -> None:
     private, _ = roots
     assert cli(private, private / "fixtures", "R9") == 2

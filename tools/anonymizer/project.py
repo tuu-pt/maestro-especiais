@@ -194,7 +194,8 @@ def run_project(
             outcome.findings.append(Finding("internal_error", "verificação"))
 
     result = ProjectOutcome(code, outcomes, promoted=False)
-    if not result.errors:
+    # Nothing anonymized (empty folder, only archives or unsupported files): keep the old fixtures.
+    if not result.errors and staged:
         _write_allowlist(staging, overrides.allow_items)
         if target.exists():
             shutil.rmtree(target)

@@ -65,7 +65,9 @@ def main(argv: list[str] | None = None) -> int:
     if args.output.exists() and not args.force:
         print(f"{args.output.name} já existe; nada foi alterado (use --force para substituir).")
         return 0
-    args.output.write_text(render(args.example.read_text(encoding="utf-8")), encoding="utf-8")
+    # LF only: docker compose would otherwise keep a trailing \r in every value.
+    content = render(args.example.read_text(encoding="utf-8"))
+    args.output.write_bytes(content.encode("utf-8"))
     print(f"{args.output.name} criado com segredos aleatórios de desenvolvimento.")
     return 0
 

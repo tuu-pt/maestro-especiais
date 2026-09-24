@@ -61,6 +61,10 @@ def test_never_overwrites_existing_env_without_force(tmp_path: Path) -> None:
     assert output.read_text(encoding="utf-8") == "POSTGRES_PASSWORD=mine\n"
 
 
+def test_writes_lf_line_endings(tmp_path: Path) -> None:
+    assert b"\r" not in _run(tmp_path).read_bytes()
+
+
 def test_secrets_are_url_safe(tmp_path: Path) -> None:
     values = _parse(_run(tmp_path).read_text(encoding="utf-8"))
     allowed = set("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_")

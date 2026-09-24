@@ -24,6 +24,9 @@ PROTECTION_TYPES = ("D", "F")
 POLE_TYPES = ("MON", "MUL")
 INSTALLATIONS = ("TUB", "EST", "ENT", "AR")
 CONDUCTORS = ("Cu", "Al")
+LINK_STATUSES = ("rule", "manual", "unlinked")
+BOM_VARIANTS = ("mqt", "lpu")
+BOM_KINDS = ("chapter", "subchapter", "article", "description", "note", "total")
 
 
 def one_of(

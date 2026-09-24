@@ -5,14 +5,26 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Any
 
-from sqlalchemy import DateTime, ForeignKey, Integer, Numeric, String, Text, UniqueConstraint
+from sqlalchemy import (
+    CheckConstraint,
+    DateTime,
+    ForeignKey,
+    Integer,
+    Numeric,
+    String,
+    Text,
+    UniqueConstraint,
+)
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db import Entity
 from app.models.enums import (
+    BOM_KINDS,
+    BOM_VARIANTS,
     CONDUCTORS,
     INSTALLATIONS,
+    LINK_STATUSES,
     POLE_TYPES,
     PROTECTION_TYPES,
     REVISION_STATUSES,
@@ -40,6 +52,12 @@ class FichaRevision(Entity):
     )
     circuits: Mapped[list["Circuit"]] = relationship(
         back_populates="revision", order_by="Circuit.row_index"
+    )
+    circuit_sheets: Mapped[list["CircuitSheet"]] = relationship(
+        back_populates="revision", order_by="CircuitSheet.created_at"
+    )
+    bom_items: Mapped[list["BomItem"]] = relationship(
+        back_populates="revision", order_by="BomItem.row_index"
     )
 
 
@@ -72,9 +90,23 @@ class FichaValue(Entity):
 
 
 class FichaConflict(Entity):
-    __tablename__ = "ficha_conflict"
+    """A divergence between sources: on a ficha value, or on one field of a circuit (09-Folha)."""
 
-    value_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("ficha_value.id", ondelete="CASCADE"))
+    __tablename__ = "ficha_conflict"
+    __table_args__ = (
+        CheckConstraint(
+            "(value_id IS NOT NULL) <> (circuit_id IS NOT NULL)", name="ck_ficha_conflict_target"
+        ),
+        CheckConstraint("circuit_id IS NULL OR field IS NOT NULL", name="ck_ficha_conflict_field"),
+    )
+
+    value_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("ficha_value.id", ondelete="CASCADE")
+    )
+    circuit_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("circuit.id", ondelete="CASCADE")
+    )
+    field: Mapped[str | None] = mapped_column(String(40))  # Circuit column, e.g. "in_a"
     # [{"value": …, "source_type": …, "source_ref": …, "source_file_id": …, "file_date": …}]
     candidates: Mapped[list[Any]]
     resolved_value: Mapped[Any | None] = mapped_column(JSONB)
@@ -82,7 +114,8 @@ class FichaConflict(Entity):
     resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     note: Mapped[str | None] = mapped_column(Text)
 
-    value: Mapped[FichaValue] = relationship(back_populates="conflicts")
+    value: Mapped[FichaValue | None] = relationship(back_populates="conflicts")
+    circuit: Mapped["Circuit | None"] = relationship(back_populates="conflicts")
 
 
 _AMPS = Numeric(10, 2)
@@ -120,6 +153,7 @@ class Circuit(Entity):
     iz145_a: Mapped[Decimal | None] = mapped_column(_AMPS)
     cable_raw: Mapped[str | None] = mapped_column(String(120))
     cable_normalized: Mapped[str | None] = mapped_column(String(120))
+    section_mm2: Mapped[Decimal | None] = mapped_column(Numeric(8, 2))  # read from cable_raw
     length_m: Mapped[Decimal | None] = mapped_column(Numeric(10, 2))
     vd_section_pct: Mapped[Decimal | None] = mapped_column(Numeric(6, 3))
     vd_upstream_pct: Mapped[Decimal | None] = mapped_column(Numeric(6, 3))
@@ -135,3 +169,68 @@ class Circuit(Entity):
     source_ref: Mapped[str | None] = mapped_column(String(160))  # e.g. "Tabela!linha 9"
 
     revision: Mapped[FichaRevision] = relationship(back_populates="circuits")
+    conflicts: Mapped[list[FichaConflict]] = relationship(back_populates="circuit")
+
+
+class CircuitSheet(Entity):
+    """One 09-Folha de Cálculo: the detail of a circuit, linked to it by rule or by a person."""
+
+    __tablename__ = "circuit_sheet"
+    __table_args__ = (one_of("link_status", LINK_STATUSES, "ck_circuit_sheet_link_status"),)
+
+    revision_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("ficha_revision.id", ondelete="CASCADE")
+    )
+    source_file_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("project_file.id", ondelete="SET NULL")
+    )
+    origin_hint: Mapped[str | None] = mapped_column(String(80))  # from the file name
+    destination_hint: Mapped[str | None] = mapped_column(String(80))
+    template: Mapped[str] = mapped_column(String(40))
+    # {"in_a": {"value": 25, "ref": "proteccao!E9"}, …}
+    values: Mapped[dict[str, Any]]
+    # one circuit, or several equal ones (CVE 1…5); ids of this revision's circuits
+    circuit_ids: Mapped[list[Any]] = mapped_column(default=list)
+    link_status: Mapped[str] = mapped_column(String(10), default="unlinked")
+    linked_by: Mapped[str | None] = mapped_column(String(64))
+    linked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+    revision: Mapped[FichaRevision] = relationship(back_populates="circuit_sheets")
+
+
+class BomItem(Entity):
+    """One line of an MQT or LPU, and the ficha key it is associated with (if any)."""
+
+    __tablename__ = "bom_item"
+    __table_args__ = (
+        one_of("variant", BOM_VARIANTS, "ck_bom_item_variant"),
+        one_of("kind", BOM_KINDS, "ck_bom_item_kind"),
+        one_of("link_status", LINK_STATUSES, "ck_bom_item_link_status"),
+    )
+
+    revision_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("ficha_revision.id", ondelete="CASCADE")
+    )
+    source_file_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("project_file.id", ondelete="SET NULL")
+    )
+    variant: Mapped[str] = mapped_column(String(3))
+    row_index: Mapped[int] = mapped_column(Integer)
+    source_ref: Mapped[str] = mapped_column(String(160))  # e.g. "MQT!linha 27"
+    code: Mapped[str | None] = mapped_column(String(30))  # "8.2.1.1"
+    level: Mapped[int] = mapped_column(Integer, default=0)
+    parent_code: Mapped[str | None] = mapped_column(String(30))
+    kind: Mapped[str] = mapped_column(String(12))
+    designation: Mapped[str | None] = mapped_column(Text)
+    unit: Mapped[str | None] = mapped_column(String(20))
+    quantity: Mapped[Decimal | None] = mapped_column(Numeric(14, 3))
+    unit_price: Mapped[Decimal | None] = mapped_column(Numeric(14, 2))
+    total: Mapped[Decimal | None] = mapped_column(Numeric(16, 2))
+    chapter_total: Mapped[Decimal | None] = mapped_column(Numeric(16, 2))
+    link_key: Mapped[str | None] = mapped_column(String(80))  # ficha key, SPEC 7.2
+    link_status: Mapped[str] = mapped_column(String(10), default="unlinked")
+    link_rule: Mapped[str | None] = mapped_column(String(40))
+    linked_by: Mapped[str | None] = mapped_column(String(64))
+    linked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+    revision: Mapped[FichaRevision] = relationship(back_populates="bom_items")

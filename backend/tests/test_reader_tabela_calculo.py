@@ -103,7 +103,8 @@ def test_tuu_template_with_a_two_line_header() -> None:
         "origin": "Portinhola", "destination": "Q.E.G.", "kva": Decimal("200"),
         "voltage_v": Decimal("400"), "protection_type": "F", "ib_a": Decimal("250"),
         "in_a": Decimal("250"), "iz_a": Decimal("347.17"), "i2_a": Decimal("504"),
-        "iz145_a": Decimal("503.4"), "cable_raw": "XAV 4x1x185mm²", "length_m": Decimal("25"),
+        "iz145_a": Decimal("503.4"), "cable_raw": "XAV 4x1x185mm²", "section_mm2": Decimal("185"),
+        "length_m": Decimal("25"),
         "vd_section_pct": Decimal("0.49"), "vd_total_pct": Decimal("0.49"),
         "breaking_capacity_ka": Decimal("6"), "pole_type": "MON", "installation": "ENT",
         "phases": 3, "insulation": "XLPE", "conductor": "Cu", "ref_method": "D1",
@@ -146,3 +147,23 @@ def test_ficha_base_candidates_come_from_the_first_line_and_the_boards() -> None
 def test_table_without_origin_and_destination_is_not_a_calc_table() -> None:
     with pytest.raises(ReaderError, match="ORIGEM / DESTINO"):
         tc.read(factories.mqt())
+
+
+@pytest.mark.parametrize(
+    ("cable", "section"),
+    [
+        ("RV-K 4x16mm²", "16"),
+        ("3x H07V-U 10mm²", "10"),
+        ("XAV 4x1x185mm²", "185"),
+        ("RZ1-K (AS) 5G10mm2", "10"),
+        ("XZ1(frt,zh) 4x16", "16"),
+        ("H07V-U 3G1,5", "1.5"),
+        ("XZ1(frt,zh) 4x1x70mm²+1G35mm²", "70"),  # the phase, not the protective conductor
+    ],
+)
+def test_phase_section_is_read_from_the_cable(cable: str, section: str) -> None:
+    assert tc.cable_section(cable) == Decimal(section)
+
+
+def test_cable_without_section_gives_none() -> None:
+    assert tc.cable_section("cabo a definir") is None

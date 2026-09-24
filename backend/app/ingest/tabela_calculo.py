@@ -8,6 +8,7 @@ ENERGIA", "EDIFÍCIO") are not circuits. The reader compares nothing and compute
 
 import io
 import re
+from decimal import Decimal
 from typing import Any
 
 import openpyxl
@@ -103,6 +104,17 @@ def _find_header(rows: list[tuple[Any, ...]]) -> int | None:
     return None
 
 
+# "5G10mm2", "4x16", "4x1x185mm²", "3G1,5": conductors x section; the first one is the phase.
+_CORES_X_SECTION = re.compile(r"(?<![\w(])\d+\s*[xXG]\s*(?:1\s*[xX]\s*)?(\d+(?:[.,]\d+)?)")
+_SECTION_MM = re.compile(r"(\d+(?:[.,]\d+)?)\s*mm")
+
+
+def cable_section(cable: str) -> Decimal | None:
+    """Phase section in mm² as written in the cable name [A CONFIRMAR]. Read, not computed."""
+    match = _CORES_X_SECTION.search(cable) or _SECTION_MM.search(cable)
+    return to_number(match.group(1)) if match else None
+
+
 def _headers(rows: list[tuple[Any, ...]], index: int) -> tuple[list[str], int]:
     """Header text per column and the index of the first data row.
 
@@ -161,6 +173,8 @@ def _read_table(title: str, rows: list[tuple[Any, ...]], header_index: int) -> R
             continue
         if not fields.get("origin") and not fields.get("destination"):
             continue
+        if fields.get("cable_raw"):
+            fields["section_mm2"] = cable_section(str(fields["cable_raw"]))
         result.circuits.append(
             CircuitRow(
                 row_index=offset,

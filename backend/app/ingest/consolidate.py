@@ -18,7 +18,15 @@ from sqlalchemy.orm import Session
 from app.ingest.base import ReadResult, to_number
 from app.ingest.detect import fold
 from app.ingest.keys import info
-from app.models import Circuit, FichaConflict, FichaRevision, FichaValue, ProjectFile
+from app.models import (
+    BomItem,
+    Circuit,
+    CircuitSheet,
+    FichaConflict,
+    FichaRevision,
+    FichaValue,
+    ProjectFile,
+)
 
 
 def latest_revision(db: Session, project_id: uuid.UUID) -> FichaRevision | None:
@@ -60,20 +68,42 @@ def draft_revision(db: Session, project_id: uuid.UUID, actor_id: str | None) -> 
                     source_ref=v.source_ref, source_file_id=v.source_file_id,
                 )
             )  # fmt: skip
+        new_ids: dict[str, str] = {}
         for c in latest.circuits:
             data = {k: getattr(c, k) for k in _CIRCUIT_FIELDS}
-            db.add(Circuit(revision_id=revision.id, **data))
+            copy = Circuit(id=uuid.uuid4(), revision_id=revision.id, **data)
+            new_ids[str(c.id)] = str(copy.id)
+            db.add(copy)
+        for s in latest.circuit_sheets:
+            db.add(
+                CircuitSheet(
+                    revision_id=revision.id, source_file_id=s.source_file_id,
+                    origin_hint=s.origin_hint, destination_hint=s.destination_hint,
+                    template=s.template, values=s.values,
+                    circuit_ids=[new_ids[i] for i in s.circuit_ids if i in new_ids],
+                    link_status=s.link_status, linked_by=s.linked_by, linked_at=s.linked_at,
+                )
+            )  # fmt: skip
+        for b in latest.bom_items:
+            db.add(BomItem(revision_id=revision.id, **{k: getattr(b, k) for k in _BOM_FIELDS}))
         db.flush()
         db.refresh(revision)
     return revision
 
 
+_BOM_FIELDS = (
+    "source_file_id", "variant", "row_index", "source_ref", "code", "level", "parent_code", "kind",
+    "designation", "unit", "quantity", "unit_price", "total", "chapter_total", "link_key",
+    "link_status", "link_rule", "linked_by", "linked_at",
+)  # fmt: skip
+
+
 _CIRCUIT_FIELDS = (
     "source_file_id", "row_index", "section", "origin", "destination", "kva", "voltage_v",
     "protection_type", "ib_a", "in_a", "idn_ma", "iz_a", "i2_a", "iz145_a", "cable_raw",
-    "cable_normalized", "length_m", "vd_section_pct", "vd_upstream_pct", "vd_total_pct",
-    "breaking_capacity_ka", "pole_type", "installation", "phases", "insulation", "conductor",
-    "ref_method", "rtiebt_table", "source_ref",
+    "cable_normalized", "section_mm2", "length_m", "vd_section_pct", "vd_upstream_pct",
+    "vd_total_pct", "breaking_capacity_ka", "pole_type", "installation", "phases", "insulation",
+    "conductor", "ref_method", "rtiebt_table", "source_ref",
 )  # fmt: skip
 
 

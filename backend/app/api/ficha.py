@@ -222,6 +222,8 @@ def resolve(conflict_id: uuid.UUID, body: ResolveIn, db: DB, user: Tecnico) -> V
     if conflict.resolved_at is not None:
         raise HTTPException(status.HTTP_409_CONFLICT, "Este conflito já foi resolvido.")
     value = conflict.value
+    if value is None:  # a circuit field (09-Folha): resolved with its own endpoint
+        raise HTTPException(status.HTTP_409_CONFLICT, "Este conflito é de um troço.")
     if value.revision.status != "draft":
         raise HTTPException(status.HTTP_409_CONFLICT, "A revisão já está confirmada.")
     if body.candidate is not None:

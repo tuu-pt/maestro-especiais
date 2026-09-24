@@ -2,14 +2,20 @@ from decimal import Decimal
 
 import pytest
 from alembic import command
+from alembic.autogenerate import compare_metadata
+from alembic.migration import MigrationContext
 from conftest import alembic_config
 from sqlalchemy import Connection, create_engine, inspect, select, text
 from sqlalchemy.exc import DBAPIError, IntegrityError
 from sqlalchemy.orm import Session
 
+from app.db import Base
+from app.ingest.consolidate import draft_revision
 from app.models import (
     AuditEvent,
+    BomItem,
     Circuit,
+    CircuitSheet,
     FichaConflict,
     FichaRevision,
     FichaValue,
@@ -24,6 +30,8 @@ TABLES = {
     "ficha_value",
     "ficha_conflict",
     "circuit",
+    "circuit_sheet",
+    "bom_item",
     "audit_event",
 }
 
@@ -45,6 +53,21 @@ def test_migration_goes_down_and_up_again(database_url: str) -> None:
         assert set(inspect(engine).get_table_names()) >= TABLES
     finally:
         engine.dispose()
+
+
+def _describe(diff: object) -> str:
+    item = diff[0] if isinstance(diff, list) else diff  # modify_* come as a list of tuples
+    assert isinstance(item, tuple)
+    op, *rest = item
+    names = [str(getattr(r, "name", r)) for r in rest if isinstance(r, str | object)][:3]
+    return f"{op} {' '.join(names)}"
+
+
+def test_migrations_match_the_models(connection: Connection) -> None:
+    context = MigrationContext.configure(connection, opts={"compare_type": True})
+    diffs = [_describe(d) for d in compare_metadata(context, Base.metadata)]
+    # Indexes are declared in the migrations only (a convention of this project).
+    assert [d for d in diffs if not d.startswith("remove_index ")] == []
 
 
 def test_full_ficha_graph_round_trips(db: Session) -> None:
@@ -152,3 +175,68 @@ def test_audit_log_is_insert_only(connection: Connection, statement: str) -> Non
         connection.execute(text(statement))
     nested.rollback()
     assert connection.execute(text("SELECT count(*) FROM audit_event")).scalar() == 1
+
+
+# ---------------------------------------------------------------- Phase 2: 09-Folhas, MQT/LPU
+
+
+def revision_with_circuit(db: Session) -> tuple[FichaRevision, Circuit]:
+    project = make_project(db)
+    revision = FichaRevision(project_id=project.id, label="A")
+    db.add(revision)
+    db.flush()
+    circuit = Circuit(revision_id=revision.id, row_index=12, origin="Portinhola", destination="QE")
+    db.add(circuit)
+    db.flush()
+    return revision, circuit
+
+
+def test_a_conflict_is_on_a_value_or_on_a_circuit_field(db: Session) -> None:
+    _, circuit = revision_with_circuit(db)
+    db.add(FichaConflict(circuit_id=circuit.id, field="in_a", candidates=[{"value": 250}]))
+    db.flush()
+    assert circuit.conflicts[0].field == "in_a"
+
+
+@pytest.mark.parametrize(
+    "kwargs",
+    [{}, {"field": "in_a"}, {"with_circuit": True}],
+    ids=["none", "field only", "no field"],
+)
+def test_a_conflict_needs_exactly_one_target(db: Session, kwargs: dict[str, object]) -> None:
+    _, circuit = revision_with_circuit(db)
+    circuit_id = circuit.id if kwargs.pop("with_circuit", False) else None
+    db.add(FichaConflict(circuit_id=circuit_id, candidates=[], **kwargs))
+    with pytest.raises(IntegrityError):
+        db.flush()
+
+
+def test_a_new_revision_copies_sheets_and_bom_items_with_their_links(db: Session) -> None:
+    revision, circuit = revision_with_circuit(db)
+    db.add_all(
+        [
+            CircuitSheet(
+                revision_id=revision.id, origin_hint="Port", destination_hint="QE",
+                template="TUU_09", values={"in_a": {"value": 50, "ref": "proteccao!E9"}},
+                circuit_ids=[str(circuit.id)], link_status="rule",
+            ),
+            BomItem(
+                revision_id=revision.id, variant="mqt", row_index=27, source_ref="MQT!linha 27",
+                code="8.2.1.1", level=4, kind="article", designation="Q.E.G", unit="un",
+                quantity=Decimal("1"), link_key="ele.quadros", link_status="rule",
+                link_rule="board",
+            ),
+        ]
+    )  # fmt: skip
+    revision.status = "confirmed"
+    db.flush()
+    db.refresh(revision)
+
+    new = draft_revision(db, revision.project_id, "dev:tecnico")
+
+    assert new.label == "B"
+    sheet = new.circuit_sheets[0]
+    assert sheet.circuit_ids == [str(new.circuits[0].id)] != [str(circuit.id)]
+    assert sheet.values["in_a"]["ref"] == "proteccao!E9" and sheet.link_status == "rule"
+    item = new.bom_items[0]
+    assert (item.code, item.link_key, item.quantity) == ("8.2.1.1", "ele.quadros", Decimal("1"))

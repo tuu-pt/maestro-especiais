@@ -12,16 +12,18 @@ FE_VERSION = "FE_v.20190222"
 
 # A ficha eletrotécnica laid out on the fixed cells of FE_v.20190222.
 FE_DEFAULT: dict[str, Any] = {
+    # The cell to the right of each label of the DGEG template (maps/fe_v20190222.yaml).
     "C5": "Requerente Sintético",
     "Q5": 999990013,
-    "J6": "Moradia unifamiliar de teste",
+    "J6": "requerente@example.com",
     "C7": "Rua de Teste 1",
-    "C8": "requerente@example.com",
-    "C15": "Rua de Teste",
-    "M15": "0000-001",
-    "Q15": "Freguesia de Teste",
-    "G16": "Concelho de Teste",
-    "Q16": "Distrito de Teste",
+    "C8": "0000-001 Localidade de Teste",
+    "C15": "Freguesia de Teste",
+    "M15": "Concelho de Teste",
+    "Q15": "Distrito de Teste",
+    "G16": "Rua de Teste",
+    "Q16": "0.000, -0.000",
+    "E29": "NIP-TESTE-1",
     "F23": "Unifamiliar",
     "Q23": "Nova",
     "F24": "Locais de habitação",
@@ -32,9 +34,9 @@ FE_DEFAULT: dict[str, Any] = {
     "P29": 34.5,
     "Q29": 1,
     "R29": 34.5,
-    "I40": "Técnico Sintético",
-    "I42": "000123",
-    "I44": "Nova",
+    "C11": "Técnico Sintético",
+    "Q12": "000123",
+    "I44": 34.5,
     "R45": FE_VERSION,
 }
 

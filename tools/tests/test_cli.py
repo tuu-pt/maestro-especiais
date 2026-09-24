@@ -22,7 +22,7 @@ def cli(private: Path, fixtures: Path, *args: str) -> int:
 def fe_cells(fixtures: Path, code: str) -> tuple[str, str]:
     ws = openpyxl.load_workbook(next((fixtures / code).glob("FE_*.xlsm"))).active
     assert ws is not None
-    return str(ws["C5"].value), str(ws["I40"].value)
+    return str(ws["C5"].value), str(ws["C11"].value)
 
 
 # ---------------------------------------------------------------- happy path

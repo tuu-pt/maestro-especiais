@@ -1,30 +1,30 @@
 # Ficha eletrotécnica, modelo DGEG FE_v.20190222 (SPEC 8.2 e 7.2).
-# [A CONFIRMAR] A SPEC lista as células de cada grupo mas não diz que chave corresponde a
-# cada célula: este mapa segue a ordem das chaves e das células na secção 7.2. Confirmar com
-# a ficha anonimizada de R1 (data/fixtures) ou com o modelo DGEG vazio.
-# Sem célula conhecida (ainda): id.local.gps, id.local.nip, ele.potencia_existente_kva,
-# ele.tensao_resp_kv. Bloco do técnico (I40, I42) e data (M40): não são lidos, vêm do perfil.
+# Confirmado em 24 set 2026 pelas etiquetas do modelo nas fichas anonimizadas de R1 e R2
+# (data/fixtures): cada célula é a que está à direita da etiqueta indicada.
+# Não lidos: C6 (telefone do requerente, sem chave na 7.2); bloco do técnico (C11, Q11, C12,
+# J12, Q12), que vem do perfil; I40/I42/I44 (potência total dos tipos A/B/C, já em P29) e a
+# data (M40). A designação da obra e o código postal do local não estão na ficha.
 template_version: FE_v.20190222
 version_cell: R45
 cells:
-  C5: id.requerente.nome
-  Q5: id.requerente.nif
-  C7: id.requerente.morada
-  C8: id.requerente.email
-  J6: id.obra.designacao
-  C15: id.local.rua
-  M15: id.local.cp
-  Q15: id.local.freguesia
-  G16: id.local.concelho
-  Q16: id.local.distrito
-  F23: ele.descricao_imovel
-  F24: ele.classificacao
-  M29: ele.tipo_utilizacao
-  Q23: ele.instalacao
-  B29: ele.tipo_instalacao
-  O29: ele.entrada
-  P29: ele.potencia_instalada_kva
-  Q29: ele.fator_simultaneidade
-  R29: ele.potencia_alimentar_kva
-  Q24: ele.n_ramais
-  I44: ele.contagem
+  C5: id.requerente.nome        # Nome:
+  Q5: id.requerente.nif         # NIF/NIPC:
+  J6: id.requerente.email       # E-Mail:
+  C7: id.requerente.morada      # Morada:
+  C8: id.requerente.cp          # C. Postal:
+  C15: id.local.freguesia       # Freguesia:
+  M15: id.local.concelho        # Concelho:
+  Q15: id.local.distrito        # Distrito:
+  G16: id.local.rua             # Entrada(1) principal (Lugar/Rua):
+  Q16: id.local.gps             # Coordenadas GPS:
+  E29: id.local.nip             # NIP(4) (existente), 1.ª entrada
+  F23: ele.descricao_imovel     # Descrição do Imóvel:
+  Q23: ele.instalacao           # Instalação:
+  F24: ele.classificacao        # Classificação das instalações(2):
+  Q24: ele.n_ramais             # Total Ramais:
+  B29: ele.tipo_instalacao      # Tipo da Instalação (3)
+  M29: ele.tipo_utilizacao      # Tipo utilização individual (6)
+  O29: ele.entrada              # Entrada
+  P29: ele.potencia_instalada_kva  # Total Instalado (kVA)
+  Q29: ele.fator_simultaneidade    # Fator de Simultaneidade
+  R29: ele.potencia_alimentar_kva  # Potência a Alimentar (kVA)

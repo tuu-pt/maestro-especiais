@@ -40,9 +40,14 @@ Decisões da Fase 1 (confirmam-se com R1/R2 anonimizados):
 - Dados pessoais visíveis para todos os papéis, mascarados por omissão ("•••") na API e na interface; revelar é explícito e fica na auditoria.
 - CAL-01 só com IB ≤ In ≤ Iz e I2 ≤ 1,45·Iz; queda de tensão e poder de corte esperam pela MDJ (a interface diz porquê).
 - Fontes locais com @fontsource-variable; React Router 7 (a 8 exige React 19).
-- Mapa de células da ficha eletrotécnica em backend/app/ingest/maps/fe_v20190222.yaml [A CONFIRMAR]; R45 desconhecida → para com aviso.
-- Tabela de Cálculo: colunas por sinónimos do cabeçalho; linhas de secção não são troços; colunas desconhecidas geram aviso.
-- Comparação entre fontes: 1.ª linha da Tabela (potência) ↔ `ele.potencia_alimentar_kva` [A CONFIRMAR]; fases da 1.ª linha ↔ entrada.
+- Mapa de células da ficha eletrotécnica em backend/app/ingest/maps/fe_v20190222.yaml: **confirmado** em 24 set 2026 pelas
+  etiquetas do modelo DGEG nas fichas anonimizadas de R1 e R2 (a ordem da SPEC 7.2 estava errada a partir de C8);
+  R45 desconhecida → para com aviso.
+- Tabela de Cálculo: colunas por sinónimos do cabeçalho, com a 2.ª linha de cabeçalho do modelo TUU (sob "TIPO C");
+  linhas de secção não são troços; colunas desconhecidas geram aviso. Potência do troço = "TOTAL INSTALADO" [A CONFIRMAR]
+  (em R1 e R2 é igual a "Norma [kVA]", sem socorro nem segurança).
+- Comparação entre fontes: 1.ª linha da Tabela (potência) ↔ `ele.potencia_alimentar_kva` (confirmado com C6 e o controlo de R1);
+  fases da 1.ª linha ↔ entrada.
 - Revisões: a ingestão escreve na revisão em rascunho; depois de confirmada abre-se a seguinte; a mesma fonte substitui o seu candidato; confirmar exige zero conflitos e o papel técnico.
 - Autenticação de desenvolvimento: 4 utilizadores (redator, técnico, curador, admin) pelo cabeçalho X-Dev-User, só com DEV_AUTH=true; o OIDC (D6) substitui só esta dependência.
 - S3: chave `projects/<uuid>/files/<uuid>` (o nome original só na BD); SHA-256 e deduplicação por projeto.
@@ -94,7 +99,7 @@ Decisões da Fase 0:
   - `.xls` reescritos só com valores (as fórmulas passam a valores).
   - Pseudonimizar só dados pessoais: empresas, câmaras, designação da obra, concelho, freguesia e distrito ficam reais.
   - Tabela de pseudónimos global (R1 e R2) e injetiva: valores reais diferentes dão pseudónimos diferentes, para que C3 e C7 continuem detetáveis.
-  - Mapa de células da ficha eletrotécnica (FE_v.20190222) em tools/anonymizer/maps/ [A CONFIRMAR com o modelo DGEG vazio].
+  - Mapa de células da ficha eletrotécnica (FE_v.20190222) em tools/anonymizer/maps/: confirmado em 24 set 2026 (como o do leitor).
   - Emails **não** são anonimizados (decisão do utilizador, 24 set 2026, contra a recomendação da SPEC 12.2 e com o aviso
     sobre o P9): continuam detetados, mas não são substituídos nem verificados (`KEPT_KINDS` em tools/anonymizer/engine.py).
     Consequência: os emails do requerente e do técnico ficam nas fixtures (repositório privado). Tudo o que for enviado

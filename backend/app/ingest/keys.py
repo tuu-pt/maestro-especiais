@@ -28,6 +28,7 @@ KEYS: dict[str, KeyInfo] = {
     "id.requerente.nif": KeyInfo("Identificação", "NIF do requerente", personal=True),
     "id.requerente.morada": KeyInfo("Identificação", "Morada do requerente", personal=True),
     "id.requerente.email": KeyInfo("Identificação", "Email do requerente", personal=True),
+    "id.requerente.cp": KeyInfo("Identificação", "Código postal do requerente", personal=True),
     "id.obra.designacao": KeyInfo("Identificação", "Designação da obra"),
     "id.local.rua": KeyInfo("Identificação", "Rua", personal=True),
     "id.local.cp": KeyInfo("Identificação", "Código postal"),

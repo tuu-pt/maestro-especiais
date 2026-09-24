@@ -1,23 +1,27 @@
 # Ficha eletrotécnica, modelo DGEG FE_v.20190222 (SPEC 8.2).
-# [A CONFIRMAR] A SPEC lista as células mas não diz qual é qual. Este mapa é a melhor
-# leitura possível sem ver o modelo; confirmar com o modelo DGEG vazio (Fase 2).
+# Confirmado em 24 set 2026 pelas etiquetas do modelo nas fichas anonimizadas de R1 e R2:
+# cada célula é a que está à direita da etiqueta indicada (ver backend/app/ingest/maps/).
 # Todas as células listadas são tratadas como candidatas a dado pessoal:
 #   kind = tipo esperado; "auto" = só se um detetor reconhecer o valor.
+# Freguesia, concelho e distrito não são dados pessoais: "auto" para ficarem reais.
 # O resto do livro é sempre percorrido pelos detetores.
 template_version: FE_v.20190222
 version_cell: R45
 cells:
-  C5: {kind: name, label: id.requerente.nome}
-  Q5: {kind: nif, label: id.requerente.nif}
-  J6: {kind: auto, label: id.obra.designacao}
-  C7: {kind: address, label: id.requerente.morada}
-  C8: {kind: auto, label: id.requerente.email}
-  C15: {kind: address, label: id.local.rua}
-  M15: {kind: auto, label: id.local.cp}
-  Q15: {kind: auto, label: id.local.freguesia}
-  G16: {kind: auto, label: id.local.concelho}
-  Q16: {kind: auto, label: id.local.gps}
-  I40: {kind: name, label: tecnico.nome}
-  I42: {kind: dgeg_oet, label: tecnico.inscricao}
-  I44: {kind: auto, label: tecnico.contacto}
+  C5: {kind: name, label: id.requerente.nome}        # Nome:
+  Q5: {kind: nif, label: id.requerente.nif}          # NIF/NIPC:
+  C6: {kind: phone, label: id.requerente.telefone}   # Telefone:
+  J6: {kind: auto, label: id.requerente.email}       # E-Mail: (emails ficam, KEPT_KINDS)
+  C7: {kind: address, label: id.requerente.morada}   # Morada:
+  C8: {kind: auto, label: id.requerente.cp}          # C. Postal:
+  C11: {kind: name, label: tecnico.nome}             # 2 - Técnico Responsável, Nome:
+  Q11: {kind: nif, label: tecnico.nif}               # NIF:
+  C12: {kind: phone, label: tecnico.telefone}        # Telefone:
+  J12: {kind: auto, label: tecnico.email}            # E-Mail:
+  Q12: {kind: dgeg_oet, label: tecnico.dgeg}         # N.º DGEG:
+  C15: {kind: auto, label: id.local.freguesia}       # Freguesia:
+  M15: {kind: auto, label: id.local.concelho}        # Concelho:
+  Q15: {kind: auto, label: id.local.distrito}        # Distrito:
+  G16: {kind: address, label: id.local.rua}          # Entrada(1) principal (Lugar/Rua):
+  Q16: {kind: auto, label: id.local.gps}             # Coordenadas GPS:
   M40: {kind: auto, label: data (fica vazia na exportação)}

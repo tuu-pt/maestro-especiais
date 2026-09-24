@@ -106,7 +106,7 @@ def test_file_names_are_anonymized(ooxml_run: Run) -> None:
 def test_emails_are_kept(ooxml_run: Run) -> None:
     ws = openpyxl.load_workbook(ooxml_run.output("FE_"), data_only=True).active
     assert ws is not None
-    assert ws["C8"].value == s.PROMOTOR.email
+    assert ws["J6"].value == s.PROMOTOR.email
 
 
 def test_technical_content_is_untouched(ooxml_run: Run) -> None:
@@ -115,8 +115,8 @@ def test_technical_content_is_untouched(ooxml_run: Run) -> None:
         assert control in text
     ws = openpyxl.load_workbook(ooxml_run.output("FE_"), data_only=True).active
     assert ws is not None
-    assert ws["Q15"].value == "Cedofeita" and ws["G16"].value == "Porto"
-    assert ws["J6"].value == "Moradia unifamiliar"
+    assert ws["C15"].value == "Cedofeita" and ws["M15"].value == "Porto"  # freguesia, concelho
+    assert ws["J20"].value == "Moradia unifamiliar"
 
 
 def test_xlsm_keeps_vba_version_and_cached_formula_values(ooxml_run: Run) -> None:

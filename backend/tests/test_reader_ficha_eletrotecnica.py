@@ -37,7 +37,7 @@ def test_whole_numbers_stay_whole_and_text_is_trimmed() -> None:
 
 
 def test_empty_cells_create_no_value() -> None:
-    found = values(factories.ficha_eletrotecnica(C15=None, Q15="   "))
+    found = values(factories.ficha_eletrotecnica(G16=None, C15="   "))  # as in R2 (case C7)
 
     assert "id.local.rua" not in found
     assert "id.local.freguesia" not in found
@@ -52,8 +52,25 @@ def test_personal_keys_are_flagged_in_the_catalogue() -> None:
         "id.requerente.nif",
         "id.requerente.morada",
         "id.requerente.email",
+        "id.requerente.cp",
         "id.local.rua",
+        "id.local.gps",
     }
+
+
+def test_each_cell_is_the_one_next_to_its_label_in_the_template() -> None:
+    found = values(factories.ficha_eletrotecnica())
+
+    assert found["id.requerente.email"] == "requerente@example.com"  # J6, E-Mail:
+    assert found["id.requerente.cp"] == "0000-001 Localidade de Teste"  # C8, C. Postal:
+    assert found["id.local.freguesia"] == "Freguesia de Teste"  # C15
+    assert found["id.local.concelho"] == "Concelho de Teste"  # M15
+    assert found["id.local.distrito"] == "Distrito de Teste"  # Q15
+    assert found["id.local.rua"] == "Rua de Teste"  # G16, Entrada principal (Lugar/Rua):
+    assert found["id.local.gps"] == "0.000, -0.000"  # Q16
+    # Not in the ficha: they come from other sources (MQT/LPU, manual).
+    assert "id.obra.designacao" not in found and "id.local.cp" not in found
+    assert "ele.contagem" not in found  # I44 is the total power of type C, not the metering
 
 
 def test_unknown_template_version_stops_reading() -> None:

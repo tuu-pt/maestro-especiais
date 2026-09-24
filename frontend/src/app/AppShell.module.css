@@ -1,0 +1,142 @@
+.band {
+  background: var(--band);
+  color: var(--on-band);
+  padding-inline: 16px;
+}
+.bandIn {
+  max-width: 1320px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 16px;
+  padding-block: 10px;
+  flex-wrap: wrap;
+}
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 800;
+  font-stretch: 118%;
+  letter-spacing: 0.02em;
+  font-size: 17px;
+  color: var(--on-band);
+  text-decoration: none;
+}
+.logo i {
+  width: 12px;
+  height: 12px;
+  background: var(--yellow);
+  display: inline-block;
+}
+.logo span {
+  font-weight: 400;
+  font-stretch: 100%;
+  color: var(--on-band-2);
+  font-size: 12.5px;
+  letter-spacing: 0.04em;
+}
+.tools {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.tools label {
+  font-size: 12px;
+  color: var(--on-band-2);
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+.tools select {
+  font: inherit;
+  font-size: 12.5px;
+  padding: 4px 6px;
+  border-radius: 5px;
+  border: 1px solid var(--on-band-2);
+  background: var(--band);
+  color: var(--on-band);
+  max-width: 220px;
+}
+
+.layout {
+  max-width: 1320px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 200px minmax(0, 1fr);
+  min-height: calc(100vh - 52px);
+}
+.side {
+  border-right: 1px solid var(--line);
+  padding: 16px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 13.5px;
+}
+.side a {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 7px 8px;
+  border-radius: 5px;
+  color: var(--ink-2);
+  text-decoration: none;
+  white-space: nowrap;
+}
+.side a:hover {
+  background: var(--surface-2);
+}
+.side a[aria-current="page"] {
+  background: var(--ink);
+  color: var(--paper);
+}
+.side svg {
+  width: 15px;
+  height: 15px;
+  flex: none;
+}
+.project {
+  margin-top: 14px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-size: 12px;
+  color: var(--ink-3);
+}
+.project b {
+  display: block;
+  color: var(--ink);
+  font-size: 12.5px;
+}
+.main {
+  padding: 22px 24px 72px;
+  min-width: 0;
+}
+
+@media (max-width: 1100px) {
+  .layout {
+    grid-template-columns: minmax(0, 1fr);
+    align-content: start;
+  }
+  .side {
+    flex-direction: row;
+    align-items: center;
+    overflow-x: auto;
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+    padding: 8px 12px;
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    background: var(--paper);
+  }
+  .project {
+    display: none;
+  }
+  .main {
+    padding: 18px 16px 64px;
+  }
+}

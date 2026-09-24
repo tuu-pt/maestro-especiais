@@ -1,13 +1,17 @@
 """Database fixtures: a migrated maestro_test database and one rolled-back transaction per test."""
 
-from collections.abc import Iterator
+import uuid
+from collections.abc import Callable, Iterator
 from pathlib import Path
+from typing import Any
 
+import boto3
 import pytest
 from alembic import command
 from alembic.config import Config
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
+from moto import mock_aws
 from sqlalchemy import Connection, Engine, create_engine, text
 from sqlalchemy.engine import make_url
 from sqlalchemy.exc import OperationalError
@@ -16,7 +20,10 @@ from support import test_database_url
 
 from app.config import Settings, get_settings
 from app.db import get_session
+from app.ingest.pipeline import run_ingestion
+from app.jobs import get_publisher, get_queue
 from app.main import create_app
+from app.storage import ObjectStore, get_store
 
 BACKEND = Path(__file__).resolve().parents[1]
 
@@ -87,12 +94,72 @@ def settings() -> Settings:
     return Settings(dev_auth=True)
 
 
+class RecordingQueue:
+    """Stands in for RQ: remembers what was enqueued (or runs it inline when told to)."""
+
+    def __init__(self) -> None:
+        self.enqueued: list[uuid.UUID] = []
+        self.run: Callable[[uuid.UUID], None] | None = None
+        self.available = True
+
+    def enqueue(self, file_id: uuid.UUID) -> str | None:
+        if not self.available:
+            return None
+        self.enqueued.append(file_id)
+        if self.run:
+            self.run(file_id)
+        return f"job-{len(self.enqueued)}"
+
+
+class Published(list[tuple[uuid.UUID, dict[str, Any]]]):
+    def __call__(self, project_id: uuid.UUID, event: dict[str, Any]) -> None:
+        self.append((project_id, event))
+
+    def statuses(self) -> list[str]:
+        return [event["status"] for _, event in self]
+
+
 @pytest.fixture
-def app(db: Session, settings: Settings) -> FastAPI:
+def queue() -> RecordingQueue:
+    return RecordingQueue()
+
+
+@pytest.fixture
+def published() -> Published:
+    return Published()
+
+
+@pytest.fixture
+def store() -> Iterator[ObjectStore]:
+    with mock_aws():
+        client = boto3.client("s3", region_name="us-east-1")
+        client.create_bucket(Bucket="maestro-test")
+        yield ObjectStore(client, "maestro-test")
+
+
+@pytest.fixture
+def app(
+    db: Session,
+    settings: Settings,
+    queue: RecordingQueue,
+    published: Published,
+    store: ObjectStore,
+) -> FastAPI:
     application = create_app()
     application.dependency_overrides[get_settings] = lambda: settings
     application.dependency_overrides[get_session] = lambda: db
+    application.dependency_overrides[get_queue] = lambda: queue
+    application.dependency_overrides[get_publisher] = lambda: published
+    application.dependency_overrides[get_store] = lambda: store
     return application
+
+
+@pytest.fixture
+def inline_ingestion(
+    db: Session, store: ObjectStore, queue: RecordingQueue, published: Published
+) -> None:
+    """Uploads are read at once, in the test transaction, as the worker would."""
+    queue.run = lambda file_id: run_ingestion(db, store, published, file_id)
 
 
 class Api:

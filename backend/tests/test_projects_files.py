@@ -1,31 +1,16 @@
-from collections.abc import Iterator
 from typing import Any
 
-import boto3
 import factories
 import pytest
 from conftest import Api
 from fastapi import FastAPI
-from moto import mock_aws
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.config import Settings
 from app.ingest.detect import detect
 from app.models import AuditEvent
-from app.storage import ObjectStore, get_store
-
-BUCKET = "maestro-test"
-
-
-@pytest.fixture
-def store(app: FastAPI) -> Iterator[ObjectStore]:
-    with mock_aws():
-        client = boto3.client("s3", region_name="us-east-1")
-        client.create_bucket(Bucket=BUCKET)
-        object_store = ObjectStore(client, BUCKET)
-        app.dependency_overrides[get_store] = lambda: object_store
-        yield object_store
+from app.storage import ObjectStore
 
 
 def create(api: Api, code: str = "R9", login: str = "redator") -> dict[str, Any]:
@@ -95,7 +80,7 @@ def test_upload_stores_file_with_checksum_and_detected_kind(
 
     response = upload(api, project["id"], "Ficha do Sr. Fulano.xlsm", data)
 
-    assert response.status_code == 201, response.text
+    assert response.status_code == 202, response.text  # queued for reading
     file = response.json()["file"]
     assert file["kind"] == "ficha_eletrotecnica"
     assert file["template_version"] == factories.FE_VERSION

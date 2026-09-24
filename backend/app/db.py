@@ -44,13 +44,13 @@ def get_engine() -> Engine:
 
 
 @lru_cache
-def _session_factory(url: str) -> sessionmaker[Session]:
+def session_factory(url: str) -> sessionmaker[Session]:
     return sessionmaker(bind=engine_for(url), expire_on_commit=False)
 
 
 def get_session() -> Iterator[Session]:
     """FastAPI dependency: one session per request, committed by the endpoint."""
-    session = _session_factory(get_settings().database_url)()
+    session = session_factory(get_settings().database_url)()
     try:
         yield session
     finally:

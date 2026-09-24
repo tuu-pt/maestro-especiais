@@ -13,7 +13,9 @@ from app.auth import CurrentUser, User, require_role
 from app.config import Settings, get_settings
 from app.db import get_session
 from app.ingest.detect import READABLE_KINDS, detect
+from app.jobs import IngestQueue, get_publisher, get_queue
 from app.models import FichaConflict, FichaRevision, FichaValue, Project, ProjectFile
+from app.progress import Publish, file_event
 from app.schemas import ProjectFileOut, ProjectIn, ProjectOut, UploadOut
 from app.storage import ObjectStore, get_store
 
@@ -95,6 +97,8 @@ def upload_file(
     user: Editor,
     store: Annotated[ObjectStore, Depends(get_store)],
     settings: Annotated[Settings, Depends(get_settings)],
+    queue: Annotated[IngestQueue, Depends(get_queue)],
+    publish: Annotated[Publish, Depends(get_publisher)],
     response: Response,
     upload: Annotated[UploadFile, File(alias="file")],
 ) -> UploadOut:
@@ -146,4 +150,13 @@ def upload_file(
         {"project_id": str(project.id), "kind": file.kind, "size": len(data), "sha256": checksum},
     )
     db.commit()
-    return UploadOut(file=ProjectFileOut.model_validate(file), duplicate=False)
+    job_id = None
+    if file.ingest_status == "pending":
+        job_id = queue.enqueue(file.id)
+        if job_id is None:
+            file.ingest_message = "Fila de leitura indisponível: tente carregar de novo mais tarde."
+            db.commit()
+        else:
+            response.status_code = status.HTTP_202_ACCEPTED
+    publish(project.id, file_event(file, "Ficheiro carregado"))
+    return UploadOut(file=ProjectFileOut.model_validate(file), duplicate=False, job_id=job_id)

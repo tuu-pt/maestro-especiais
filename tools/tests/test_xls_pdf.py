@@ -100,3 +100,22 @@ def test_pdf_vector_pages_and_images_ask_for_visual_review(full_run: Run) -> Non
     found = [x for f in full_run.outcome.files if "R9_EL_PE_V0" in f.output for x in f.findings]
     assert ("possible_vector_text", "pág. 3") in {(x.code, x.where) for x in found}
     assert "images_present" in {x.code for x in found}
+
+
+def test_pdf_value_hidden_outside_the_text_layer_fails_the_run(run_anonymizer: Runner) -> None:
+    def build(root: object) -> None:
+        from pathlib import Path
+
+        folder = Path(str(root))
+        s.ooxml_project(folder)
+        path = folder / "carimbo.pdf"
+        s.pecas_desenhadas(path, vector_page=False)
+        doc = pymupdf.open(str(path))
+        doc.xref_set_key(doc[0].xref, "PieceInfo", f"({s.TECNICO.email})")
+        doc.saveIncr()
+        doc.close()
+
+    result = run_anonymizer(build)
+
+    assert not result.outcome.promoted
+    assert ("pii_in_binary", "email") in {(x.code, x.kind) for _, x in result.outcome.errors}

@@ -19,6 +19,8 @@ EXTENSIONS = (".pdf",)
 _VECTOR_DRAWINGS = 1500  # many drawn segments and…
 _FEW_CHARS = 200  # …almost no text: probably vectorized lettering
 _FONT = "helv"
+_BATCH_BYTES = 4_000_000  # scan small objects together, big streams one at a time
+_NEWLINE = bytes([10])
 
 
 def _open(path: Path) -> Any:
@@ -199,10 +201,45 @@ def scan_file(path: Path, checker: TextAnonymizer) -> list[Finding]:
             for r in checker.residuals(text):
                 code = "residual" if r.severity == "error" else "possible_name"
                 findings.append(Finding(code, where, r.kind, original=r.value))
-        # Every stream decompressed: catches values hidden outside the text layer.
-        expanded = doc.tobytes(garbage=0, expand=255)
-        for kind in sorted(set(checker.binary_hits(expanded))):
+        kinds: set[str] = set()
+        batch: list[bytes] = []
+        size = 0
+        for data in _raw_objects(doc):
+            batch.append(data)
+            size += len(data)
+            if size >= _BATCH_BYTES:
+                kinds.update(checker.binary_hits(_NEWLINE.join(batch)))
+                batch, size = [], 0
+        if batch:
+            kinds.update(checker.binary_hits(_NEWLINE.join(batch)))
+        for kind in sorted(kinds):
             findings.append(Finding("pii_in_binary", "conteúdo do PDF", kind))
         return findings
     finally:
         doc.close()
+
+
+def _is_skippable_stream(doc: Any, xref: int) -> bool:
+    """Image and font programs: most of a drawing PDF's size, and never readable text."""
+    if doc.xref_get_key(xref, "Subtype")[1] == "/Image":
+        return True
+    return any(
+        doc.xref_get_key(xref, key)[0] != "null" for key in ("Length1", "Length2", "Length3")
+    )
+
+
+def _raw_objects(doc: Any) -> Any:
+    """Every object's source and every decompressed non-image, non-font stream, one at a time.
+
+    Catches values hidden outside the text layer without decompressing the whole file
+    (which, for large drawings, took gigabytes of memory).
+    """
+    for xref in range(1, doc.xref_length()):
+        try:
+            yield doc.xref_object(xref, compressed=True).encode("latin-1", "replace")
+            if doc.xref_is_stream(xref) and not _is_skippable_stream(doc, xref):
+                stream = doc.xref_stream(xref)
+                if stream:
+                    yield stream
+        except Exception:  # noqa: BLE001 - unreadable object: its text layer was checked above
+            continue

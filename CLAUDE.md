@@ -87,10 +87,9 @@ Decisões da Fase 0:
   - frontend React 18 + TS 6 + Vite com os tokens do mock-up;
   - Docker Compose, Makefile, `.env.example` e CI (python, frontend, e2e, stack, pii-check);
   - anonimizador em tools/ (docx, xlsx, xlsm, xls, pdf), com 139 testes sobre ficheiros sintéticos.
-- Por verificar:
-  - `docker compose up --wait` + `make test-integration` (o Docker Desktop não arrancou nesta sessão);
-  - primeiro push para tuu-pt/maestro-especiais (privado) e CI verde;
-  - a equipa corre `make anonymize` sobre R1/R2, revê os avisos, `make pii-check` limpo, e só então se versionam as fixtures.
+- Verificado: CI verde em tuu-pt/maestro-especiais (privado), incluindo `docker compose up --wait` e os testes de integração.
+  Localmente a stack ainda não correu (o motor do Docker Desktop não arrancou na sessão da Fase 0).
+- Por fazer: a equipa corre `make anonymize` sobre R1/R2, revê os avisos, `make pii-check` limpo, e só então se versionam as fixtures.
 - Anonimizador, notas de funcionamento:
   - objetos OLE e VBA: são pesquisados os valores conhecidos e emails; se houver dados, falha; se não houver, fica aviso de revisão visual;
   - imagens nos formulários são apagadas, as restantes geram aviso; as miniaturas da primeira página são removidas;

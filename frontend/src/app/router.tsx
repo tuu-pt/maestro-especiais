@@ -1,6 +1,7 @@
 import { createBrowserRouter, type RouteObject } from "react-router";
 
 import { DashboardScreen } from "../screens/Dashboard";
+import { NewProjectScreen, ProjectFilesScreen } from "../screens/NewProject";
 import { NotFoundScreen } from "../screens/NotFound";
 import {
   EditorScreen,
@@ -8,6 +9,7 @@ import {
   KnowledgeScreen,
   ValidationScreen,
 } from "../screens/Pending";
+import { ReviewScreen } from "../screens/Review";
 import { SettingsScreen } from "../screens/Settings";
 import AppShell from "./AppShell";
 
@@ -23,9 +25,12 @@ export const routes: RouteObject[] = [
     element: <AppShell />,
     children: [
       { index: true, element: <DashboardScreen /> },
+      { path: "projetos/novo", element: <NewProjectScreen /> },
+      { path: "projetos/:projectId/ficheiros", element: <ProjectFilesScreen /> },
       ...scoped("documentos", <EditorScreen />),
       ...scoped("validacao", <ValidationScreen />),
       ...scoped("equipamentos", <EquipmentScreen />),
+      ...scoped("revisao", <ReviewScreen />),
       { path: "conhecimento", element: <KnowledgeScreen /> },
       { path: "definicoes", element: <SettingsScreen /> },
       { path: "*", element: <NotFoundScreen /> },

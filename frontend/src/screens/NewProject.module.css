@@ -1,0 +1,218 @@
+.wiz {
+  display: grid;
+  grid-template-columns: 180px minmax(0, 1fr);
+  gap: 22px;
+  align-items: start;
+}
+.steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 4px;
+  counter-reset: s;
+}
+.steps li {
+  counter-increment: s;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  padding: 7px 8px;
+  border-radius: 6px;
+  font-size: 13px;
+  color: var(--ink-3);
+  white-space: nowrap;
+}
+.steps li::before {
+  content: counter(s);
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 1px solid var(--line-2);
+  display: grid;
+  place-items: center;
+  font-size: 11px;
+  font-family: var(--f-mono);
+  flex: none;
+}
+.steps li.done {
+  color: var(--ink-2);
+}
+.steps li.done::before {
+  content: "✓";
+  background: var(--ink);
+  color: var(--paper);
+  border-color: var(--ink);
+}
+.steps li.on {
+  background: var(--surface-2);
+  color: var(--ink);
+  font-weight: 650;
+}
+.steps li.on::before {
+  background: var(--yellow);
+  color: var(--on-yellow);
+  border-color: var(--yellow);
+}
+.form {
+  display: grid;
+  gap: 18px;
+  min-width: 0;
+}
+.row2 {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+.field {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+}
+.field label,
+.field legend {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink-2);
+  margin-bottom: 5px;
+  padding: 0;
+}
+.field input {
+  width: 100%;
+  font-size: 13.5px;
+  padding: 8px 10px;
+  border: 1px solid var(--line-2);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--ink);
+}
+.seg {
+  display: inline-flex;
+  border: 1px solid var(--line-2);
+  border-radius: 6px;
+  overflow: hidden;
+}
+.seg button {
+  border: 0;
+  background: none;
+  padding: 7px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  color: var(--ink-2);
+}
+.seg button[aria-pressed="true"] {
+  background: var(--ink);
+  color: var(--paper);
+}
+.check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+.hint {
+  margin: 4px 0 0;
+  font-size: 12.5px;
+  color: var(--ink-3);
+}
+.drop {
+  border: 1.5px dashed var(--line-2);
+  border-radius: 8px;
+  padding: 18px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--ink-2);
+  display: grid;
+  gap: 10px;
+  justify-items: center;
+  background: var(--surface);
+}
+.drop p {
+  margin: 0;
+}
+.pick {
+  display: inline-flex;
+  align-items: center;
+  padding: 7px 13px;
+  border-radius: 6px;
+  border: 1px solid var(--ink);
+  background: var(--ink);
+  color: var(--paper);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.pick:focus-within {
+  outline: 2px solid var(--yellow);
+  outline-offset: 2px;
+}
+.dragging {
+  border-color: var(--yellow);
+  background: var(--hl);
+}
+.files {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+.file {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 9px 12px;
+  background: var(--surface);
+}
+.ext {
+  font-family: var(--f-mono);
+  font-size: 10px;
+  border-radius: 4px;
+  padding: 5px 0;
+  text-align: center;
+  background: var(--surface-2);
+  color: var(--ink-2);
+}
+.fileMain {
+  display: grid;
+  min-width: 0;
+}
+.fileMain b {
+  font-size: 13px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.fileMain span {
+  font-size: 12px;
+  color: var(--ink-3);
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 980px) {
+  .wiz {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .steps {
+    grid-auto-flow: column;
+    overflow-x: auto;
+    grid-auto-columns: max-content;
+  }
+}
+@media (max-width: 620px) {
+  .row2 {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .file {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+  .ext {
+    display: none;
+  }
+}

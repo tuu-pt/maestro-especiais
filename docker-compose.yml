@@ -94,7 +94,8 @@ services:
       backend:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:5173/"]
+      # 127.0.0.1, not localhost: on Alpine localhost resolves to ::1 and Vite listens on IPv4.
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:5173/"]
       interval: 5s
       timeout: 3s
       retries: 30

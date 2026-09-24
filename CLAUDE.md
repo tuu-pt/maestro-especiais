@@ -34,7 +34,7 @@ Especificação completa: docs/SPEC.md · Mock-up: docs/mockup/maestro-especiais
 - Quota gratuita: rate limiting, retry com backoff em 429/503, retoma a meio.
 - Saídas do LLM sempre em JSON validado por Pydantic. Prompts em backend/app/llm/prompts/.
 - Regras de validação em backend/app/validation/rules/, uma por ficheiro, cada uma com um caso do Anexo C.
-- Object storage só pela API S3 genérica (boto3): trocar MinIO por outro S3 é só configuração.
+- Object storage só pela API S3 genérica (boto3): trocar de servidor S3 é só configuração.
 
 Decisões da Fase 1 (confirmam-se com R1/R2 anonimizados):
 - Dados pessoais visíveis para todos os papéis, mascarados por omissão ("•••") na API e na interface; revelar é explícito e fica na auditoria.
@@ -45,7 +45,7 @@ Decisões da Fase 1 (confirmam-se com R1/R2 anonimizados):
 - Comparação entre fontes: 1.ª linha da Tabela (potência) ↔ `ele.potencia_alimentar_kva` [A CONFIRMAR]; fases da 1.ª linha ↔ entrada.
 - Revisões: a ingestão escreve na revisão em rascunho; depois de confirmada abre-se a seguinte; a mesma fonte substitui o seu candidato; confirmar exige zero conflitos e o papel técnico.
 - Autenticação de desenvolvimento: 4 utilizadores (redator, técnico, curador, admin) pelo cabeçalho X-Dev-User, só com DEV_AUTH=true; o OIDC (D6) substitui só esta dependência.
-- MinIO: chave `projects/<uuid>/files/<uuid>` (o nome original só na BD); SHA-256 e deduplicação por projeto.
+- S3: chave `projects/<uuid>/files/<uuid>` (o nome original só na BD); SHA-256 e deduplicação por projeto.
 - Tokens: `--ink-3` escurecido (claro #66645c, escuro #99958a) para contraste AA; o mock-up tem #77746b/#8e8a80.
 
 ## Comandos
@@ -86,7 +86,9 @@ Stack (secção 6): a recomendada. Versões fixadas em backend/pyproject.toml, t
 
 Decisões da Fase 0:
 - React 18.3 (como na SPEC, embora a 19 seja a atual) e TypeScript 6.0 (o TS 7 nativo ainda não é suportado pelo typescript-eslint).
-- MinIO fixado na última imagem oficial, só para desenvolvimento (a edição comunitária está em manutenção).
+- S3 de desenvolvimento: SeaweedFS 4.47 (Apache 2.0), serviço `s3` no Docker Compose. Substituiu o MinIO em 24 set 2026,
+  quando as imagens públicas do MinIO deixaram de estar disponíveis (a CI falhava no download). Só a API S3 fica
+  exposta no host; as interfaces web do SeaweedFS não têm autenticação.
 - Anonimização:
   - PyMuPDF (AGPL-3.0) só em tools/, nunca no backend (que usa pdfplumber).
   - `.xls` reescritos só com valores (as fórmulas passam a valores).
@@ -99,7 +101,7 @@ Decisões da Fase 0:
 - Fase 0 fechada, com a anonimização de R1/R2 adiada por decisão do utilizador.
 - Feito na Fase 1:
   - backend: modelos Project, ProjectFile, FichaRevision, FichaValue, FichaConflict, Circuit e AuditEvent
-    (insert-only por trigger) com Alembic; projetos, upload para MinIO com checksum e tipo detetado,
+    (insert-only por trigger) com Alembic; projetos, upload para S3 com checksum e tipo detetado,
     ficha-base, revelar, resolver conflitos, confirmar, auditoria e atividade; worker RQ com SSE;
   - leitores sem LLM da ficha eletrotécnica e da Tabela de Cálculo, consolidação com FichaConflict, CAL-01;
   - frontend: ecrãs A–H com estados vazios e sem dados inventados; ecrã C com dados reais;

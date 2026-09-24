@@ -10,7 +10,7 @@ from app.config import Settings, get_settings
 
 
 def make_s3_client(settings: Settings) -> Any:
-    """S3 client for any S3-compatible store (MinIO in development)."""
+    """S3 client for any S3-compatible store (SeaweedFS in development)."""
     return boto3.client(
         "s3",
         endpoint_url=settings.s3_endpoint_url or None,

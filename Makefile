@@ -15,7 +15,7 @@ help:
 	@echo "env              cria o .env local com segredos aleatorios"
 	@echo "up / down        arranca ou para a stack do docker compose"
 	@echo "lint             ruff, mypy, eslint e tsc"
-	@echo "test             pytest (backend + tools) e vitest"
+	@echo "test             pytest (backend + tools) e vitest; precisa da stack ligada (make up)"
 	@echo "test-integration testes contra a stack ligada (make up)"
 	@echo "e2e              Playwright"
 	@echo "anonymize        data/private/<PROJECTS> -> data/fixtures/<PROJECTS> (so localmente)"

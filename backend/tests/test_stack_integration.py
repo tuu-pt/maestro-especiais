@@ -1,37 +1,19 @@
 """Checks against the running docker compose stack (make up). Run with: pytest -m integration."""
 
-import os
-from pathlib import Path
-
 import boto3
 import httpx
 import pytest
 import redis
 from sqlalchemy import create_engine, text
+from support import env, port
 
 pytestmark = pytest.mark.integration
 
-ROOT = Path(__file__).resolve().parents[2]
-
-
-def _env() -> dict[str, str]:
-    values: dict[str, str] = {}
-    env_file = ROOT / ".env"
-    if env_file.exists():
-        for line in env_file.read_text(encoding="utf-8").splitlines():
-            line = line.strip()
-            if line and not line.startswith("#") and "=" in line:
-                key, _, value = line.partition("=")
-                values[key.strip()] = value.strip()
-    values.update({k: v for k, v in os.environ.items() if k in values})
-    return values
-
-
-ENV = _env()
+ENV = env()
 
 
 def _port(name: str, default: str) -> str:
-    return ENV.get(name) or default
+    return port(ENV, name, default)
 
 
 def test_health_endpoint_reports_every_service_ok() -> None:

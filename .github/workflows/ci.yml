@@ -16,6 +16,19 @@ jobs:
   python:
     name: Python (lint, tipos, testes)
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:0.8.6-pg16-trixie
+        env:
+          POSTGRES_USER: maestro
+          POSTGRES_PASSWORD: maestro-ci
+          POSTGRES_DB: maestro
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U maestro" --health-interval 5s --health-timeout 3s
+          --health-retries 20
+    env:
+      TEST_DATABASE_URL: postgresql+psycopg://maestro:maestro-ci@localhost:5432/maestro_test
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v7

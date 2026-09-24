@@ -112,7 +112,7 @@ def test_value_that_cannot_be_substituted_fails_the_run(
     from anonymizer.pseudonyms import render as real
 
     monkeypatch.setattr(
-        engine, "render", lambda kind, value, n: value if kind == "email" else real(kind, value, n)
+        engine, "render", lambda kind, value, n: value if kind == "nif" else real(kind, value, n)
     )
     private, fixtures = roots
 
@@ -120,7 +120,7 @@ def test_value_that_cannot_be_substituted_fails_the_run(
 
     assert not (fixtures / "R9").exists()
     printed = capsys.readouterr().out
-    assert "FALHOU" in printed and "email" in printed
+    assert "FALHOU" in printed and "NIF" in printed
     assert s.find_pii(printed) == []
 
 

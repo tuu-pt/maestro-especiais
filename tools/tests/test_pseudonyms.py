@@ -185,7 +185,15 @@ def test_residuals_find_real_values_and_accept_the_output() -> None:
     checker = TextAnonymizer.for_verification(mapping)
     assert checker.residuals(out) == []
     kinds = {r.kind for r in checker.residuals(original)}
-    assert {"name", "nif", "email", "phone", "postal_code"} <= kinds
+    assert {"name", "nif", "phone", "postal_code"} <= kinds
+    assert "email" not in kinds and "joao@mail.pt" in out  # emails are kept
+
+
+def test_emails_are_kept_and_their_digits_are_not_taken_for_numbers() -> None:
+    engine = TextAnonymizer(PseudonymMap(), [Seed("email", "joao@mail.pt")])
+    text = "Contactos: joao@mail.pt e 912345678@sms.pt"
+    out, reps = engine.anonymize(text)
+    assert out == text and reps == []
 
 
 def test_short_form_of_a_known_name_is_the_same_person() -> None:

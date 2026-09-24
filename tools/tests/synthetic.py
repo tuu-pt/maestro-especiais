@@ -74,8 +74,9 @@ LONG_NUMBERS = (
     + [TECNICO_CC]
 )
 SHORT_NUMBERS = [TECNICO_DGEG, TECNICO_OET_FORMS, TECNICO_OET_MDJ]
+# Emails are kept as they are (decision of the user, 24 Sep 2026): not in find_pii.
+EMAILS = [p.email for p in (PROMOTOR, TECNICO, OTHER_REQUERENTE)]
 LITERALS = [
-    *(p.email for p in (PROMOTOR, TECNICO, OTHER_REQUERENTE)),
     *(p.postal_code for p in (PROMOTOR, TECNICO, OTHER_REQUERENTE)),
     "Rua das Flores",
     "Avenida da Boavista",

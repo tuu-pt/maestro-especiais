@@ -103,6 +103,12 @@ def test_file_names_are_anonymized(ooxml_run: Run) -> None:
     assert any(n.startswith("Identificacao_") and n.endswith(".docx") for n in names)
 
 
+def test_emails_are_kept(ooxml_run: Run) -> None:
+    ws = openpyxl.load_workbook(ooxml_run.output("FE_"), data_only=True).active
+    assert ws is not None
+    assert ws["C8"].value == s.PROMOTOR.email
+
+
 def test_technical_content_is_untouched(ooxml_run: Run) -> None:
     text = " ".join(docx_texts(ooxml_run.output("MDJ")))
     for control in ("34,5 kVA", "H07V-U", "XZ1(frt,zh)", "Portaria n.º 949-A/2006", "IP65"):

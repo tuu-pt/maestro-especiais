@@ -18,6 +18,9 @@ _CONNECTORS = {"de", "da", "do", "das", "dos", "e"}
 MIN_GLOBAL_DIGITS = 6
 _DIGIT_KINDS = {"nif", "phone", "cc", "postal_code", "dgeg_oet"}
 _LITERAL_KINDS = {"email", "address", "gps", "user_path"}
+# Kinds still detected (so that the digits of an email are not taken for a NIF or a phone) but
+# never replaced, harvested or reported. Emails: decision of the user, 24 Sep 2026 (CLAUDE.md).
+KEPT_KINDS = frozenset({"email"})
 _SEPARATOR = "[ .\\u00a0-]?"
 _WHITESPACE = re.compile(r"\s+")
 # Separators that _char_pattern allows between the characters of a number.
@@ -173,7 +176,7 @@ class TextAnonymizer:
     # ------------------------------------------------------------ seeds
 
     def add_seed(self, seed: Seed) -> None:
-        if not seed.value.strip():
+        if not seed.value.strip() or seed.kind in KEPT_KINDS:
             return
         key = normalize(seed.kind, seed.value)
         owner = self._name_variants.get(key) if seed.kind == "name" else None
@@ -199,6 +202,8 @@ class TextAnonymizer:
         return clone
 
     def _add_key(self, kind: str, key: str, force: bool = False) -> None:
+        if kind in KEPT_KINDS:
+            return
         if kind == "name":
             if len(key.split()) < 2:
                 return
@@ -280,6 +285,8 @@ class TextAnonymizer:
                 n = self.mapping.entries[kind][key]
                 chosen.append(Replacement(kind, s, e, original, render(kind, original, n), "seed"))
         for d in detect(text):
+            if d.kind in KEPT_KINDS:
+                continue
             if not free(d.start, d.end) or self.allowlist.allows(d.kind, d.value):
                 continue
             if d.kind == "name":
@@ -310,7 +317,7 @@ class TextAnonymizer:
             return []
         found = [Residual(kind, "error", text[s:e]) for s, e, kind, _ in self._seed_spans(text)]
         for d in detect(text):
-            if self.allowlist.allows(d.kind, d.value):
+            if d.kind in KEPT_KINDS or self.allowlist.allows(d.kind, d.value):
                 continue
             if not d.heuristic:
                 found.append(Residual(d.kind, "error", d.value))
@@ -345,7 +352,10 @@ class TextAnonymizer:
                 for kind, bare, pattern in m.digit_each:
                     if bare in squeezed:
                         kinds += [kind for _ in pattern.finditer(text)]
-            kinds += [
-                "email" for d in detect_emails(text) if not self.allowlist.allows("email", d.value)
-            ]
+            if "email" not in KEPT_KINDS:
+                kinds += [
+                    "email"
+                    for d in detect_emails(text)
+                    if not self.allowlist.allows("email", d.value)
+                ]
         return kinds

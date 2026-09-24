@@ -6,7 +6,7 @@ import pytest
 from synthetic import make_nif
 
 from anonymizer.detectors import detect_emails
-from anonymizer.engine import _ACCENTS, _WHITESPACE, Seed, TextAnonymizer
+from anonymizer.engine import _ACCENTS, _WHITESPACE, KEPT_KINDS, Seed, TextAnonymizer
 from anonymizer.pseudonyms import PseudonymMap
 
 NIF = make_nif("21234567")
@@ -40,7 +40,8 @@ def reference_hits(engine: TextAnonymizer, data: bytes) -> set[str]:
             kinds |= {
                 m.digit_keys[int((h.lastgroup or "d0")[1:])][0] for h in m.digits.finditer(text)
             }
-        kinds |= {"email" for _ in detect_emails(text)}
+        if "email" not in KEPT_KINDS:
+            kinds |= {"email" for _ in detect_emails(text)}
     return kinds
 
 
@@ -64,7 +65,7 @@ def engine() -> TextAnonymizer:
         (b"xana silva costax", set()),
         ("Técnico: Rui Tavares".encode("utf-16-le"), {"name"}),
         (b"\x01" + "Rui Tavares".encode("utf-16-le"), {"name"}),  # odd offset
-        (b"mailto:ana.costa@exemplo.pt", {"email"}),
+        (b"mailto:ana.costa@exemplo.pt", set()),  # emails are kept
         (b"Rua das Flores 12, 1000", {"address"}),
         (b"@rua das flores 12", set()),  # glued to @: not the address
     ],

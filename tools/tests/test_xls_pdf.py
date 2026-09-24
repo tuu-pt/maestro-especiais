@@ -111,11 +111,11 @@ def test_pdf_value_hidden_outside_the_text_layer_fails_the_run(run_anonymizer: R
         path = folder / "carimbo.pdf"
         s.pecas_desenhadas(path, vector_page=False)
         doc = pymupdf.open(str(path))
-        doc.xref_set_key(doc[0].xref, "PieceInfo", f"({s.TECNICO.email})")
+        doc.xref_set_key(doc[0].xref, "PieceInfo", f"({s.TECNICO.nif})")
         doc.saveIncr()
         doc.close()
 
     result = run_anonymizer(build)
 
     assert not result.outcome.promoted
-    assert ("pii_in_binary", "email") in {(x.code, x.kind) for _, x in result.outcome.errors}
+    assert ("pii_in_binary", "nif") in {(x.code, x.kind) for _, x in result.outcome.errors}

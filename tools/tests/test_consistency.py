@@ -4,7 +4,9 @@ from pathlib import Path
 
 import anonymize
 import docx
+import pytest
 
+import anonymizer.engine as engine_module
 from anonymizer.engine import Allowlist, TextAnonymizer, value_hash
 from anonymizer.pseudonyms import PseudonymMap
 from anonymizer.textnorm import fold_simple
@@ -51,7 +53,14 @@ def test_a_value_of_another_project_is_replaced_too(tmp_path: Path) -> None:
     assert "camélias" not in text_of(fixtures / "R9" / "capa.docx").casefold()
 
 
-def test_an_allowed_email_in_a_binary_is_not_an_error() -> None:
+def test_emails_in_a_binary_are_not_reported() -> None:
+    data = b"\x00Attribute VB_Name\x00 autor@exemplo.pt \x00"
+    assert TextAnonymizer(PseudonymMap()).binary_hits(data) == []
+
+
+def test_an_allowed_email_in_a_binary_is_not_an_error(monkeypatch: pytest.MonkeyPatch) -> None:
+    # Only relevant if emails are anonymized again.
+    monkeypatch.setattr(engine_module, "KEPT_KINDS", frozenset())
     data = b"\x00Attribute VB_Name\x00 suporte.modelo@dgeg.gov.pt \x00"
     email = "suporte.modelo@dgeg.gov.pt"
     by_value = Allowlist.from_items([("email", email)])

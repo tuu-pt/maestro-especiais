@@ -95,6 +95,10 @@ Decisões da Fase 0:
   - Pseudonimizar só dados pessoais: empresas, câmaras, designação da obra, concelho, freguesia e distrito ficam reais.
   - Tabela de pseudónimos global (R1 e R2) e injetiva: valores reais diferentes dão pseudónimos diferentes, para que C3 e C7 continuem detetáveis.
   - Mapa de células da ficha eletrotécnica (FE_v.20190222) em tools/anonymizer/maps/ [A CONFIRMAR com o modelo DGEG vazio].
+  - Emails **não** são anonimizados (decisão do utilizador, 24 set 2026, contra a recomendação da SPEC 12.2 e com o aviso
+    sobre o P9): continuam detetados, mas não são substituídos nem verificados (`KEPT_KINDS` em tools/anonymizer/engine.py).
+    Consequência: os emails do requerente e do técnico ficam nas fixtures (repositório privado). Tudo o que for enviado
+    ao LLM a partir das fixtures (Fase 3 em diante) tem de passar os emails por placeholder.
 
 ## Estado atual
 - Fase: 1 implementada (24 set 2026); **só fecha com os testes de aceitação de R1/R2 a passar** (ver abaixo).

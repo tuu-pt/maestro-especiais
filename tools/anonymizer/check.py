@@ -1,8 +1,9 @@
 """Fixtures-only check (CI): pattern detectors, without the correspondence table.
 
-Pseudonyms use reserved formats, so any NIF, phone, email, postal code, coordinate,
-DGEG/OET number or address still found here is real. Confirmed false positives are
-read, as hashes, from the .pii-allowlist.json next to each project.
+Pseudonyms use reserved formats, so any NIF, phone, postal code, coordinate, DGEG/OET
+number or address still found here is real (emails are kept, see engine.KEPT_KINDS).
+Confirmed false positives are read, as hashes, from the .pii-allowlist.json next to each
+project.
 """
 
 import json

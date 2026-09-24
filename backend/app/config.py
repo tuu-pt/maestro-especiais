@@ -19,6 +19,7 @@ class Settings(BaseSettings):
     s3_create_bucket: bool = False
     # Development only: simulated users chosen with the X-Dev-User header. OIDC replaces it (D6).
     dev_auth: bool = False
+    max_upload_bytes: int = 200 * 1024 * 1024
 
 
 @lru_cache

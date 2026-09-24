@@ -138,14 +138,18 @@ def run_project(
             forms.add(path)
         for _, text in texts:
             found += seeds_from_lines(text)
+            # Every value found by pattern, so that it is replaced in every file: the same
+            # address may be detected in one file and be unlabelled or in lower case in another.
             found += [
-                Seed("name", d.value)
+                Seed(d.kind, d.value)
                 for d in detect(text)
-                if d.kind == "name" and len(d.value.split()) >= 2
+                if (d.kind != "name" or len(d.value.split()) >= 2)
+                and not overrides.allow.allows(d.kind, d.value)
             ]
         local[path] = [s for s in dedupe(found) if s.local]
         seeds += [s for s in found if not s.local]
     engine = TextAnonymizer(mapping, dedupe(seeds), overrides.allow)
+    engine.include_table()
 
     # 2. Transform into staging.
     if staging.exists():

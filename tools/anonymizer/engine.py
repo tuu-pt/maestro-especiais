@@ -21,7 +21,7 @@ _LITERAL_KINDS = {"email", "address", "gps", "user_path"}
 _SEPARATOR = "[ .\\u00a0-]?"
 _WHITESPACE = re.compile(r"\s+")
 # Separators that _char_pattern allows between the characters of a number.
-_SQUEEZE = str.maketrans("", "", " . -")
+_SQUEEZE = str.maketrans("", "", " .\u00a0-")
 _ACCENTS = str.maketrans("àáâãäåçèéêëìíîïñòóôõöùúûüýÿªº", "aaaaaaceeeeiiiinooooouuuuyyao")
 
 
@@ -158,10 +158,17 @@ class TextAnonymizer:
     ) -> "TextAnonymizer":
         """Engine whose seeds are every real value in the table (all projects)."""
         engine = cls(mapping, allowlist=allowlist)
-        for kind, keys in mapping.entries.items():
-            for key in keys:
-                engine._add_key(kind, key)
+        engine.include_table()
         return engine
+
+    def include_table(self) -> None:
+        """Also replace every real value already in the table (other projects, earlier runs).
+
+        The verification looks for all of them, so the transformation must know them too.
+        """
+        for kind, keys in self.mapping.entries.items():
+            for key in list(keys):
+                self._add_key(kind, key)
 
     # ------------------------------------------------------------ seeds
 
@@ -338,5 +345,7 @@ class TextAnonymizer:
                 for kind, bare, pattern in m.digit_each:
                     if bare in squeezed:
                         kinds += [kind for _ in pattern.finditer(text)]
-            kinds += ["email" for _ in detect_emails(text)]
+            kinds += [
+                "email" for d in detect_emails(text) if not self.allowlist.allows("email", d.value)
+            ]
         return kinds

@@ -1,0 +1,30 @@
+# Ficha eletrotécnica, modelo DGEG FE_v.20190222 (SPEC 8.2 e 7.2).
+# [A CONFIRMAR] A SPEC lista as células de cada grupo mas não diz que chave corresponde a
+# cada célula: este mapa segue a ordem das chaves e das células na secção 7.2. Confirmar com
+# a ficha anonimizada de R1 (data/fixtures) ou com o modelo DGEG vazio.
+# Sem célula conhecida (ainda): id.local.gps, id.local.nip, ele.potencia_existente_kva,
+# ele.tensao_resp_kv. Bloco do técnico (I40, I42) e data (M40): não são lidos, vêm do perfil.
+template_version: FE_v.20190222
+version_cell: R45
+cells:
+  C5: id.requerente.nome
+  Q5: id.requerente.nif
+  C7: id.requerente.morada
+  C8: id.requerente.email
+  J6: id.obra.designacao
+  C15: id.local.rua
+  M15: id.local.cp
+  Q15: id.local.freguesia
+  G16: id.local.concelho
+  Q16: id.local.distrito
+  F23: ele.descricao_imovel
+  F24: ele.classificacao
+  M29: ele.tipo_utilizacao
+  Q23: ele.instalacao
+  B29: ele.tipo_instalacao
+  O29: ele.entrada
+  P29: ele.potencia_instalada_kva
+  Q29: ele.fator_simultaneidade
+  R29: ele.potencia_alimentar_kva
+  Q24: ele.n_ramais
+  I44: ele.contagem

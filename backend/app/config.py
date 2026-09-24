@@ -1,0 +1,24 @@
+from functools import lru_cache
+
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+class Settings(BaseSettings):
+    """Runtime configuration, read from environment variables only."""
+
+    model_config = SettingsConfigDict(extra="ignore")
+
+    database_url: str = ""
+    redis_url: str = ""
+    s3_endpoint_url: str = ""
+    s3_access_key: str = ""
+    s3_secret_key: str = ""
+    s3_bucket: str = "maestro-especiais"
+    s3_region: str = "us-east-1"
+    # Development only: create the bucket on startup if it does not exist.
+    s3_create_bucket: bool = False
+
+
+@lru_cache
+def get_settings() -> Settings:
+    return Settings()

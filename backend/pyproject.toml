@@ -1,0 +1,37 @@
+[build-system]
+requires = ["setuptools>=75"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "maestro-especiais-backend"
+version = "0.0.1"
+description = "Maestro Especiais API"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+  "fastapi==0.141.1",
+  "uvicorn[standard]==0.53.0",
+  "pydantic==2.13.5",
+  "pydantic-settings==2.15.0",
+  "sqlalchemy==2.0.54",
+  "psycopg[binary]==3.3.6",
+  "redis==8.1.0",
+  "boto3==1.43.101",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest==9.1.1",
+  "httpx==0.28.1",
+  "ruff==0.16.8",
+  "mypy==2.3.1",
+]
+
+[tool.setuptools.packages.find]
+include = ["app*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-m 'not integration'"
+markers = [
+  "integration: needs the docker compose stack running (make up)",
+]

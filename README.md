@@ -44,3 +44,28 @@ make pii-check   # confirma que data/fixtures/ não tem padrões de dados pessoa
 ```
 
 A tabela de correspondências e o relatório detalhado ficam em `data/private/`. Ver a secção 12.2 da SPEC.
+
+O resumo impresso na consola (e `data/private/anonymize_report.json`) não tem valores e pode ser partilhado. Os valores, para revisão, estão só em `data/private/anonymize_detail.json`.
+
+Para acrescentar dados que o script não encontra sozinho, ou confirmar falsos positivos, crie `data/private/anonymize_overrides.yaml` (nunca versionado):
+
+```yaml
+seeds:          # dados pessoais adicionais (ex.: nomes que só aparecem soltos no texto)
+  - {kind: name, value: "Nome Apelido"}
+allow:          # falsos positivos confirmados: não são dados pessoais
+  - {kind: address, value: "Largo do Moinho Velho"}
+strip_images:   # ficheiros extra cujas imagens devem ser apagadas
+  - "**/Termo*.docx"
+```
+
+Tipos (`kind`): `name`, `nif`, `cc`, `phone`, `email`, `postal_code`, `gps`, `dgeg_oet`, `address`.
+
+Sem `make` no Windows, os comandos equivalentes são:
+
+```bash
+.venv/Scripts/python.exe tools/anonymize.py R1 R2
+```
+
+```bash
+.venv/Scripts/python.exe tools/anonymize.py --check data/fixtures
+```

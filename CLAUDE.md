@@ -80,4 +80,20 @@ Decisões da Fase 0:
   - Mapa de células da ficha eletrotécnica (FE_v.20190222) em tools/anonymizer/maps/ [A CONFIRMAR com o modelo DGEG vazio].
 
 ## Estado atual
-- Fase: 0 (em curso)
+- Fase: 0 (código concluído; faltam as verificações abaixo antes de fechar)
+- Feito na Fase 0:
+  - monorepo, CLAUDE.md e bloqueio de data/private/ para o Claude Code;
+  - backend FastAPI com `/api/health` (BD, pgvector, Redis, S3);
+  - frontend React 18 + TS 6 + Vite com os tokens do mock-up;
+  - Docker Compose, Makefile, `.env.example` e CI (python, frontend, e2e, stack, pii-check);
+  - anonimizador em tools/ (docx, xlsx, xlsm, xls, pdf), com 139 testes sobre ficheiros sintéticos.
+- Por verificar:
+  - `docker compose up --wait` + `make test-integration` (o Docker Desktop não arrancou nesta sessão);
+  - primeiro push para tuu-pt/maestro-especiais (privado) e CI verde;
+  - a equipa corre `make anonymize` sobre R1/R2, revê os avisos, `make pii-check` limpo, e só então se versionam as fixtures.
+- Anonimizador, notas de funcionamento:
+  - objetos OLE e VBA: são pesquisados os valores conhecidos e emails; se houver dados, falha; se não houver, fica aviso de revisão visual;
+  - imagens nos formulários são apagadas, as restantes geram aviso; as miniaturas da primeira página são removidas;
+  - páginas PDF com muito vetor e pouco texto (fontes SHX) geram aviso de revisão visual;
+  - dados que o script não encontra sozinho (nomes soltos, falsos positivos): data/private/anonymize_overrides.yaml (ver README).
+- Próximo: Fase 1 (ecrãs A–H com fixtures de eletricidade).

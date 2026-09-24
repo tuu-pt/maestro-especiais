@@ -36,6 +36,18 @@ Especificação completa: docs/SPEC.md · Mock-up: docs/mockup/maestro-especiais
 - Regras de validação em backend/app/validation/rules/, uma por ficheiro, cada uma com um caso do Anexo C.
 - Object storage só pela API S3 genérica (boto3): trocar MinIO por outro S3 é só configuração.
 
+Decisões da Fase 1 (confirmam-se com R1/R2 anonimizados):
+- Dados pessoais visíveis para todos os papéis, mascarados por omissão ("•••") na API e na interface; revelar é explícito e fica na auditoria.
+- CAL-01 só com IB ≤ In ≤ Iz e I2 ≤ 1,45·Iz; queda de tensão e poder de corte esperam pela MDJ (a interface diz porquê).
+- Fontes locais com @fontsource-variable; React Router 7 (a 8 exige React 19).
+- Mapa de células da ficha eletrotécnica em backend/app/ingest/maps/fe_v20190222.yaml [A CONFIRMAR]; R45 desconhecida → para com aviso.
+- Tabela de Cálculo: colunas por sinónimos do cabeçalho; linhas de secção não são troços; colunas desconhecidas geram aviso.
+- Comparação entre fontes: 1.ª linha da Tabela (potência) ↔ `ele.potencia_alimentar_kva` [A CONFIRMAR]; fases da 1.ª linha ↔ entrada.
+- Revisões: a ingestão escreve na revisão em rascunho; depois de confirmada abre-se a seguinte; a mesma fonte substitui o seu candidato; confirmar exige zero conflitos e o papel técnico.
+- Autenticação de desenvolvimento: 4 utilizadores (redator, técnico, curador, admin) pelo cabeçalho X-Dev-User, só com DEV_AUTH=true; o OIDC (D6) substitui só esta dependência.
+- MinIO: chave `projects/<uuid>/files/<uuid>` (o nome original só na BD); SHA-256 e deduplicação por projeto.
+- Tokens: `--ink-3` escurecido (claro #66645c, escuro #99958a) para contraste AA; o mock-up tem #77746b/#8e8a80.
+
 ## Comandos
 - make setup                 # .venv + dependências Python + npm ci + Chromium do Playwright
 - make env                   # gera .env local com segredos aleatórios de desenvolvimento
@@ -83,30 +95,34 @@ Decisões da Fase 0:
   - Mapa de células da ficha eletrotécnica (FE_v.20190222) em tools/anonymizer/maps/ [A CONFIRMAR com o modelo DGEG vazio].
 
 ## Estado atual
-- Fase: 0 fechada (24 set 2026), com a anonimização de R1/R2 por fazer (ver abaixo)
-- Feito na Fase 0:
-  - monorepo, CLAUDE.md e bloqueio de data/private/ para o Claude Code;
-  - backend FastAPI com `/api/health` (BD, pgvector, Redis, S3);
-  - frontend React 18 + TS 6 + Vite com os tokens do mock-up;
-  - Docker Compose, Makefile, `.env.example` e CI (python, frontend, e2e, stack, pii-check);
-  - anonimizador em tools/ (docx, xlsx, xlsm, xls, pdf), com 139 testes sobre ficheiros sintéticos.
-- Verificado: CI verde em tuu-pt/maestro-especiais (privado) e stack local (`docker compose up --wait`,
-  `make test-integration` e ecrã inicial com os 4 serviços operacionais).
-- Docker Desktop no Windows: com o Resource Saver, o motor para ao fim de ~5 min sem contentores;
-  qualquer comando `docker` volta a acordá-lo. Se o arranque falhar com `sailor-ingest.sock`, basta
-  reiniciar o Docker Desktop.
-- Por fazer, adiado por decisão do utilizador (24 set 2026): anonimizar R1/R2. data/fixtures/ ainda
-  não tem R1 nem R2. **Obrigatório antes dos leitores de ficheiros e dos testes que usam R1/R2.**
-  Passos: a equipa corre `make anonymize`, revê os avisos, `make pii-check` limpo, e só então se
-  versionam as fixtures. Até lá, nunca substituir R1/R2 por dados inventados nem ler data/private/.
+- Fase: 1 implementada (24 set 2026); **só fecha com os testes de aceitação de R1/R2 a passar** (ver abaixo).
+- Fase 0 fechada, com a anonimização de R1/R2 adiada por decisão do utilizador.
+- Feito na Fase 1:
+  - backend: modelos Project, ProjectFile, FichaRevision, FichaValue, FichaConflict, Circuit e AuditEvent
+    (insert-only por trigger) com Alembic; projetos, upload para MinIO com checksum e tipo detetado,
+    ficha-base, revelar, resolver conflitos, confirmar, auditoria e atividade; worker RQ com SSE;
+  - leitores sem LLM da ficha eletrotécnica e da Tabela de Cálculo, consolidação com FichaConflict, CAL-01;
+  - frontend: ecrãs A–H com estados vazios e sem dados inventados; ecrã C com dados reais;
+  - testes: pytest (246, contra o Postgres do compose, BD maestro_test), Vitest (26), Playwright (46):
+    estados vazios, axe WCAG 2.1 AA nos dois temas, 400 px sem scroll, teclado, capturas.
+- Aceitação por correr (skipped com aviso até existirem data/fixtures/R1 e R2):
+  - backend/tests/acceptance/test_reference_projects.py: controlo de potência de R1, C6 e C10 de R2;
+  - frontend/e2e/r2-journey.spec.ts: percurso completo contra a stack real, com `make up` e
+    `RUN_R2_JOURNEY=1 npm run e2e` (cria um projeto na BD de desenvolvimento).
+  Verificados uma vez com ficheiros sintéticos. Para fechar a Fase 1: anonimizar R1/R2 (`make anonymize`
+  pela equipa, avisos revistos, `make pii-check` limpo), versionar as fixtures, corrigir o mapa de células
+  [A CONFIRMAR] com a ficha anonimizada e pôr estes testes a passar.
+- Notas de ambiente:
+  - `make test` exige o Docker a correr (Postgres do compose);
+  - o Vite no contentor não recarrega alterações no Windows, mesmo com polling: reiniciar o contentor
+    frontend; o Playwright usa o seu próprio servidor na porta 5174;
+  - o teste de integração do worker (RUN_INGEST_E2E) cria dados na BD de desenvolvimento: só na CI;
+  - Docker Desktop no Windows: com o Resource Saver, o motor para ao fim de ~5 min sem contentores;
+    se o arranque falhar com `sailor-ingest.sock`, reiniciar o Docker Desktop.
 - Anonimizador, notas de funcionamento:
   - objetos OLE e VBA: são pesquisados os valores conhecidos e emails; se houver dados, falha; se não houver, fica aviso de revisão visual;
   - imagens nos formulários são apagadas, as restantes geram aviso; as miniaturas da primeira página são removidas;
   - páginas PDF com muito vetor e pouco texto (fontes SHX) geram aviso de revisão visual;
   - dados que o script não encontra sozinho (nomes soltos, falsos positivos): data/private/anonymize_overrides.yaml (ver README).
-- Plano das fases revisto (SPEC v0.4, secção 14):
-  - Fase 1 · Interface vazia e carregamento de documentos: 8 ecrãs com estados vazios, backend mínimo
-    (modelos 7.1/7.2/7.7, endpoints, ingestão RQ + SSE, utilizador local com papéis simulados),
-    leitores da ficha eletrotécnica e da Tabela de Cálculo, ecrã C com dados reais;
-  - Fase 2 · Restantes leitores: 09-Folhas, MQT/LPU e PDF das peças desenhadas.
-- Próximo: Fase 1. Os leitores e os testes com R1/R2 esperam pela anonimização (ver acima).
+- Próximo: fechar a Fase 1 com R1/R2; depois a Fase 2 (leitores das 09-Folhas, MQT/LPU e PDF das peças
+  desenhadas, ligados à ficha-base com origem e conflitos). D6 (Entra ID) a decidir com a TI na Fase 2.

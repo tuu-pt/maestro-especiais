@@ -6,3 +6,7 @@ select = ["E", "F", "W", "I", "B", "UP", "BLE", "SIM", "RUF"]
 
 [lint.isort]
 known-first-party = ["app", "anonymizer"]
+
+[lint.per-file-ignores]
+# Detectors match typographic characters on purpose (’ ′ – …).
+"tools/anonymizer/**" = ["RUF001"]

@@ -106,34 +106,38 @@ Decisões da Fase 0:
     ao LLM a partir das fixtures (Fase 3 em diante) tem de passar os emails por placeholder.
 
 ## Estado atual
-- Fase: 1 implementada (24 set 2026); **só fecha com os testes de aceitação de R1/R2 a passar** (ver abaixo).
-- Fase 0 fechada, com a anonimização de R1/R2 adiada por decisão do utilizador.
+- Fase: 1 **fechada** (24 set 2026). Fases 0 e 1 concluídas; próxima: Fase 2.
 - Feito na Fase 1:
   - backend: modelos Project, ProjectFile, FichaRevision, FichaValue, FichaConflict, Circuit e AuditEvent
     (insert-only por trigger) com Alembic; projetos, upload para S3 com checksum e tipo detetado,
     ficha-base, revelar, resolver conflitos, confirmar, auditoria e atividade; worker RQ com SSE;
-  - leitores sem LLM da ficha eletrotécnica e da Tabela de Cálculo, consolidação com FichaConflict, CAL-01;
+  - leitores sem LLM da ficha eletrotécnica (mapa confirmado com R1/R2) e da Tabela de Cálculo (modelo TUU
+    com cabeçalho em duas linhas), consolidação com FichaConflict, CAL-01;
   - frontend: ecrãs A–H com estados vazios e sem dados inventados; ecrã C com dados reais;
-  - testes: pytest (246, contra o Postgres do compose, BD maestro_test), Vitest (26), Playwright (46):
-    estados vazios, axe WCAG 2.1 AA nos dois temas, 400 px sem scroll, teclado, capturas.
-- Aceitação por correr (skipped com aviso até existirem data/fixtures/R1 e R2):
-  - backend/tests/acceptance/test_reference_projects.py: controlo de potência de R1, C6 e C10 de R2;
-  - frontend/e2e/r2-journey.spec.ts: percurso completo contra a stack real, com `make up` e
-    `RUN_R2_JOURNEY=1 npm run e2e` (cria um projeto na BD de desenvolvimento).
-  Verificados uma vez com ficheiros sintéticos. Para fechar a Fase 1: anonimizar R1/R2 (`make anonymize`
-  pela equipa, avisos revistos, `make pii-check` limpo), versionar as fixtures, corrigir o mapa de células
-  [A CONFIRMAR] com a ficha anonimizada e pôr estes testes a passar.
+  - fixtures R1 e R2 anonimizadas e versionadas (55 ficheiros, `make pii-check` limpo, revisão visual feita).
+- Verificado no fecho: pytest 279 (inclui a aceitação de R1/R2: controlo de potência de R1 sem conflitos,
+  C6 como FichaConflict, C10 na CAL-01), Vitest 26, Playwright 48 (estados vazios, axe WCAG 2.1 AA nos dois
+  temas, 400 px, teclado) e o percurso com R2 contra a stack real (criar → carregar → resolver o conflito de
+  potência → confirmar → auditoria), com capturas claro/escuro/telemóvel.
+- [A CONFIRMAR] pela equipa:
+  - potência de cada troço da Tabela = "TOTAL INSTALADO" (em R1/R2 igual a "Norma [kVA]");
+  - fixtures: em R1 a freguesia foi substituída por um pseudónimo de morada (mapa antigo do anonimizador);
+    uma nova execução do anonimizador, já com o mapa corrigido, deixa-a real.
+- Percurso com R2: `make up` e depois `RUN_R2_JOURNEY=1 npm run e2e` (cria um projeto na BD de desenvolvimento;
+  repor com `docker compose down -v`).
 - Notas de ambiente:
   - `make test` exige o Docker a correr (Postgres do compose);
+  - o worker usa o código montado (PYTHONPATH=/srv/backend); o backend também (uvicorn);
   - o Vite no contentor não recarrega alterações no Windows, mesmo com polling: reiniciar o contentor
     frontend; o Playwright usa o seu próprio servidor na porta 5174;
   - o teste de integração do worker (RUN_INGEST_E2E) cria dados na BD de desenvolvimento: só na CI;
   - Docker Desktop no Windows: com o Resource Saver, o motor para ao fim de ~5 min sem contentores;
     se o arranque falhar com `sailor-ingest.sock`, reiniciar o Docker Desktop.
 - Anonimizador, notas de funcionamento:
-  - objetos OLE e VBA: são pesquisados os valores conhecidos e emails; se houver dados, falha; se não houver, fica aviso de revisão visual;
+  - objetos OLE e VBA: são pesquisados os valores conhecidos; se houver dados, falha; se não houver, fica aviso de revisão visual;
+  - os emails ficam como estão (KEPT_KINDS); os restantes tipos são substituídos em todos os ficheiros e projetos;
   - imagens nos formulários são apagadas, as restantes geram aviso; as miniaturas da primeira página são removidas;
   - páginas PDF com muito vetor e pouco texto (fontes SHX) geram aviso de revisão visual;
   - dados que o script não encontra sozinho (nomes soltos, falsos positivos): data/private/anonymize_overrides.yaml (ver README).
-- Próximo: fechar a Fase 1 com R1/R2; depois a Fase 2 (leitores das 09-Folhas, MQT/LPU e PDF das peças
-  desenhadas, ligados à ficha-base com origem e conflitos). D6 (Entra ID) a decidir com a TI na Fase 2.
+- Próximo: Fase 2 (leitores das 09-Folhas, MQT/LPU e PDF das peças desenhadas, ligados à ficha-base com origem
+  e conflitos). D6 (Entra ID) a decidir com a TI na Fase 2.

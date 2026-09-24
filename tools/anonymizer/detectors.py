@@ -273,7 +273,8 @@ def _user_path(text: str) -> list[Detection]:
     return [
         Detection("user_path", m.start("u"), m.end("u"), m.group("u"))
         for m in _USER_PATH.finditer(text)
-        if m.group("u").casefold() not in {PSEUDO_USER, "public", "default", "all users"}
+        if not m.group("u").casefold().startswith(PSEUDO_USER)
+        and m.group("u").casefold() not in {"public", "default", "all users"}
     ]
 
 

@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "deny": [
+      "Read(./data/private/**)",
+      "Edit(./data/private/**)",
+      "Write(./data/private/**)",
+      "Glob(./data/private/**)",
+      "Grep(./data/private/**)",
+      "Bash(*data/private*)",
+      "Bash(*data\\private*)",
+      "Bash(*make anonymize*)",
+      "Bash(*tools/anonymize.py R*)"
+    ]
+  }
+}

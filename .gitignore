@@ -31,3 +31,6 @@ frontend/playwright/.cache/
 .DS_Store
 Thumbs.db
 ~$*
+
+# Claude Code (definições locais)
+.claude/settings.local.json

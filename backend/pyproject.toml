@@ -29,9 +29,4 @@ dev = [
 [tool.setuptools.packages.find]
 include = ["app*"]
 
-[tool.pytest.ini_options]
-testpaths = ["tests"]
-addopts = "-m 'not integration'"
-markers = [
-  "integration: needs the docker compose stack running (make up)",
-]
+# pytest, ruff and mypy are configured at the repository root.

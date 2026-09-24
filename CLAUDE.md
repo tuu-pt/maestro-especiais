@@ -104,6 +104,9 @@ Decisões da Fase 0:
     sobre o P9): continuam detetados, mas não são substituídos nem verificados (`KEPT_KINDS` em tools/anonymizer/engine.py).
     Consequência: os emails do requerente e do técnico ficam nas fixtures (repositório privado). Tudo o que for enviado
     ao LLM a partir das fixtures (Fase 3 em diante) tem de passar os emails por placeholder.
+  - Nomes da equipa TUU **não** são dados pessoais nas fixtures (decisão do utilizador, 24 set 2026): um nome de um
+    engenheiro ficou em 12 ficheiros de R1/R2 (carimbaduras "NOME | ENG ELETROTÉCNICO", formulários, MQT/LPU) e aceita-se;
+    o histórico do Git fica como está. Também passam por placeholder no que for enviado ao LLM.
 
 ## Estado atual
 - Fase: 1 **fechada** (24 set 2026). Fases 0 e 1 concluídas; próxima: Fase 2.

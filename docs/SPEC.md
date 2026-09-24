@@ -436,6 +436,7 @@ Os documentos reais contêm dados pessoais do requerente e do técnico: nomes, N
   - lê `.docx`, `.xls`, `.xlsx`, `.xlsm` e `.pdf` de `data/private/`;
   - substitui, de forma consistente em todo o projeto, nomes, NIF (9 dígitos), CC, telefones, moradas, códigos postais, coordenadas e números DGEG/OET por pseudónimos;
   - os emails **não** são substituídos (decisão de 24 set 2026): ficam nas fixtures tal como estão, e o que for enviado ao LLM a partir delas tem de os passar por *placeholder* (P9);
+  - os nomes dos profissionais da equipa TUU (carimbaduras, campo "Equipa", formulários) **não** são tratados como dados pessoais nas fixtures (decisão de 24 set 2026): o anonimizador substitui-os onde os encontra, mas não tem de os encontrar todos; o que for enviado ao LLM a partir das fixtures passa-os também por *placeholder* (P9);
   - usa as células conhecidas da ficha eletrotécnica e das tabelas dos formulários para saber o que é pessoal, e expressões regulares para o resto do texto;
   - escreve os resultados em `data/fixtures/` e a tabela de correspondências em `data/private/` (nunca no Git);
   - falha se encontrar um padrão de dado pessoal que não conseguiu substituir.

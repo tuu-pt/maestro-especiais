@@ -2,9 +2,10 @@
 
 > Agente de IA da TUU – Building Design Management para montar, redigir e validar o processo de projeto de **instalações elétricas**: **MDJ** (memória descritiva e justificativa), **CTE** (condições técnicas gerais e especiais), mapa de quantidades e formulários de licenciamento.
 >
-> **Versão:** 0.3 · 24 set 2026 · **Estado:** aprovado para desenvolvimento (MVP)
+> **Versão:** 0.4 · 24 set 2026 · **Estado:** aprovado para desenvolvimento (MVP)
+> **Alterações na v0.4:** a aplicação começa vazia e tudo o que aparece nos ecrãs vem dos documentos carregados; não há dados fictícios na interface. A Fase 1 passa a ser "Interface vazia e carregamento de documentos" (os 8 ecrãs, o backend mínimo e os leitores da ficha eletrotécnica e da Tabela de Cálculo); a Fase 2 fica com os restantes leitores (secção 14).
 > **Alterações na v0.3:** o MVP passa de ITED para instalações elétricas; fontes de dados, ficha-base, biblioteca de blocos, regras de validação e casos de teste revistos a partir de dois projetos reais da TUU (Anexo C).
-> **Referência visual:** `docs/mockup/maestro-especiais.html` (mock-up interativo, ecrãs A–H; os exemplos do mock-up são de ITED/SCIE e devem ser adaptados a eletricidade nas *fixtures*)
+> **Referência visual:** `docs/mockup/maestro-especiais.html` (mock-up interativo, ecrãs A–H; os exemplos do mock-up são de ITED/SCIE: servem para o layout, os estados e as interações, não para o conteúdo)
 
 ---
 
@@ -357,7 +358,9 @@ A "leitura provável" é determinística: quando só uma peça difere da ficha-b
 
 ## 10. Ecrãs e critérios de aceitação
 
-Os ecrãs seguem o mock-up. Nas *fixtures* da Fase 1, os exemplos de ITED/SCIE do mock-up devem ser substituídos por exemplos de eletricidade (quadros, potência, cabos, carregadores, FV).
+Os ecrãs seguem o layout, os estados e as interações do mock-up, adaptados a instalações elétricas (quadros, potência, cabos, carregadores, FV em vez dos exemplos de ITED/SCIE).
+
+**A aplicação começa vazia.** Tudo o que aparece nos ecrãs vem dos documentos carregados e das ações das pessoas; não há dados fictícios na interface. Cada ecrã tem um estado vazio que explica o que falta e oferece a ação seguinte (ex.: "Ainda não há projetos · Criar projeto"; na ficha, "Carregue a ficha eletrotécnica e a Tabela de Cálculo para criar a ficha-base"; na validação, "A validação fica disponível quando houver ficha-base confirmada e peças do projeto"). Os ecrãs que dependem de fases seguintes mostram o estado vazio e o que vão fazer, sem dados inventados.
 
 ### A · Painel
 - Projetos e peças em curso, com estado (revisão *x/y*, alertas críticos) e responsável.
@@ -470,9 +473,9 @@ No fim de cada fase: testes a passar, um commit por tarefa e `CLAUDE.md` atualiz
 
 | Fase | Entrega | Pronto quando |
 |---|---|---|
-| **0 · Base** | Monorepo, Docker Compose (Postgres + pgvector, Redis, MinIO), CI, `.env.example`, **script de anonimização** | `docker compose up` arranca tudo e R1/R2 estão anonimizados em `data/fixtures/` sem nenhum dado pessoal detetado |
-| **1 · UI com dados fictícios** | Ecrãs A–H em React com *fixtures* de eletricidade baseadas em R1/R2 anonimizados | Os 8 ecrãs reproduzem o mock-up, nos dois temas e a 400 px de largura |
-| **2 · Ficha-base e ingestão** | Modelo de dados 7.1–7.2, autenticação, carregamento de ficheiros, leitores da ficha eletrotécnica, Tabela de Cálculo, 09-Folhas, MQT/LPU e PDF | As fichas-base de R1 e R2 são criadas a partir dos ficheiros, com os conflitos reais do Anexo C a aparecer como `FichaConflict` |
+| **0 · Base** | Monorepo, Docker Compose (Postgres + pgvector, Redis, MinIO), CI, `.env.example`, **script de anonimização** | `docker compose up` arranca tudo e o script de anonimização está testado. A anonimização de R1/R2 em `data/fixtures/` é pré-requisito dos leitores e testes da Fase 1 |
+| **1 · Interface vazia e carregamento de documentos** | **Interface:** os 8 ecrãs do mock-up adaptados a eletricidade (secções 7.2, 8.3, 9, 10 e 13), cada um com estado vazio e sem dados inventados; os que dependem de fases seguintes (editor, validação, equipamentos, exportação) mostram o que vão fazer. **Backend mínimo:** modelos e migrações de `Project`, `ProjectFile`, `FichaRevision`, `FichaValue`, `FichaConflict`, `Circuit` e `AuditEvent` (7.1, 7.2, 7.7); criar e listar projetos, carregar ficheiros (MinIO, checksum, tipo detetado), consultar a ficha-base, resolver conflitos e confirmar revisões; ingestão em worker (RQ) com progresso por SSE; utilizador local de desenvolvimento com os papéis da secção 4 simulados (OIDC mais tarde, D6). **Leitores (sem LLM):** ficha eletrotécnica (células fixas, mapa por versão, para com aviso se R45 for desconhecida) e Tabela de Cálculo (um `Circuit` por linha, colunas pelo cabeçalho); cada valor com origem e `personal_data`; divergências criam `FichaConflict`. **Ecrã C com dados reais:** grupos 7.2, etiquetas de origem, dados pessoais mascarados, tabela de troços com a CAL-01 destacada, resolução de conflitos e confirmação da revisão na auditoria | Com R1 e R2 anonimizados: a potência de R1 coincide entre as fontes (controlo do Anexo C) e a divergência de R2 (C6) aparece como `FichaConflict`; percurso Playwright criar projeto → carregar os dois ficheiros de R2 → ver a ficha → resolver o conflito de potência → confirmar a revisão, com capturas em tema claro, escuro e telemóvel; dois temas, 400 px sem scroll horizontal, navegação por teclado, sem erros graves no `@axe-core/playwright`; `make test` e `make e2e` verdes |
+| **2 · Restantes leitores** | Leitores das 09-Folhas de Cálculo, MQT/LPU e PDF das peças desenhadas (secção 8.2), ligados à ficha-base com origem e conflitos | As fichas-base de R1 e R2 incluem os valores destas fontes, com os conflitos reais do Anexo C a aparecer como `FichaConflict` |
 | **3 · Biblioteca de blocos e conhecimento** | Extração de blocos a partir dos MDJ/CTE de R1 e R2, aprovação pelo curador, corpus regulamentar, dicionário de cabos, léxico de tipologias | Os esqueletos da secção 8.3 estão completos com blocos aprovados e regras de ativação |
 | **4 · Montagem e redação** | Montagem `fixed`/`parametric`, redação `adaptive`, editor TipTap com blocos protegidos, pré-preenchimento dos formulários | O MDJ e o CTE de R1 são montados a partir da ficha-base, e a diferença para o original aprovado é só texto adaptativo e correções de incoerências |
 | **5 · Validação** | Regras da secção 9 e matriz de coerência do projeto | Todos os casos do Anexo C são detetados, com a leitura provável correta |

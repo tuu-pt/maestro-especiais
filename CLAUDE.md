@@ -20,6 +20,9 @@ Especificação completa: docs/SPEC.md · Mock-up: docs/mockup/maestro-especiais
 
 ## Convenções
 - UI em PT-PT. Código, tabelas, endpoints e commits em inglês.
+- A aplicação começa vazia: tudo o que aparece nos ecrãs vem dos documentos carregados. Nunca dados
+  fictícios na interface; cada ecrã tem um estado vazio que explica o que falta e a ação seguinte
+  (SPEC 10). O mock-up serve para o layout, os estados e as interações, não para o conteúdo.
 - Uma tarefa, um commit. Testes sempre junto com o código.
 - Frontend: React + TypeScript + Vite. Cores e fontes só via tokens em frontend/src/styles/tokens.css.
 - Backend: Python 3.12, FastAPI, SQLAlchemy 2, Alembic.
@@ -101,5 +104,9 @@ Decisões da Fase 0:
   - imagens nos formulários são apagadas, as restantes geram aviso; as miniaturas da primeira página são removidas;
   - páginas PDF com muito vetor e pouco texto (fontes SHX) geram aviso de revisão visual;
   - dados que o script não encontra sozinho (nomes soltos, falsos positivos): data/private/anonymize_overrides.yaml (ver README).
-- Próximo: rever o plano das fases (a aplicação começa vazia e tudo vem dos documentos carregados)
-  e depois a Fase 1.
+- Plano das fases revisto (SPEC v0.4, secção 14):
+  - Fase 1 · Interface vazia e carregamento de documentos: 8 ecrãs com estados vazios, backend mínimo
+    (modelos 7.1/7.2/7.7, endpoints, ingestão RQ + SSE, utilizador local com papéis simulados),
+    leitores da ficha eletrotécnica e da Tabela de Cálculo, ecrã C com dados reais;
+  - Fase 2 · Restantes leitores: 09-Folhas, MQT/LPU e PDF das peças desenhadas.
+- Próximo: Fase 1. Os leitores e os testes com R1/R2 esperam pela anonimização (ver acima).

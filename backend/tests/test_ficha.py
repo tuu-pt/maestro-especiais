@@ -266,3 +266,17 @@ def test_no_personal_value_reaches_the_logs(api: Api, caplog: pytest.LogCaptureF
 
     for secret in ("Requerente Sintético", "requerente@example.com", "999990013", "Rua de Teste"):
         assert secret not in caplog.text
+
+
+def test_values_follow_the_order_of_spec_7_2(api: Api) -> None:
+    project_id = new_project(api)
+    upload(api, project_id, factories.ficha_eletrotecnica(), "FE.xlsm")
+
+    identificacao = next(
+        g for g in ficha(api, project_id)["groups"] if g["name"] == "Identificação"
+    )
+    assert [v["key"] for v in identificacao["values"]][:3] == [
+        "id.requerente.nome",
+        "id.requerente.nif",
+        "id.requerente.morada",
+    ]

@@ -15,7 +15,7 @@ from app.audit import record
 from app.auth import CurrentUser, User, require_role
 from app.db import get_session
 from app.ingest.consolidate import latest_revision, open_conflict
-from app.ingest.keys import GROUPS
+from app.ingest.keys import GROUPS, KEYS
 from app.models import FichaConflict, FichaRevision, FichaValue, ProjectFile
 from app.validation.rules import cal_01
 
@@ -161,7 +161,8 @@ def read_ficha(project_id: uuid.UUID, db: DB, _: CurrentUser) -> FichaOut:
         .order_by(FichaRevision.created_at)
     ).all()
     current = latest_revision(db, project.id)
-    values = list(current.values) if current else []
+    order = {key: i for i, key in enumerate(KEYS)}  # the order of SPEC 7.2
+    values = sorted(current.values if current else [], key=lambda v: order.get(v.key, len(order)))
     names = _names_for(db, values)
     groups = [
         GroupOut(name=g, values=[_value_out(v, names) for v in values if v.group == g])

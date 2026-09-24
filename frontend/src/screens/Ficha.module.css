@@ -139,6 +139,11 @@
   text-align: left;
   font-weight: 600;
   white-space: nowrap;
+  text-transform: none;
+  letter-spacing: normal;
+  font-size: 13px;
+  color: var(--ink);
+  background: none;
 }
 .rowHead span {
   display: block;

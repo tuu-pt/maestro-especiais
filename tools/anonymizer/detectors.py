@@ -262,7 +262,8 @@ def _address(text: str) -> list[Detection]:
     return [
         Detection("address", m.start(), m.end(), m.group(0).rstrip(" ,"))
         for m in _ADDRESS.finditer(text)
-        if not m.group("n").startswith("Exemplo")
+        # Our own pseudonym, in any case ("RUA EXEMPLO 3" when the original was in capitals).
+        if not m.group("n").casefold().startswith("exemplo")
     ]
 
 

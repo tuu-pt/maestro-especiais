@@ -204,3 +204,12 @@ def test_short_form_of_a_known_name_is_the_same_person() -> None:
 
     assert f"{first} {last}" in out and f"{first[0]}. {last}" in out and full in out
     assert "Ferreira" not in out
+
+
+def test_an_address_in_capitals_passes_the_verification() -> None:
+    # Cover pages and drawing title blocks: the pseudonym comes out as "RUA EXEMPLO n".
+    mapping = PseudonymMap()
+    engine = TextAnonymizer(mapping)
+    out, reps = engine.anonymize("OBRA: MORADIA · RUA DAS CAMÉLIAS, 12 · CEDOFEITA")
+    assert [r.kind for r in reps] == ["address"] and "RUA EXEMPLO" in out
+    assert TextAnonymizer.for_verification(mapping).residuals(out) == []

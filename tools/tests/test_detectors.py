@@ -168,8 +168,9 @@ def test_address_is_detected(text: str) -> None:
     assert [k for k, _ in kinds(text)] == ["address"]
 
 
-def test_reserved_address_is_ignored() -> None:
-    assert detect("Rua Exemplo 3") == []
+@pytest.mark.parametrize("text", ["Rua Exemplo 3", "RUA EXEMPLO 3", "rua exemplo 3"])
+def test_reserved_address_is_ignored(text: str) -> None:
+    assert detect(text) == []
 
 
 # ---------------------------------------------------------------- names (heuristic)

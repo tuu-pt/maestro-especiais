@@ -34,7 +34,14 @@ const ficha = {
         }),
       ],
     },
-    { name: "Distribuição", values: [] },
+    {
+      name: "Distribuição",
+      values: [
+        v("ele.quadros", "Quadros", ["Q.E.G.", "Q.P.ADMIN", "Q.P.ATRIO", "Q.P.CAFETARIA", "Q.P.REGIE", "Q.P.BIB.INFANT.", "Q.P.BIB.ADULTOS", "Q.P.REPROGRAFIA", "Q.AVAC", "Q.UPS 10kVA"], {
+          source_type: "calc", source_ref: "Tabela de Cálculo · origens e destinos",
+        }),
+      ],
+    },
     { name: "Sistemas", values: [] },
     { name: "Equipamentos", values: [] },
     { name: "Peças desenhadas", values: [] },
@@ -59,6 +66,19 @@ for (const scheme of ["light", "dark"] as const) {
     await expect(page.getByRole("heading", { name: "Ficha-base · rev. A" })).toBeVisible();
     await expectNoSeriousA11yIssues(page);
     await screenshot(page, info, `ficha-com-dados-${scheme === "light" ? "claro" : "escuro"}`);
+  });
+}
+
+for (const width of [1280, 400]) {
+  test(`a long value wraps and leaves its label visible at ${width} px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 });
+    await page.goto("/projetos/p1/ficha");
+    const label = page.locator("dt", { hasText: "Quadros" });
+    const value = page.locator("dd", { hasText: "Q.P.BIB.ADULTOS" });
+    const [l, d] = [await label.boundingBox(), await value.boundingBox()];
+    expect(l && d).toBeTruthy();
+    expect(l!.width).toBeGreaterThan(50);
+    expect(l!.x + l!.width).toBeLessThanOrEqual(d!.x + 1); // side by side, never on top
   });
 }
 

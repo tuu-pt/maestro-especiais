@@ -16,14 +16,16 @@ from typing import Any
 
 import yaml
 
-from anonymizer import ooxml
+from anonymizer import ooxml, pdf, xls
 from anonymizer.detectors import detect
 from anonymizer.engine import Allowlist, Seed, TextAnonymizer
-from anonymizer.findings import Finding
+from anonymizer.findings import Finding, UnreadableFileError
 from anonymizer.harvest import dedupe, seeds_from_lines
 from anonymizer.pseudonyms import PseudonymMap
 
-HANDLERS: dict[str, ModuleType] = {ext: ooxml for ext in ooxml.EXTENSIONS}
+HANDLERS: dict[str, ModuleType] = {
+    ext: module for module in (ooxml, xls, pdf) for ext in module.EXTENSIONS
+}
 ALLOWLIST_FILE = ".pii-allowlist.json"
 
 
@@ -116,7 +118,7 @@ def run_project(
     local: dict[Path, list[Seed]] = {}
     forms: set[Path] = set()
     early: dict[Path, list[Finding]] = {}
-    unreadable: set[Path] = set()
+    unreadable: dict[Path, str] = {}
     for i, path in enumerate(files):
         handler = HANDLERS.get(path.suffix.lower())
         if handler is None:
@@ -124,9 +126,12 @@ def run_project(
         try:
             found, notes, is_form = handler.harvest(path)
             texts = handler.texts(path)
+        except UnreadableFileError as exc:
+            unreadable[path] = exc.code
+            continue
         except Exception:  # noqa: BLE001 - corrupted file: never copied, reported
             _log_error(error_log, "harvest", i)
-            unreadable.add(path)
+            unreadable[path] = "unreadable"
             continue
         early[path] = notes
         if is_form:
@@ -157,7 +162,7 @@ def run_project(
             outcomes.append(FileOutcome(str(out_rel), [Finding("unsupported")], copied=False))
             continue
         if path in unreadable:
-            outcomes.append(FileOutcome(str(out_rel), [Finding("unreadable")], copied=False))
+            outcomes.append(FileOutcome(str(out_rel), [Finding(unreadable[path])], copied=False))
             continue
         destination = staging / out_rel
         strip = path in forms or any(fnmatch.fnmatch(str(rel), g) for g in overrides.strip_images)

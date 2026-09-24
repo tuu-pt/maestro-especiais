@@ -18,6 +18,8 @@ MIN_GLOBAL_DIGITS = 6
 _DIGIT_KINDS = {"nif", "phone", "cc", "postal_code", "dgeg_oet"}
 _LITERAL_KINDS = {"email", "address", "gps", "user_path"}
 _SEPARATOR = "[ .\\u00a0-]?"
+_WHITESPACE = re.compile(r"\s+")
+_ACCENTS = str.maketrans("àáâãäåçèéêëìíîïñòóôõöùúûüýÿªº", "aaaaaaceeeeiiiinooooouuuuyyao")
 
 
 @dataclass(frozen=True)
@@ -269,13 +271,25 @@ class TextAnonymizer:
         return found
 
     def binary_hits(self, data: bytes) -> list[str]:
-        """Kinds of known values (and emails) found in binary data, in 8- and 16-bit text."""
+        """Kinds of known values (and emails) found in binary data, in 8- and 16-bit text.
+
+        Uses a fast C-level folding (no index map): binaries can be tens of megabytes.
+        """
+        m = self._get_matchers()
         kinds: list[str] = []
         for text in (
             data.decode("latin-1"),
             data.decode("utf-16-le", "ignore"),
             data[1:].decode("utf-16-le", "ignore"),
         ):
-            kinds += [kind for _, _, kind, _ in self._seed_spans(text)]
+            folded = _WHITESPACE.sub(" ", text.casefold().translate(_ACCENTS).replace("_", " "))
+            if m.names:
+                kinds += ["name" for _ in m.names.finditer(folded)]
+            if m.literals:
+                kinds += [self._literal_seeds[h.group(0)][0] for h in m.literals.finditer(folded)]
+            if m.digits:
+                kinds += [
+                    m.digit_keys[int((h.lastgroup or "d0")[1:])][0] for h in m.digits.finditer(text)
+                ]
             kinds += ["email" for _ in detect_emails(text)]
         return kinds

@@ -47,3 +47,11 @@ class Finding:
     @property
     def severity(self) -> str:
         return CODES[self.code][0]
+
+
+class UnreadableFileError(Exception):
+    """A file that cannot be opened (corrupted, encrypted...). It is never copied."""
+
+    def __init__(self, code: str) -> None:
+        super().__init__(code)
+        self.code = code

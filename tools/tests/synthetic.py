@@ -406,3 +406,103 @@ def ooxml_project(root: Path, *, other_requerente: bool = False) -> Path:
     mdj(root / "R9_MDJ_PE_ELE_V0.docx")
     tabela_calculo(root / "Tabela de Calculo.xlsx")
     return root
+
+
+# ---------------------------------------------------------------- 09-Folha de Cálculo (.xls)
+
+
+def folha_calculo(path: Path) -> Path:
+    import xlwt
+
+    wb = xlwt.Workbook(encoding="utf-8")
+    bold = xlwt.easyxf("font: bold on")
+    ib = wb.add_sheet("IB")
+    ib.write(0, 0, f"Requerente: {PROMOTOR.name}")
+    ib.write(1, 0, f"Técnico: Eng.ª {TECNICO.name}", bold)
+    ib.write(2, 0, "NIF")
+    ib.write(2, 1, int(PROMOTOR.nif))
+    ib.write(6, 7, 34.5)  # IB!H7 potência
+    ib.write(16, 7, 50.0)  # IB!H17
+    condutores = wb.add_sheet("condutores")
+    condutores.write(7, 13, 25.0)  # condutores!N8 comprimento
+    condutores.write(46, 7, "4x16")  # condutores!H47 secção
+    tensao = wb.add_sheet("tensao")
+    tensao.write(11, 13, 1.2)
+    proteccao = wb.add_sheet("proteccao")
+    proteccao.write(8, 4, 63.0)
+    proteccao.write(8, 9, 504.0)
+    wb.save(str(path))
+    return path
+
+
+# ---------------------------------------------------------------- peças desenhadas (.pdf)
+
+
+def pecas_desenhadas(path: Path, *, vector_page: bool = True) -> Path:
+    doc = pymupdf.open()
+    page = doc.new_page()
+    y = 60
+    for line in [
+        "ÍNDICE DAS PEÇAS DESENHADAS",
+        "EL001 Planta de localização",
+        "EL002 Planta do piso 0 - iluminação",
+        "EL003 Esquema do Q.E.G.",
+        "Potência a alimentar: 34,5 kVA",
+        f"Requerente: {PROMOTOR.name}",
+        f"Técnico: Eng.ª {TECNICO.name}",
+        f"NIF {PROMOTOR.nif}   Tel. {PROMOTOR.phone}",
+        f"{PROMOTOR.address}, {PROMOTOR.postal_code} Porto",
+        f"Desenhou: {DESENHADOR}",
+        f"Contacto: {TECNICO.email}",
+    ]:
+        page.insert_text((50, y), line, fontname="helv", fontsize=10)
+        y += 18
+    page.add_text_annot((400, 60), f"Enviar ao técnico: {TECNICO.email}")
+    widget = pymupdf.Widget()
+    widget.field_type = pymupdf.PDF_WIDGET_TYPE_TEXT
+    widget.field_name = "contacto"
+    widget.field_value = TECNICO.phone
+    widget.rect = pymupdf.Rect(50, 300, 250, 320)
+    page.add_widget(widget)
+    page.insert_image(
+        pymupdf.Rect(300, 300, 380, 340),
+        stream=jpeg_with_exif(f"{TECNICO.name} {GPS}".encode("latin-1")),
+    )
+    legend = doc.new_page()
+    legend.insert_text(
+        (50, 60), "LEGENDA: L1 Luminária LED embutida; L7 Aplique IP65", fontname="helv"
+    )
+    if vector_page:
+        drawing = doc.new_page()
+        shape = drawing.new_shape()
+        for i in range(1600):
+            x = 20 + (i % 40) * 14
+            shape.draw_line((x, 20 + i // 40 * 18), (x + 10, 30 + i // 40 * 18))
+        shape.finish(color=(0, 0, 0))
+        shape.commit()
+    doc.set_metadata({"author": TECNICO.name, "title": f"Projeto de {PROMOTOR.name}"})
+    doc.set_toc([[1, f"Carimbadura {PROMOTOR.name}", 1], [1, "Legenda", 2]])
+    doc.embfile_add("dados.txt", f"NIF {TECNICO.nif}".encode())
+    doc.save(str(path))
+    doc.close()
+    return path
+
+
+def encrypted_pdf(path: Path) -> Path:
+    doc = pymupdf.open()
+    doc.new_page().insert_text((50, 60), f"Requerente: {PROMOTOR.name}")
+    doc.save(str(path), encryption=pymupdf.PDF_ENCRYPT_AES_256, owner_pw="o", user_pw="u")
+    doc.close()
+    return path
+
+
+def full_project(root: Path) -> Path:
+    """Every supported format plus files that must never reach the fixtures."""
+    ooxml_project(root)
+    folha_calculo(root / "09-Folha de Calculo_QEG.xls")
+    (root / "Desenhos").mkdir()
+    pecas_desenhadas(root / "Desenhos" / "R9_EL_PE_V0.pdf")
+    (root / "Desenhos" / "R9_EL001.dwg").write_bytes(b"AC1032" + f"{PROMOTOR.name}".encode() * 3)
+    (root / "Desenhos" / "assinado.pdf").write_bytes(b"%PDF-1.7 corrupted " + TECNICO.name.encode())
+    encrypted_pdf(root / "protegido.pdf")
+    return root

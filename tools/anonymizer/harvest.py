@@ -122,6 +122,13 @@ def seeds_for(kind: str, value: str) -> list[Seed]:
     if kind == "postal_code":
         m = re.search(r"\d{4}-\d{3}", value)
         return [Seed("postal_code", m.group(0))] if m else []
+    if kind == "address":
+        # "Rua X, n.º 1, 4000-123 Porto": the street part is the address; the postal code
+        # is its own datum and the locality is not personal.
+        m = re.search(r"\d{4}-\d{3}", value)
+        if m:
+            street = value[: m.start()].rstrip(" ,;-–")
+            return [Seed("postal_code", m.group(0)), *seeds_for("address", street)]
     if not plausible(kind, value):
         return []
     # Short numbers (DGEG/OET) are only replaced in the file they came from.

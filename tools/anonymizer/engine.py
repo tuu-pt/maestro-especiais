@@ -5,7 +5,7 @@ The same engine also scans output text for residual personal data (verification)
 
 import hashlib
 import re
-from collections.abc import Iterable
+from collections.abc import Iterable, Iterator
 from dataclasses import dataclass, field
 
 from anonymizer.detectors import detect, detect_emails, is_pseudonym_name
@@ -20,6 +20,8 @@ _DIGIT_KINDS = {"nif", "phone", "cc", "postal_code", "dgeg_oet"}
 _LITERAL_KINDS = {"email", "address", "gps", "user_path"}
 _SEPARATOR = "[ .\\u00a0-]?"
 _WHITESPACE = re.compile(r"\s+")
+# Separators that _char_pattern allows between the characters of a number.
+_SQUEEZE = str.maketrans("", "", " . -")
 _ACCENTS = str.maketrans("àáâãäåçèéêëìíîïñòóôõöùúûüýÿªº", "aaaaaaceeeeiiiinooooouuuuyyao")
 
 
@@ -97,6 +99,32 @@ class _Matchers:
     literals: re.Pattern[str] | None
     digits: re.Pattern[str] | None
     digit_keys: list[tuple[str, str]]  # group index -> (kind, key)
+    # (kind, key without separators in upper case, pattern of that key alone), for binaries
+    digit_each: list[tuple[str, str, re.Pattern[str]]]
+    # names and literals without the leading lookbehind, for binaries (see _bounded)
+    names_bin: re.Pattern[str] | None
+    literals_bin: re.Pattern[str] | None
+
+
+_NAME_BEFORE = frozenset("0123456789abcdefghijklmnopqrstuvwxyz")
+_LITERAL_BEFORE = _NAME_BEFORE | {"@", "."}
+
+
+def _bounded(pattern: re.Pattern[str], text: str, before: frozenset[str]) -> Iterator[str]:
+    """Matches of pattern not preceded by a character in before.
+
+    Same result as a leading lookbehind, but the regex engine can then skip ahead by the first
+    characters of the alternatives: 5-20x faster on the tens of megabytes of a drawing PDF.
+    A rejected match resumes one character later, so overlapping matches are not skipped.
+    """
+    pos = 0
+    while (hit := pattern.search(text, pos)) is not None:
+        start = hit.start()
+        if start and text[start - 1] in before:
+            pos = start + 1
+            continue
+        yield hit.group(0)
+        pos = max(hit.end(), start + 1)
 
 
 def _alternation(options: Iterable[str], before: str, after: str) -> re.Pattern[str] | None:
@@ -186,12 +214,9 @@ class TextAnonymizer:
     def _get_matchers(self) -> _Matchers:
         if self._matchers is None:
             digit_keys = sorted(self._digit_seeds.items(), key=lambda kv: -len(kv[0]))
+            names = [v for v, owner in self._name_variants.items() if owner]
             self._matchers = _Matchers(
-                names=_alternation(
-                    (v for v, owner in self._name_variants.items() if owner),
-                    r"(?<![0-9a-z])",
-                    r"(?![0-9a-z])",
-                ),
+                names=_alternation(names, r"(?<![0-9a-z])", r"(?![0-9a-z])"),
                 literals=_alternation(self._literal_seeds, r"(?<![0-9a-z@.])", r"(?![0-9a-z])"),
                 digits=re.compile(
                     "|".join(f"(?P<d{i}>{_char_pattern(k)})" for i, (k, _) in enumerate(digit_keys))
@@ -199,6 +224,12 @@ class TextAnonymizer:
                 if digit_keys
                 else None,
                 digit_keys=[(kind, key) for key, kind in digit_keys],
+                digit_each=[
+                    (kind, key.translate(_SQUEEZE).upper(), re.compile(_char_pattern(key)))
+                    for key, kind in digit_keys
+                ],
+                names_bin=_alternation(names, "", r"(?![0-9a-z])"),
+                literals_bin=_alternation(self._literal_seeds, "", r"(?![0-9a-z])"),
             )
         return self._matchers
 
@@ -287,19 +318,25 @@ class TextAnonymizer:
         """
         m = self._get_matchers()
         kinds: list[str] = []
-        for text in (
-            data.decode("latin-1"),
-            data.decode("utf-16-le", "ignore"),
-            data[1:].decode("utf-16-le", "ignore"),
-        ):
+        texts = [data.decode("latin-1")]
+        # Latin text in UTF-16LE always has zero bytes (the high byte of U+0000-U+00FF); without
+        # any, as in the content streams of drawing PDFs, the 16-bit readings cannot hold one.
+        if b"\x00" in data:
+            texts += [data.decode("utf-16-le", "ignore"), data[1:].decode("utf-16-le", "ignore")]
+        for text in texts:
             folded = _WHITESPACE.sub(" ", text.casefold().translate(_ACCENTS).replace("_", " "))
-            if m.names:
-                kinds += ["name" for _ in m.names.finditer(folded)]
-            if m.literals:
-                kinds += [self._literal_seeds[h.group(0)][0] for h in m.literals.finditer(folded)]
-            if m.digits:
-                kinds += [
-                    m.digit_keys[int((h.lastgroup or "d0")[1:])][0] for h in m.digits.finditer(text)
-                ]
+            if m.names_bin:
+                kinds += ["name" for _ in _bounded(m.names_bin, folded, _NAME_BEFORE)]
+            if m.literals_bin:
+                found = _bounded(m.literals_bin, folded, _LITERAL_BEFORE)
+                kinds += [self._literal_seeds[h][0] for h in found]
+            if m.digit_each:
+                # A number can only match where it appears once the separators are removed: this
+                # C-level test skips almost every key, and the exact pattern runs only for the rest.
+                # (One alternation over every key took ~1 s/MB on the digits of drawing PDFs.)
+                squeezed = text.translate(_SQUEEZE).upper()
+                for kind, bare, pattern in m.digit_each:
+                    if bare in squeezed:
+                        kinds += [kind for _ in pattern.finditer(text)]
             kinds += ["email" for _ in detect_emails(text)]
         return kinds

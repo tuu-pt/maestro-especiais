@@ -80,7 +80,7 @@ Decisões da Fase 0:
   - Mapa de células da ficha eletrotécnica (FE_v.20190222) em tools/anonymizer/maps/ [A CONFIRMAR com o modelo DGEG vazio].
 
 ## Estado atual
-- Fase: 0 (código concluído; faltam as verificações abaixo antes de fechar)
+- Fase: 0 fechada (24 set 2026), com a anonimização de R1/R2 por fazer (ver abaixo)
 - Feito na Fase 0:
   - monorepo, CLAUDE.md e bloqueio de data/private/ para o Claude Code;
   - backend FastAPI com `/api/health` (BD, pgvector, Redis, S3);
@@ -92,10 +92,14 @@ Decisões da Fase 0:
 - Docker Desktop no Windows: com o Resource Saver, o motor para ao fim de ~5 min sem contentores;
   qualquer comando `docker` volta a acordá-lo. Se o arranque falhar com `sailor-ingest.sock`, basta
   reiniciar o Docker Desktop.
-- Por fazer: a equipa corre `make anonymize` sobre R1/R2, revê os avisos, `make pii-check` limpo, e só então se versionam as fixtures.
+- Por fazer, adiado por decisão do utilizador (24 set 2026): anonimizar R1/R2. data/fixtures/ ainda
+  não tem R1 nem R2. **Obrigatório antes dos leitores de ficheiros e dos testes que usam R1/R2.**
+  Passos: a equipa corre `make anonymize`, revê os avisos, `make pii-check` limpo, e só então se
+  versionam as fixtures. Até lá, nunca substituir R1/R2 por dados inventados nem ler data/private/.
 - Anonimizador, notas de funcionamento:
   - objetos OLE e VBA: são pesquisados os valores conhecidos e emails; se houver dados, falha; se não houver, fica aviso de revisão visual;
   - imagens nos formulários são apagadas, as restantes geram aviso; as miniaturas da primeira página são removidas;
   - páginas PDF com muito vetor e pouco texto (fontes SHX) geram aviso de revisão visual;
   - dados que o script não encontra sozinho (nomes soltos, falsos positivos): data/private/anonymize_overrides.yaml (ver README).
-- Próximo: Fase 1 (ecrãs A–H com fixtures de eletricidade).
+- Próximo: rever o plano das fases (a aplicação começa vazia e tudo vem dos documentos carregados)
+  e depois a Fase 1.

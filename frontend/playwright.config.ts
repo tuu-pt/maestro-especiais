@@ -1,6 +1,7 @@
 import { defineConfig, devices } from "@playwright/test";
 
-const baseURL = process.env.E2E_BASE_URL ?? "http://localhost:5173";
+// Own dev server on 5174, so that a running stack on 5173 (possibly with other code) is not reused.
+const baseURL = process.env.E2E_BASE_URL ?? "http://localhost:5174";
 
 export default defineConfig({
   testDir: "./e2e",
@@ -12,7 +13,7 @@ export default defineConfig({
   webServer: process.env.E2E_BASE_URL
     ? undefined
     : {
-        command: "npm run dev",
+        command: "npm run dev -- --port 5174",
         url: baseURL,
         reuseExistingServer: !process.env.CI,
         timeout: 60_000,

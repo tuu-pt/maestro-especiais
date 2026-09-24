@@ -6,6 +6,7 @@
 }
 .content {
   display: grid;
+  grid-template-columns: minmax(0, 1fr); /* wide tables scroll inside, never widen the page */
   gap: 14px;
   min-width: 0;
 }

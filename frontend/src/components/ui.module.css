@@ -177,6 +177,8 @@
 }
 
 .tbl {
+  /* Containing block for visually hidden text in cells, so it scrolls with the table. */
+  position: relative;
   overflow-x: auto;
   border: 1px solid var(--line);
   border-radius: 8px;

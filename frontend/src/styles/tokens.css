@@ -7,7 +7,7 @@
   --sheet: #ffffff;
   --ink: #0a0a0a;
   --ink-2: #46443f;
-  --ink-3: #77746b;
+  --ink-3: #66645c; /* mock-up #77746b, darkened for WCAG AA (≥ 4.5:1) */
   --line: #dcd8cc;
   --line-2: #c9c4b5;
   --yellow: #ffd21e;
@@ -41,7 +41,7 @@
     --sheet: #1d1c1a;
     --ink: #f4f2ec;
     --ink-2: #c6c2b8;
-    --ink-3: #8e8a80;
+    --ink-3: #99958a; /* mock-up #8e8a80, lightened for WCAG AA */
     --line: #2e2d29;
     --line-2: #3c3a35;
     --hl: rgba(255, 210, 30, 0.2);
@@ -65,7 +65,7 @@
   --sheet: #1d1c1a;
   --ink: #f4f2ec;
   --ink-2: #c6c2b8;
-  --ink-3: #8e8a80;
+  --ink-3: #99958a; /* mock-up #8e8a80, lightened for WCAG AA */
   --line: #2e2d29;
   --line-2: #3c3a35;
   --hl: rgba(255, 210, 30, 0.2);

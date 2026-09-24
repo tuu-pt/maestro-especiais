@@ -11,6 +11,7 @@ from typing import Any
 import pytest
 from conftest import Api
 
+from app.ingest import ficha_eletrotecnica, tabela_calculo
 from app.ingest.detect import detect
 
 pytestmark = pytest.mark.usefixtures("inline_ingestion")
@@ -56,6 +57,17 @@ def value(body: dict[str, Any], key: str) -> dict[str, Any]:
     return found
 
 
+@pytest.mark.parametrize("code", ["R1", "R2"])
+def test_both_readers_read_the_power_without_warnings(code: str) -> None:
+    """Without this, an agreement could only mean that one source gave nothing."""
+    files = reference_files(code)
+    fe_read = ficha_eletrotecnica.read(files["ficha_eletrotecnica"].read_bytes())
+    calc_read = tabela_calculo.read(files["calc_summary"].read_bytes())
+    for result in (fe_read, calc_read):
+        assert result.warnings == []
+        assert POWER in {c.key for c in result.values}
+
+
 def test_r1_control_power_agrees_between_sources(api: Api) -> None:
     """Control case of Annex C: 34,5 kVA in the ficha eletrotécnica and in the Tabela."""
     body = load(api, "R1")
@@ -63,6 +75,7 @@ def test_r1_control_power_agrees_between_sources(api: Api) -> None:
     assert power["status"] != "conflict", power
     assert power["value"] == 34.5
     assert body["circuits"], "a Tabela de Cálculo de R1 tem troços"
+    assert body["open_conflicts"] == 0, "casos de controlo não podem gerar alertas"
 
 
 def test_r2_c6_power_is_a_conflict(api: Api) -> None:

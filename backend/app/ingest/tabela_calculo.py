@@ -1,8 +1,9 @@
 """Reader of the TUU Tabela de Cálculo (.xlsx): one Circuit per line (SPEC 7.1, 8.2).
 
 Columns are found by the text of their header, never by position: some are empty (IΔn),
-and their order changes between projects. Section rows ("ENTRADA DE ENERGIA", "EDIFÍCIO")
-are not circuits. The reader compares nothing and computes nothing (SPEC P2).
+and their order changes between projects. The header can have a second line under a group
+("TIPO C" → "Norma [kVA]", "TOTAL INSTALADO"…), as in R1 and R2. Section rows ("ENTRADA DE
+ENERGIA", "EDIFÍCIO") are not circuits. The reader compares nothing and computes nothing (P2).
 """
 
 import io
@@ -19,26 +20,27 @@ from app.ingest.pipeline import ReaderError
 COLUMNS: tuple[tuple[str, str], ...] = (
     ("origin", r"^origem"),
     ("destination", r"^destino"),
-    ("vd_section_pct", r"(qdt|queda|\bdu\b).*(troco|parcial)"),
-    ("vd_upstream_pct", r"(qdt|queda|\bdu\b).*(montante|anterior)"),
-    ("vd_total_pct", r"(qdt|queda|\bdu\b).*(total|acumulad)"),
+    ("vd_section_pct", r"(q\.?d\.?t|queda|\bdu\b).*(troco|parcial)"),
+    ("vd_upstream_pct", r"(q\.?d\.?t|queda|\bdu\b).*(montante|anterior)"),
+    ("vd_total_pct", r"(q\.?d\.?t|queda|\bdu\b).*(total|acumulad)"),
     ("iz145_a", r"1[.,]45"),
     ("idn_ma", r"^i\s?[δ∆d]\s?n\b|diferencial"),
     ("ib_a", r"^ib\b"),
     ("in_a", r"^in\b"),
     ("iz_a", r"^iz\b"),
     ("i2_a", r"^i2\b"),
-    ("kva", r"^pot|kva"),
+    # The circuit's power: "TOTAL INSTALADO" (norma + socorro + segurança) [A CONFIRMAR].
+    ("kva", r"^total instalado|^pot|^kva"),
     ("voltage_v", r"^tensao|^u \(v\)"),
-    ("protection_type", r"^(tipo de )?prote[cç]"),
+    ("protection_type", r"^(tipo de )?prote[cç]|fusivel|disjuntor"),
     ("breaking_capacity_ka", r"^pdc|poder de corte"),
     ("length_m", r"^comprim|^l \(m\)"),
-    ("pole_type", r"^polo|^n\.?o? de polos"),
-    ("installation", r"^instala|^montagem|^tipo de instala"),
-    ("phases", r"^fases|^n\.?o? (de )?fases"),
+    ("pole_type", r"^polo|^n\.?o? de polos|monopolar|multipolar"),
+    ("installation", r"^instala|^montagem|^tipo de instala|enterrad|esteira|embebid"),
+    ("phases", r"^fases|^n\.?o? (de )?fases|monofasic|trifasic"),
     ("insulation", r"^isolament"),
-    ("conductor", r"^(condutor|material)( \(.*\))?$"),
-    ("ref_method", r"^metodo"),
+    ("conductor", r"^(condutor|material)( \(.*\))?$|cobre|alumin"),
+    ("ref_method", r"^metodo|^met\.? ref"),
     ("rtiebt_table", r"rtiebt"),
     ("cable_raw", r"^cabo|^canaliza|designa"),
 )
@@ -47,6 +49,8 @@ NUMERIC = {
     "vd_section_pct", "vd_upstream_pct", "vd_total_pct", "breaking_capacity_ka",
 }  # fmt: skip
 _BOARD = re.compile(r"^q\b|^q\.|^quadro", re.I)
+# Known columns that the Circuit does not keep (SPEC 7.1): no warning for them.
+KNOWN_UNUSED = re.compile(r"^norma|^socorro|^seguranca|quadros|^tipo c$|^imped|corte geral")
 
 
 def match_column(header: str) -> str | None:
@@ -99,6 +103,24 @@ def _find_header(rows: list[tuple[Any, ...]]) -> int | None:
     return None
 
 
+def _headers(rows: list[tuple[Any, ...]], index: int) -> tuple[list[str], int]:
+    """Header text per column and the index of the first data row.
+
+    A next row with text and no numbers is the second line of the header: where it has text,
+    it names the column (under "TIPO C": "Norma [kVA]", "TOTAL INSTALADO"…).
+    """
+    main = ["" if c is None else str(c).strip() for c in rows[index]]
+    sub = rows[index + 1] if index + 1 < len(rows) else ()
+    texts = [str(c).strip() for c in sub if c is not None and str(c).strip()]
+    if len(texts) < 2 or any(to_number(t) is not None for t in texts):
+        return main, index + 1
+    merged = []
+    for i in range(max(len(main), len(sub))):
+        below = str(sub[i]).strip() if i < len(sub) and sub[i] is not None else ""
+        merged.append(below or (main[i] if i < len(main) else ""))
+    return merged, index + 2
+
+
 def read(data: bytes) -> ReadResult:
     # Not read-only: read-only mode skips empty rows and the line numbers would drift.
     workbook = openpyxl.load_workbook(io.BytesIO(data), data_only=True)
@@ -116,16 +138,20 @@ def read(data: bytes) -> ReadResult:
 def _read_table(title: str, rows: list[tuple[Any, ...]], header_index: int) -> ReadResult:
     result = ReadResult(source_type="calc")
     columns: dict[int, str] = {}
-    for position, header in enumerate(rows[header_index]):
-        if header is None or not str(header).strip():
+    headers, first_data = _headers(rows, header_index)
+    for position, header in enumerate(headers):
+        if not header:
             continue
-        field = match_column(str(header))
+        field = match_column(header)
+        if field is None and KNOWN_UNUSED.search(fold(header)):
+            continue
         if field is None or field in columns.values():
-            result.warnings.append(f"Coluna não reconhecida: «{str(header).strip()[:60]}».")
+            label = " ".join(header.split())[:60]
+            result.warnings.append(f"Coluna não reconhecida: «{label}».")
             continue
         columns[position] = field
     section: str | None = None
-    for offset, row in enumerate(rows[header_index + 1 :], start=header_index + 2):
+    for offset, row in enumerate(rows[first_data:], start=first_data + 1):
         cells = [c for c in row if c is not None and str(c).strip()]
         if not cells:
             continue

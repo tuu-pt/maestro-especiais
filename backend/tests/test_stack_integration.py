@@ -1,5 +1,7 @@
 """Checks against the running docker compose stack (make up). Run with: pytest -m integration."""
 
+import os
+
 import boto3
 import httpx
 import pytest
@@ -77,3 +79,37 @@ def test_bucket_exists() -> None:
     )
 
     client.head_bucket(Bucket=ENV.get("S3_BUCKET") or "maestro-especiais")
+
+
+@pytest.mark.skipif(
+    not os.environ.get("RUN_INGEST_E2E"),
+    reason="creates data in the development database: runs in CI (RUN_INGEST_E2E=1)",
+)
+def test_worker_reads_uploads_and_opens_a_conflict() -> None:
+    import time
+    import uuid
+
+    import factories
+
+    base = f"http://localhost:{_port('BACKEND_HOST_PORT', '8000')}/api"
+    client = httpx.Client(base_url=base, headers={"X-Dev-User": "redator"}, timeout=30)
+    code = f"CI{uuid.uuid4().hex[:8].upper()}"
+    project = client.post("/projects", json={"code": code, "name": "Integração"}).json()
+    rows = [list(r) for r in factories.CALC_ROWS]
+    rows[1][2] = 200
+    for name, data in (
+        ("FE.xlsm", factories.ficha_eletrotecnica(R29=180)),
+        ("Tabela.xlsx", factories.tabela_calculo(rows=rows)),
+    ):
+        response = client.post(f"/projects/{project['id']}/files", files={"file": (name, data)})
+        assert response.status_code == 202, response.text
+
+    deadline = time.monotonic() + 60
+    while time.monotonic() < deadline:
+        files = client.get(f"/projects/{project['id']}/files").json()
+        if all(f["ingest_status"] in ("done", "failed") for f in files):
+            break
+        time.sleep(1)
+    assert [f["ingest_status"] for f in files] == ["done", "done"], files
+    ficha = client.get(f"/projects/{project['id']}/ficha").json()
+    assert ficha["open_conflicts"] == 1

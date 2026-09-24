@@ -3,6 +3,7 @@
 The same engine also scans output text for residual personal data (verification).
 """
 
+import hashlib
 import re
 from collections.abc import Iterable
 from dataclasses import dataclass, field
@@ -55,13 +56,22 @@ class Allowlist:
     """False positives confirmed by a person, as (kind, folded value) pairs."""
 
     entries: set[tuple[str, str]] = field(default_factory=set)
+    # "kind:sha256(folded value)", as written next to the fixtures for the CI check.
+    hashes: set[str] = field(default_factory=set)
 
     def allows(self, kind: str, value: str) -> bool:
-        return (kind, fold_simple(value)) in self.entries
+        folded = fold_simple(value)
+        if (kind, folded) in self.entries:
+            return True
+        return bool(self.hashes) and f"{kind}:{value_hash(folded)}" in self.hashes
 
     @classmethod
     def from_items(cls, items: Iterable[tuple[str, str]]) -> "Allowlist":
         return cls({(k, fold_simple(v)) for k, v in items})
+
+
+def value_hash(folded_value: str) -> str:
+    return hashlib.sha256(folded_value.encode("utf-8")).hexdigest()
 
 
 def name_variants(folded_name: str) -> set[str]:

@@ -5,7 +5,6 @@ the previous fixtures stay untouched.
 """
 
 import fnmatch
-import hashlib
 import json
 import shutil
 import traceback
@@ -18,10 +17,11 @@ import yaml
 
 from anonymizer import ooxml, pdf, xls
 from anonymizer.detectors import detect
-from anonymizer.engine import Allowlist, Seed, TextAnonymizer
+from anonymizer.engine import Allowlist, Seed, TextAnonymizer, value_hash
 from anonymizer.findings import Finding, UnreadableFileError
 from anonymizer.harvest import dedupe, seeds_from_lines
 from anonymizer.pseudonyms import PseudonymMap
+from anonymizer.textnorm import fold_simple
 
 HANDLERS: dict[str, ModuleType] = {
     ext: module for module in (ooxml, xls, pdf) for ext in module.EXTENSIONS
@@ -208,12 +208,5 @@ def _write_allowlist(folder: Path, items: list[tuple[str, str]]) -> None:
     """Confirmed false positives as hashes, so the CI check can skip them without values."""
     if not items:
         return
-    from anonymizer.textnorm import fold_simple
-
-    entries = sorted(
-        {
-            f"{kind}:{hashlib.sha256(fold_simple(value).encode('utf-8')).hexdigest()}"
-            for kind, value in items
-        }
-    )
+    entries = sorted({f"{kind}:{value_hash(fold_simple(value))}" for kind, value in items})
     (folder / ALLOWLIST_FILE).write_bytes(json.dumps(entries, indent=1).encode("utf-8"))

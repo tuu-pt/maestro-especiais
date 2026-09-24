@@ -14,6 +14,10 @@ CODES: dict[str, tuple[str, str]] = {
     ),
     "unreadable_part": ("error", "parte do ficheiro que não se consegue ler"),
     "internal_error": ("error", "erro interno (ver anonymize_error.log)"),
+    "unverifiable": (
+        "error",
+        "ficheiro que não se consegue verificar: não pode estar nas fixtures",
+    ),
     "possible_name": ("warning", "possível nome de pessoa: confirmar"),
     "images_present": ("warning", "imagens: revisão visual obrigatória"),
     "image_not_blanked": ("warning", "imagem de formulário que não foi possível apagar"),

@@ -17,16 +17,20 @@ def record(
     entity_id: uuid.UUID | None,
     payload: dict[str, Any] | None = None,
     *,
+    project_id: uuid.UUID,
     actor_type: str | None = None,
 ) -> AuditEvent:
-    """Add one event to the session. actor None means the system (e.g. the ingestion worker)."""
+    """Add one event to the session. actor None means the system (e.g. the ingestion worker).
+
+    Every event names its project, so that project timelines and the dashboard can find it.
+    """
     event = AuditEvent(
         actor_type=actor_type or ("user" if actor else "system"),
         actor_id=actor.id if actor else None,
         action=action,
         entity_type=entity_type,
         entity_id=entity_id,
-        payload=payload or {},
+        payload={**(payload or {}), "project_id": str(project_id)},
     )
     db.add(event)
     return event

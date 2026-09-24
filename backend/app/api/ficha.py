@@ -195,7 +195,8 @@ def reveal(value_id: uuid.UUID, db: DB, user: CurrentUser) -> ValueOut:
     """The unmasked value. Every reveal is recorded (who, which key; never the value)."""
     value = _value(db, value_id)
     if value.personal_data:
-        record(db, user, "ficha.value_revealed", "ficha_value", value.id, {"key": value.key})
+        record(db, user, "ficha.value_revealed", "ficha_value", value.id, {"key": value.key},
+               project_id=value.revision.project_id)  # fmt: skip
         db.commit()
     return _value_out(value, _names_for(db, [value]), reveal=True)
 
@@ -242,7 +243,7 @@ def resolve(conflict_id: uuid.UUID, body: ResolveIn, db: DB, user: Tecnico) -> V
     conflict.note = body.note
     # The note is free text written by the técnico and may name people: it stays in the conflict.
     record(db, user, "ficha.conflict_resolved", "ficha_conflict", conflict.id,
-           {"key": value.key, **choice})  # fmt: skip
+           {"key": value.key, **choice}, project_id=value.revision.project_id)  # fmt: skip
     db.commit()
     return _value_out(value, _names_for(db, [value]))
 
@@ -272,6 +273,7 @@ def confirm(revision_id: uuid.UUID, db: DB, user: Tecnico) -> RevisionOut:
     revision.confirmed_by = user.id
     revision.confirmed_at = datetime.now(UTC)
     record(db, user, "ficha.confirmed", "ficha_revision", revision.id,
-           {"label": revision.label, "values": len(revision.values)})  # fmt: skip
+           {"label": revision.label, "values": len(revision.values)},
+           project_id=revision.project_id)  # fmt: skip
     db.commit()
     return RevisionOut.model_validate(revision, from_attributes=True)

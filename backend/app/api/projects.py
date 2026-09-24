@@ -74,7 +74,8 @@ def create_project(body: ProjectIn, db: DB, user: Editor) -> ProjectOut:
         raise HTTPException(
             status.HTTP_409_CONFLICT, "Já existe um projeto com esse código."
         ) from None
-    record(db, user, "project.created", "project", project.id, {"code": project.code})
+    record(db, user, "project.created", "project", project.id, {"code": project.code},
+           project_id=project.id)  # fmt: skip
     db.commit()
     return _summary(db, project)
 
@@ -147,7 +148,8 @@ def upload_file(
         "file.uploaded",
         "project_file",
         file.id,
-        {"project_id": str(project.id), "kind": file.kind, "size": len(data), "sha256": checksum},
+        {"kind": file.kind, "size": len(data), "sha256": checksum},
+        project_id=project.id,
     )
     db.commit()
     job_id = None

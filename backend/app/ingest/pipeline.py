@@ -62,11 +62,13 @@ def run_ingestion(db: Session, store: ObjectStore, publish: Publish, file_id: uu
         logger.error("ingest failed: file=%s error=%s", file_id, type(exc).__name__)
         _fail(db, publish, file, f"Não foi possível ler o ficheiro ({type(exc).__name__}).")
         return
-    record(db, None, "file.ingested", "project_file", file.id, {"kind": file.kind})
+    record(db, None, "file.ingested", "project_file", file.id,
+           {"kind": file.kind, "summary": summary}, project_id=file.project_id)  # fmt: skip
     _set(db, publish, file, "done", summary)
 
 
 def _fail(db: Session, publish: Publish, file: ProjectFile, message: str) -> None:
     file = db.merge(file)
-    record(db, None, "file.ingest_failed", "project_file", file.id, {"kind": file.kind})
+    record(db, None, "file.ingest_failed", "project_file", file.id,
+           {"kind": file.kind}, project_id=file.project_id)  # fmt: skip
     _set(db, publish, file, "failed", message)

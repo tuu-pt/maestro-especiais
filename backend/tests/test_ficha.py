@@ -94,7 +94,8 @@ def test_revealing_a_personal_value_is_audited_without_the_value(api: Api, db: S
 
     assert revealed["value"] == "Requerente Sintético" and revealed["masked"] is False
     event = db.scalars(select(AuditEvent).where(AuditEvent.action == "ficha.value_revealed")).one()
-    assert event.actor_id == "dev:curador" and event.payload == {"key": "id.requerente.nome"}
+    assert event.actor_id == "dev:curador"
+    assert event.payload == {"key": "id.requerente.nome", "project_id": project_id}
 
 
 def test_circuits_come_with_cal01_marks(api: Api) -> None:
@@ -186,6 +187,7 @@ def test_tecnico_resolves_with_a_candidate_and_it_is_audited(api: Api, db: Sessi
         select(AuditEvent).where(AuditEvent.action == "ficha.conflict_resolved")
     ).one()
     assert event.payload == {
+        "project_id": project_id,
         "key": "ele.potencia_alimentar_kva",
         "choice": "candidate",
         "source_type": "calc",

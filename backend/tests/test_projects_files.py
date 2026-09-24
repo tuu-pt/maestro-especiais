@@ -39,7 +39,8 @@ def test_create_and_list_project(api: Api, db: Session) -> None:
     assert listed[0]["file_count"] == 0 and listed[0]["ficha_status"] is None
     assert created["created_by"] == "dev:redator"
     event = db.scalars(select(AuditEvent).where(AuditEvent.action == "project.created")).one()
-    assert event.actor_id == "dev:redator" and event.payload == {"code": "R9"}
+    assert event.actor_id == "dev:redator"
+    assert event.payload == {"code": "R9", "project_id": created["id"]}
 
 
 @pytest.mark.parametrize(

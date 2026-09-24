@@ -1,0 +1,658 @@
+# Maestro Especiais: especificação para desenvolvimento
+
+> Agente de IA da TUU – Building Design Management para montar, redigir e validar o processo de projeto de **instalações elétricas**: **MDJ** (memória descritiva e justificativa), **CTE** (condições técnicas gerais e especiais), mapa de quantidades e formulários de licenciamento.
+>
+> **Versão:** 0.3 · 24 set 2026 · **Estado:** aprovado para desenvolvimento (MVP)
+> **Alterações na v0.3:** o MVP passa de ITED para instalações elétricas; fontes de dados, ficha-base, biblioteca de blocos, regras de validação e casos de teste revistos a partir de dois projetos reais da TUU (Anexo C).
+> **Referência visual:** `docs/mockup/maestro-especiais.html` (mock-up interativo, ecrãs A–H; os exemplos do mock-up são de ITED/SCIE e devem ser adaptados a eletricidade nas *fixtures*)
+
+---
+
+## 0. Como usar este documento
+
+Este documento é a fonte de verdade funcional para o desenvolvimento com o Claude Code.
+
+1. Coloque este ficheiro em `docs/SPEC.md` e o mock-up em `docs/mockup/maestro-especiais.html`.
+2. Copie o **Anexo A** para `CLAUDE.md` na raiz do repositório. O Claude Code lê esse ficheiro automaticamente em cada sessão.
+3. Trabalhe **uma fase de cada vez** (secção 14). Comece cada fase em *plan mode*, reveja o plano e só depois deixe implementar.
+4. As secções marcadas com **[A CONFIRMAR]** são decisões que a equipa ainda tem de tomar (secção 16). Até lá, o Claude Code segue a recomendação indicada.
+5. Os projetos reais de referência ficam **anonimizados** em `data/fixtures/` e os originais em `data/private/` (fora do Git). Ver secção 12.2.
+
+Convenção de língua: **interface em PT-PT, código em inglês** (nomes de variáveis, tabelas, endpoints, commits).
+
+---
+
+## 1. Contexto e objetivo
+
+O departamento de instalações especiais da TUU produz, para cada projeto de eletricidade, um conjunto de peças que têm de ser coerentes entre si:
+
+| Peça | Formato atual | Observações |
+|---|---|---|
+| Memória descritiva e justificativa (MDJ) | `.docx` com modelo TUU | Cerca de 3 000 palavras; cerca de 75% do texto repete-se entre projetos |
+| Condições técnicas (CTE) | `.docx` com modelo TUU | Condições técnicas gerais + especiais, com equipamentos de referência "ou equivalente" e imagens ilustrativas |
+| Mapa de quantidades (MQT) ou lista de preços unitários (LPU) | `.xlsx` | Capítulos e artigos codificados |
+| Ficha eletrotécnica | `.xlsm` (modelo DGEG, versão `FE_v.20190222`) | Células fixas |
+| Identificação do projeto | `.docx` (art. 20.º do DL 96/2017) | Formulário |
+| Termo de responsabilidade | `.docx` (art. 5.º do DL 96/2017) | Formulário, assinado pelo técnico |
+| Folhas de cálculo | `.xls` "09-Folha de Cálculo" (uma por troço) e `.xlsx` "Tabela de Cálculo" (resumo) | Modelos TUU com estrutura fixa |
+| Peças desenhadas | `.dwg` + `.pdf` (+ `.dwfx`) | Índice EL001…, plantas, esquemas de quadros |
+
+**Objetivo:** reduzir o tempo de produção deste conjunto e eliminar as incoerências entre peças, sem retirar ao projetista a decisão e a responsabilidade.
+
+**Meta do piloto** (a medir, não garantida): reduzir em pelo menos 40% o tempo de produção de MDJ + CTE + formulários de um projeto de eletricidade, com zero incoerências de identificação, potência e cabos nas peças aprovadas.
+
+---
+
+## 2. Âmbito
+
+### 2.1 MVP (piloto)
+
+- **Especialidade: instalações elétricas de serviço particular (BT).**
+- Documentos gerados: MDJ e CTE.
+- Formulários pré-preenchidos a partir da ficha-base: Ficha eletrotécnica, Identificação do projeto e Termo de responsabilidade (sem assinatura nem data).
+- Documentos verificados (não gerados): MQT/LPU, Tabela de Cálculo e PDF das peças desenhadas.
+- Todos os ecrãs do mock-up (A–H), com conteúdos de eletricidade.
+- Exportação `.docx` com os modelos TUU e `.xlsm` da ficha eletrotécnica.
+
+### 2.2 Fora do âmbito do MVP
+
+- ITED, SCIE, AVAC e restantes especialidades. O modelo de dados já tem de as suportar (campo `specialty`).
+- Leitura de DWG, IFC e Revit, e contagem de símbolos em plantas.
+- Importação de exportações de software de cálculo (ex.: CSV do software Hager).
+- Qualquer cálculo ou dimensionamento feito pelo agente.
+- Assinatura digital e submissão a entidades (DGEG, E-REDES, câmaras).
+- Integração profunda com o TUU Maestro (no MVP basta um endpoint de exportação).
+
+---
+
+## 3. Princípios não negociáveis
+
+Estes princípios têm de estar refletidos no código, nos testes e na interface. Nenhuma funcionalidade os pode contornar.
+
+| # | Princípio | Implicação técnica |
+|---|---|---|
+| P1 | **O agente não decide.** Propõe e sinaliza; uma pessoa confirma. | Conflitos, correções e aprovações exigem uma ação humana registada. Nada é aplicado automaticamente a um documento. |
+| P2 | **O agente não calcula.** | Os valores vêm da ficha-base e das folhas de cálculo. O LLM **não escreve números**: escreve *placeholders* que o backend resolve (8.4). As verificações da regra CAL-01 comparam valores já existentes na folha, sem os recalcular. |
+| P3 | **Tudo é rastreável.** | Cada bloco e parágrafo guarda a origem (bloco da biblioteca, projeto de arquivo, regulamento, célula de cálculo, ficha-base). |
+| P4 | **Só se cita o que existe e está em vigor.** | Uma citação só é válida se apontar para um documento do corpus marcado como `citable`. |
+| P5 | **A ficha-base é a fonte de verdade**, mas pode estar errada. | As peças comparam-se com a ficha. Quando uma fonte é mais recente do que a ficha, propõe-se atualizar a ficha, não as peças. |
+| P6 | **O texto gerado fica visível até ser revisto.** | Estado por secção: `todo` → `generated` → `reviewed`. Só se aprova com todas as secções `reviewed` e sem alertas críticos. |
+| P7 | **Auditoria completa.** | Todas as ações (agente e pessoas) ficam num registo imutável. |
+| P8 | **O agente nunca assina nem data.** | Os formulários saem com os campos de identificação pré-preenchidos, mas a data, a assinatura e a declaração ficam sempre para o técnico. |
+| P9 | **Dados pessoais nunca vão para o LLM.** | Nomes, NIF, CC, contactos, números DGEG/OET e coordenadas entram só por *placeholder* e são resolvidos no backend na exportação. |
+
+---
+
+## 4. Utilizadores e papéis
+
+| Papel | Pode |
+|---|---|
+| **Redator** | Criar projetos e fichas-base, gerar e editar documentos, correr validações, marcar secções como revistas. |
+| **Técnico responsável** | Tudo o que o redator pode, mais resolver conflitos da ficha-base, confirmar revisões e aprovar documentos. Os seus dados profissionais (n.º DGEG, OET/OE, CC, NIF, contactos) ficam no **perfil**, cifrados, e só são inseridos nos formulários na exportação. |
+| **Curador** | Gerir o corpus regulamentar, a biblioteca de blocos, o arquivo de referência, o dicionário de cabos e a biblioteca de equipamentos. |
+| **Administrador** | Gerir utilizadores, modelos `.docx`/`.xlsm`, regras de validação e integrações. |
+
+Uma pessoa pode ter vários papéis. A aprovação de um documento tem de ser feita por um técnico responsável atribuído a esse documento.
+
+---
+
+## 5. Arquitetura
+
+```
+┌──────────────────────────────┐
+│  Frontend (React + TS)       │  ecrãs A–H, editor de secções, diffs
+└──────────────┬───────────────┘
+               │ REST/JSON (+ SSE para progresso)
+┌──────────────▼───────────────┐      ┌──────────────────────┐
+│  API (FastAPI)               │─────▶│  PostgreSQL + pgvector│
+│  auth, projetos, ficha-base, │      │  dados, blocos,       │
+│  documentos, validação       │      │  corpus, auditoria    │
+└──────┬───────────────┬───────┘      └──────────────────────┘
+       │ fila (Redis)  │              ┌──────────────────────┐
+┌──────▼───────────────▼───────┐─────▶│  Armazenamento S3     │
+│  Workers                     │      │  (MinIO): xls/xlsx/   │
+│  ingestão · montagem ·       │      │  xlsm, PDF, docx      │
+│  redação · validação ·       │      └──────────────────────┘
+│  exportação                  │      ┌──────────────────────┐
+└──────────────┬───────────────┘─────▶│  API Gemini (LLM +    │
+               │                      │  embeddings) via      │
+               │                      │  camada llm/ própria  │
+               └──────────────────────┴──────────────────────┘
+```
+
+- As operações longas (ingestão, montagem, redação, validação, exportação) correm em *workers* e reportam progresso ao frontend por SSE.
+- O LLM é chamado **apenas pelos workers**, através de um único módulo (`llm/`), com registo de fornecedor, prompt, modelo, tokens e custo por chamada.
+- A camada `llm/` é **independente do fornecedor** (6.1). Trocar de modelo ou de fornecedor é uma alteração de configuração, não de código.
+- A maior parte do documento é montada **sem LLM** (blocos fixos e paramétricos, secção 8.3). O LLM só adapta blocos que precisam de texto específico do projeto.
+
+---
+
+## 6. Stack recomendada **[A CONFIRMAR]**
+
+| Camada | Recomendação | Porquê | Alternativa |
+|---|---|---|---|
+| Frontend | React 18 + TypeScript + Vite · React Router · TanStack Query | Padrão maduro e bem suportado pelo Claude Code | — |
+| Editor de secções | TipTap (ProseMirror) com marcas próprias: `citation`, `value`, `generated`, `locked` | Etiquetas de origem, realce de texto gerado e blocos fixos protegidos | Lexical |
+| Estilos | CSS variables (tokens do mock-up, secção 13) + CSS Modules | Reproduz o mock-up com fidelidade | Tailwind com os mesmos tokens |
+| Backend | Python 3.12 · FastAPI · Pydantic v2 · SQLAlchemy 2 · Alembic | A equipa já usa Python e há bibliotecas para docx, xls/xlsx e PDF | Java Spring Boot |
+| Jobs | RQ + Redis | Simples e suficiente para o piloto | Celery |
+| Base de dados | PostgreSQL 16 + pgvector · pesquisa de texto com configuração `portuguese` | Dados relacionais e pesquisa híbrida no mesmo sítio | MySQL + base vetorial separada |
+| Ficheiros | S3 compatível (MinIO em desenvolvimento) | Versões de ficheiros e URLs assinados | Disco local no piloto |
+| XLSX / XLSM | `openpyxl` (com `keep_vba=True` para a ficha eletrotécnica) | Leitura por célula e escrita preservando macros | — |
+| XLS (formato antigo) | `xlrd` | As "09-Folha de Cálculo" são `.xls` | Conversão prévia com LibreOffice |
+| PDF | `pdfplumber` | Índice, legendas e carimbadura das peças desenhadas; fichas técnicas | PyMuPDF |
+| DOCX | `python-docx` + `docxcompose` para montar blocos preservando OOXML · `docxtpl` para os formulários | Os modelos TUU continuam a ser editados em Word | — |
+| LLM | **Gemini Flash** via Gemini API (SDK `google-genai`) · modelo por variável de ambiente · saídas em JSON Schema | Quota gratuita; bom equilíbrio entre qualidade e limites | Flash-Lite para extração · outro fornecedor pela mesma interface |
+| Embeddings | Modelo de embeddings do Gemini (mesma chave) | Multilingue e incluído na quota gratuita | Modelo multilingue alojado internamente |
+| Autenticação | OIDC · Microsoft Entra ID, se a TUU usar Microsoft 365 **[A CONFIRMAR]** | SSO da empresa | Keycloak |
+| Testes | pytest · Vitest · Playwright (E2E) | A equipa já usa Playwright | — |
+| Deploy | Docker Compose · alojamento na UE **[A CONFIRMAR]** | Dados de clientes ficam na UE | Servidor interno |
+| Fase posterior | `ezdxf` + conversor DWG→DXF · `ifcopenshell` | Contagens a partir de blocos DWG ou IFC | — |
+
+### 6.1 Camada de LLM independente do fornecedor
+
+Toda a aplicação fala com o LLM através de uma interface própria em `backend/app/llm/`. Nenhum outro módulo importa SDKs de fornecedores.
+
+```python
+class LlmProvider(Protocol):
+    def generate_json(self, *, purpose: str, system: str, messages: list[Message],
+                      schema: type[BaseModel], temperature: float = 0.2) -> BaseModel: ...
+    def embed(self, texts: list[str], *, task: Literal["document", "query"]) -> list[list[float]]: ...
+```
+
+- Implementação inicial: `GeminiProvider`. Deve ser possível acrescentar outro fornecedor sem alterar o resto do código.
+- Configuração por finalidade (variáveis de ambiente):
+
+```env
+LLM_PROVIDER=gemini
+GEMINI_API_KEY=                       # chave de um projeto Google da TUU, nunca pessoal
+LLM_MODEL_DRAFTING=<versão estável mais recente do Gemini Flash>
+LLM_MODEL_EXTRACTION=<Gemini Flash; Flash-Lite se a quota apertar>
+LLM_MODEL_EMBEDDING=<modelo de embeddings do Gemini>
+EMBEDDING_DIM=768                     # tem de coincidir com a coluna pgvector
+```
+
+- **Nomes de modelos nunca no código**: só na configuração. Confirmar os nomes atuais no Google AI Studio.
+- **Limites da quota gratuita**: controlo do ritmo de pedidos (por minuto e por dia, configurável), repetição com espera exponencial em 429/503 e indicação ao utilizador quando um pedido está em fila. A geração retoma a partir do último bloco concluído.
+- **Validação da saída**: resposta JSON sempre validada com Pydantic. Se falhar, repete uma vez com o erro no pedido; se voltar a falhar, o bloco fica em `todo` com a mensagem de erro.
+- **Avaliação**: `backend/tests/llm_eval/` com casos fixos (a partir das *fixtures* anonimizadas) e verificações automáticas (zero NUM-01, zero TIP-01, blocos obrigatórios presentes) para comparar modelos e prompts antes de os trocar.
+- **Mudar a dimensão dos embeddings** obriga a reindexar (`make reindex`).
+
+---
+
+## 7. Modelo de dados
+
+Nomes em inglês. Todas as tabelas têm `id` (UUID), `created_at`, `updated_at` e `created_by`, salvo indicação em contrário.
+
+### 7.1 Projeto e ficha-base
+
+- **Project**: `code` (ex.: `MBERAL`), `name`, `building_type` (moradia unifamiliar, biblioteca…), `phase` (licenciamento | execução), `specialties[]`, `public_procurement` (bool, ativa CCP-01), `status`.
+- **ProjectFile**: `project_id`, `kind` (ficha_eletrotecnica | calc_summary | calc_circuit | mqt | lpu | drawing_pdf | drawing_dwg | archive_docx | other), `filename`, `storage_key`, `version_label` (ex.: `V0`, `V1.1`), `file_date`, `checksum`, `template_version` (ex.: `FE_v.20190222`).
+- **FichaRevision**: `project_id`, `label` (rev. A, B…), `status` (draft | confirmed | superseded), `confirmed_by`, `confirmed_at`.
+- **FichaValue**: `revision_id`, `key` (chave estável, ver 7.2), `group`, `label_pt`, `value` (JSON), `unit`, `personal_data` (bool), `status` (confirmed | conflict | pending), `source_type` (ficha_eletrotecnica | calc | mqt | drawing | manual), `source_ref` (ex.: `Ficha Eletrotecnica!P29`, `Tabela!linha 9`, `EL001 índice`), `source_file_id`.
+- **FichaConflict**: `value_id`, `candidates` (JSON: valor, fonte, data), `resolved_value`, `resolved_by`, `resolved_at`, `note`.
+- **Circuit** (linha da Tabela de Cálculo; pertence a uma `FichaRevision`): `origin`, `destination`, `kva`, `voltage_v`, `protection_type` (D | F), `ib_a`, `in_a`, `idn_ma`, `iz_a`, `i2_a`, `iz145_a`, `cable_raw`, `cable_normalized`, `length_m`, `vd_section_pct`, `vd_upstream_pct`, `vd_total_pct`, `breaking_capacity_ka`, `pole_type` (MON | MUL), `installation` (TUB | EST | ENT | AR), `phases` (1 | 3), `insulation`, `conductor` (Cu | Al), `ref_method`, `rtiebt_table`, `source_ref`.
+
+### 7.2 Chaves da ficha-base (eletricidade)
+
+| Grupo | Chaves (exemplos) | Origem principal |
+|---|---|---|
+| Identificação | `id.requerente.nome`\*, `id.requerente.nif`\*, `id.requerente.morada`\*, `id.requerente.email`\*, `id.obra.designacao`, `id.local.rua`\*, `id.local.cp`, `id.local.freguesia`, `id.local.concelho`, `id.local.distrito`, `id.local.gps`\*, `id.local.nip` | Ficha eletrotécnica (C5, Q5, C7, C8, J6, C15, M15, Q15, G16, Q16) |
+| Imóvel | `ele.descricao_imovel` (Unifamiliar, Outros…), `ele.classificacao` (Locais de habitação, Estabelecimentos recebendo público…), `ele.tipo_utilizacao` (Habitação, Escritório…), `ele.instalacao` (Nova, Existente), `building.pisos[]` | Ficha eletrotécnica (F23, F24, M29, Q23) · manual |
+| Alimentação | `ele.tipo_instalacao` (A, B, C), `ele.entrada` (Mono, Trif), `ele.potencia_instalada_kva`, `ele.fator_simultaneidade`, `ele.potencia_alimentar_kva`, `ele.potencia_existente_kva`, `ele.n_ramais`, `ele.tensao_resp_kv`, `ele.contagem` (nova, existente, localização) | Ficha eletrotécnica (B29, O29, P29, Q29, R29, Q24, I44) · Tabela de Cálculo (1.ª linha) · manual |
+| Distribuição | `ele.quadros[]` (nomes, derivados dos `Circuit`), `ele.pdc_minimo_ka`, `ele.cabos[]` (designações normalizadas), `ele.esquemas_terra[]` (TT, IT, TN), `ele.resistencia_terra_max_ohm` | Tabela de Cálculo · manual |
+| Sistemas | `sys.iluminacao_seguranca`, `sys.knx`, `sys.sadi` (loops, zonas), `sys.fv` (potência kW, n.º módulos, Wp, strings, inversor), `sys.ve` (n.º carregadores, kW, obrigatórios), `sys.ups[]`, `sys.audiovisual`, `sys.videoporteiro`, `sys.rpc_classe_minima` | Tabela de Cálculo (destinos CVE, UPS, Q.FV…) · manual |
+| Equipamentos | `eq.luminarias[]` (código L1…, descrição, modelo), `eq.portinhola`, `eq.quadros_modelo[]`, `eq.aparelhagem_serie` | Legenda do PDF · biblioteca · manual |
+| Peças desenhadas | `pd.indice[]` (código EL001…, título, data, revisão), `pd.n_paginas_pdf` | PDF (folha de índice) |
+
+\* `personal_data = true`.
+
+### 7.3 Biblioteca de blocos e documentos
+
+- **TemplateBlock**: `key` (ex.: `ele.mdj.alimentacao`), `doc_type` (MDJ | CTE), `specialty`, `level` (1 = faixa de título em tabela de 1 célula; 2 = Heading 2), `title`, `order`, `mode` (fixed | parametric | adaptive), `activation_rule` (expressão sobre a ficha, ex.: `sys.fv.present`), `body_template` (texto com `{{v:…}}` e condições), `locked_ooxml` (conteúdo Word copiado tal como está: fórmulas, tabelas IP/IK, imagens), `required_keys[]`, `equipment_slots[]` (CTE), `archive_refs[]`, `version`, `approved_by`.
+- **Document**: `project_id`, `type` (MDJ | CTE | FICHA_ELE | IDENTIFICACAO | TERMO), `specialty`, `template_id`, `ficha_revision_id`, `status` (draft | in_review | approved), `responsible_user_id`.
+- **Section**: `document_id`, `block_key`, `order`, `title`, `active` (resultado da regra de ativação, pode ser alterado por pessoa com justificação), `status` (todo | generated | reviewed | alert).
+- **SectionVersion**: `section_id`, `number`, `content` (JSON TipTap), `author_type` (system | agent | human), `llm_call_id`, `created_by`.
+- **Citation**: `section_version_id`, `anchor` (id do nó no conteúdo), `kind` (regulation | archive | block | calc | ficha | datasheet), `target_id`, `locator` (capítulo, página, célula).
+- **ValueRef**: `section_version_id`, `anchor`, `ficha_value_id` ou `circuit_id` + campo, `rendered_text` (texto resolvido no momento).
+
+### 7.4 Validação
+
+- **ValidationRun**: `project_id`, `document_ids[]`, `started_at`, `finished_at`, `totals`.
+- **ValidationIssue**: `run_id`, `rule_id` (secção 9), `severity` (critical | warning | info), `category`, `location` (peça, secção, âncora, célula ou página), `message_pt`, `evidence` (JSON), `likely_reading` (ex.: "erro provável na MDJ"), `suggested_fix` (opcional), `status` (open | fixed | ignored), `ignored_reason`, `resolved_by`.
+
+### 7.5 Conhecimento
+
+- **RegulationDoc**: `title`, `edition`, `issuer`, `specialties[]`, `status` (in_force | revoked | reference_only), `citable` (bool), `last_checked_at`, `curator_id`, `license_note` (normas com direitos de autor: por omissão, só título e âmbito).
+- **RegulationChunk**: `doc_id`, `locator`, `text`, `embedding`, `tsv`.
+- **ArchiveDoc**, **ArchiveChunk**: documentos aprovados da TUU, divididos por bloco (`block_key`).
+- **CableDesignation** (dicionário de equivalências): `canonical` (ex.: `XZ1(frt,zh)`), `aliases[]` (ex.: `RZ1-K (AS)`, `FXZ1`), `kind` (fio | cabo), `flexible` (bool), `fire_class_default`, `approved_by`. As equivalências são **validadas pelo curador**; o agente pode propor, nunca aprovar.
+- **TypologyLexicon**: `building_type` → termos incompatíveis (ex.: moradia unifamiliar ↛ "apartamento", "fração", "condóminos"), para a regra TIP-01.
+
+### 7.6 Equipamentos
+
+- **Equipment** (biblioteca TUU): `category`, `manufacturer`, `model`, `reference`, `specialties[]`.
+- **Datasheet**: `equipment_id`, `file_id`, `issue_date`, `language`, `status` (current | outdated).
+- **EquipmentParam**: `datasheet_id`, `name` (chave normalizada, ex.: `ip_rating`, `ik_rating`, `detection_range_m`), `value`, `unit`, `page`, `review_status` (extracted | reviewed), `reviewed_by`.
+- **Requirement** (do CTE): `document_id`, `block_key`, `equipment_category`, `param_name`, `operator` (= | ≥ | ≤ | in | ≥class), `value`, `unit`.
+- **ProjectEquipment**: `ficha_value_id`, `equipment_id` (modelo de referência), `or_equivalent` (bool, sempre `true` por omissão nos CTE da TUU).
+- A biblioteca inicial é semeada a partir dos equipamentos de referência dos CTE do arquivo (portinholas, quadros, tubos, caixas, aparelhagem, detetores de movimento, luminárias, módulos e inversores FV, carregadores VE, videoporteiro, elétrodos de terra), com as características que o CTE já lista.
+
+### 7.7 Transversal
+
+- **AuditEvent** (só inserção): `actor_type` (agent | user | system), `actor_id`, `action`, `entity_type`, `entity_id`, `payload`, `at`.
+- **LlmCall**: `purpose`, `provider`, `model`, `prompt_hash`, `input_tokens`, `output_tokens`, `cost_eur`, `latency_ms`, `status`.
+
+---
+
+## 8. Pipeline do agente
+
+### 8.1 Visão geral
+
+1. **Ingestão** dos ficheiros do projeto → valores candidatos com origem (8.2).
+2. **Ficha-base**: consolidação; divergências entre fontes geram `FichaConflict`. A ficha tem de ser **confirmada por uma pessoa** antes de se montar qualquer peça.
+3. **Montagem** de MDJ e CTE a partir da biblioteca de blocos, com as regras de ativação avaliadas sobre a ficha (8.3).
+4. **Redação adaptativa** apenas dos blocos `adaptive` (8.4).
+5. **Pré-preenchimento** dos formulários (8.5).
+6. **Validação** cruzada de todas as peças do projeto (secção 9).
+7. **Revisão humana** e **exportação**.
+
+### 8.2 Ingestão
+
+| Fonte | O que se extrai | Como |
+|---|---|---|
+| **Ficha eletrotécnica** (`.xlsm`, modelo DGEG) | Requerente, localização, caracterização do imóvel, tipo de instalação, entrada, potências | Leitura por **células fixas**, com um mapa por versão do modelo (`FE_v.20190222`: C5, Q5, J6, C7, C8, C15, M15, Q15, G16, Q16, F23, Q23, F24, Q24, linha 29 de B a R, I40/I42/I44, M40, versão em R45). Se a versão em R45 for outra, a ingestão para e pede um novo mapa. Sem LLM. |
+| **Tabela de Cálculo** (`.xlsx`, modelo TUU) | Um `Circuit` por linha: origem, destino, potência, IB, In, IΔn, Iz, I2, 1,45·Iz, cabo, comprimento, quedas de tensão, PdC, tipo de instalação | Deteção das colunas **pelo texto do cabeçalho** (não por posição: há colunas vazias, como IΔn). Secções "ENTRADA DE ENERGIA" e "EDIFÍCIO". Sem LLM. |
+| **09-Folha de Cálculo** (`.xls`, uma por troço) | Valores de detalhe do troço: potência (`IB!H7`), IB (`IB!H17`), comprimento (`condutores!N8`), secção (`condutores!H47`), Iz (`condutores!H52`), queda de tensão (`tensao!N12`, `tensao!T12`), In (`proteccao!E9`), I2 (`proteccao!J9`) | Leitura por células com `xlrd`. Mapa de células **a confirmar pela equipa** (exemplos lidos nos projetos de referência). Usado para confirmar a Tabela de Cálculo. |
+| **MQT / LPU** (`.xlsx`) | Capítulos, artigos, designações, unidades e quantidades | Deteção do cabeçalho (`CÓDIGO / DESIGNAÇÃO / UNI. / QUANT.` ou `Artº / Designação / Un / Quant.`). Associação de artigos a chaves da ficha sugerida pelo LLM e confirmada por uma pessoa. |
+| **PDF das peças desenhadas** | Índice de folhas (EL001…), legenda (tipos de tomadas e luminárias L1, L7…), carimbadura (requerente, projeto, especialidade, fase, data, código) e número de páginas | `pdfplumber`, só texto. **Os esquemas unifilares não se leem**: o texto sai sobreposto e ilegível. |
+| **Arquivo DOCX** (MDJ/CTE aprovados) | Blocos e texto, para a biblioteca e para os blocos adaptativos | `python-docx`. Divisão pelos títulos de nível 1 (tabelas de 1 célula, ex.: "DIMENSIONAMENTO ELÉTRICO") e nível 2 (estilo `Heading 2`). |
+
+### 8.3 Montagem por blocos
+
+A análise dos projetos de referência mostra que o MDJ e o CTE seguem sempre o mesmo esqueleto, com blocos que só entram quando se aplicam. A montagem funciona assim:
+
+| Modo | O que faz | LLM | Exemplos |
+|---|---|---|---|
+| `fixed` | Copia o bloco tal como está no modelo, incluindo OOXML (fórmulas, tabelas, imagens) | Não | Tabelas IP/IK, fórmulas de queda de tensão e curto-circuito, condições técnicas gerais, dúvidas e casos omissos |
+| `parametric` | Preenche um texto-modelo com valores da ficha e condições simples | Não | Introdução, alimentação e potência, contagem, lista de quadros, esquema de ligação à terra, poder de corte, legislação aplicável |
+| `adaptive` | Parte de um texto aprovado do arquivo e adapta-o ao projeto | Sim | Descrição da iluminação numa reabilitação, matriz de incêndio, descrição do sistema audiovisual |
+
+**Esqueleto do MDJ de eletricidade** (a validar com a equipa; regra de ativação entre parênteses):
+
+1. Capa (sempre) · 2. Introdução (sempre) · 3. Legislação e normas (sempre; itens condicionados aos blocos ativos, ex.: guia de VE só com `sys.ve`) · 4. Regulamento dos Produtos de Construção (`ele.classificacao` ≠ locais de habitação) · 5. Características dos equipamentos em função das influências externas (sempre) · 6. Classificação quanto à utilização do local (sempre) · 7. Instalação de alimentação, distribuição e medida: alimentação, contagem, distribuição (sempre) · 8. Dimensionamento elétrico: sobrecargas, quedas de tensão, curto-circuitos, poder de corte (sempre) · 9. Quadro elétrico (sempre) · 10. Canalizações: embebidas/ocultas (sempre), enterradas (existe `Circuit.installation = ENT` ou vala no MQT), proximidade (sempre) · 11. Caixas (sempre) · 12. Instalações a considerar: iluminação normal, iluminação de segurança (`sys.iluminacao_seguranca`), comandos (KNX se `sys.knx`), tomadas, alimentações específicas, esquema de ligação à terra (um subbloco por esquema em `ele.esquemas_terra`) · 13. SADI e matriz de incêndio (`sys.sadi`) · 14. Instalação fotovoltaica (`sys.fv`) · 15. Carregamento de veículos elétricos (`sys.ve`) · 16. Instalação audiovisual (`sys.audiovisual`) · 17. Proteção dos utilizadores: contactos diretos, contactos indiretos (texto depende dos esquemas de terra), terras e elétrodos, ligação equipotencial (sempre) · 18. Dúvidas e casos omissos (sempre) · 19. Local, data e identificação do técnico (sempre; data e assinatura pelo técnico).
+
+**Esqueleto do CTE de eletricidade:** Condições técnicas gerais (introdução, materiais, ensaios de receção, omissões: `fixed`) · Condições técnicas especiais: entrada de energia · quadros elétricos · canalizações e tubos (VD, ERM, PEAD) · cabos e fios · caixas · aparelhagem, interruptores, tomadas e espelhos · detetores de movimento · iluminação normal (tipos L#) · iluminação de segurança · KNX (servidor, fonte, gateway DALI, atuadores, acoplador, sensores) · fotovoltaico (estrutura, módulos, inversor, medidor, contador) · SADI · carregamento de VE · audiovisual · videoporteiro · rede de terras, elétrodos, caixa de visita, condutores de proteção, ligações equipotenciais · dúvidas e casos omissos.
+
+Nos blocos do CTE, os equipamentos de referência vêm da **biblioteca de equipamentos** (`equipment_slots`): o bloco escreve o modelo, as características e sempre "ou equivalente".
+
+A biblioteca inicial de blocos é **extraída dos documentos de referência** (Fase 3): comparando MDJ e CTE de projetos diferentes, o texto igual passa a `fixed`, o texto que só muda em valores passa a `parametric` (com os valores trocados por `{{v:…}}`) e o resto fica como candidato a `adaptive`. O curador aprova cada bloco.
+
+### 8.4 Contrato de saída dos blocos adaptativos
+
+O LLM devolve JSON validado por esquema. **Não escreve números, nomes nem valores do projeto**: usa `{{v:<chave>}}`, que o backend resolve.
+
+```json
+{
+  "block_key": "ele.mdj.fotovoltaico",
+  "paragraphs": [
+    {
+      "id": "p1",
+      "text": "Foi projetada uma instalação fotovoltaica com potência nominal de {{v:sys.fv.potencia_kw}} kW, a instalar na cobertura, constituída por {{v:sys.fv.n_modulos}} módulos de {{v:sys.fv.modulo_wp}} Wp.",
+      "sources": ["arc:R2:ele.mdj.fotovoltaico"]
+    }
+  ],
+  "missing_data": ["sys.fv.strings"],
+  "assumptions": ["Inversor na sala técnica dos quadros (texto de R2)."]
+}
+```
+
+Regras de pós-processamento:
+
+- Uma fonte que não esteja no conjunto fornecido na chamada é **removida** e gera `REF-01`.
+- Um `{{v:…}}` sem valor confirmado fica marcado como "falta dado" e o bloco passa a `todo`.
+- Qualquer algarismo fora de *placeholder* gera `NUM-01`, com uma lista branca configurável (números de secções e artigos, normas, edições e designações técnicas como "IP65", "H07V-U" ou "16A-250V").
+- `missing_data` e `assumptions` aparecem ao técnico no painel lateral do editor.
+- Prompts versionados em `backend/app/llm/prompts/`. Pedidos em linguagem natural no editor criam uma nova `SectionVersion` proposta, aceite ou rejeitada através do diff.
+
+### 8.5 Formulários
+
+- **Ficha eletrotécnica**: escrita nas mesmas células fixas do modelo DGEG (`openpyxl`, `keep_vba=True`), a partir da ficha-base e do perfil do técnico. A data (M40) e a assinatura ficam vazias.
+- **Identificação do projeto** e **Termo de responsabilidade**: modelos `docxtpl` com os campos das tabelas do formulário. Data, assinatura e declaração ficam por preencher.
+- Os dados pessoais do técnico e do requerente só são inseridos neste passo, no backend, e nunca passam pelo LLM.
+
+---
+
+## 9. Regras de validação (MVP)
+
+As regras são módulos independentes (`backend/app/validation/rules/`), cada um com testes. A severidade por omissão é configurável. Cada regra tem pelo menos um caso de teste real no Anexo C.
+
+| ID | Categoria | Regra | Severidade |
+|---|---|---|---|
+| REF-01 | Referências | Citação ou fonte que não existe no corpus ou não foi fornecida | Crítico |
+| REF-02 | Referências | Cita um documento revogado ou não citável | Crítico |
+| REF-03 | Referências | Referência incompleta, ex.: "secção das RTIEBT" ou "secções da RTIEBT" sem número | Aviso |
+| NUM-01 | Referências | Número no texto sem origem (fora de *placeholder* e da lista branca) | Crítico |
+| COE-01 | Coerência | Quantidade de um elemento (quadros, carregadores, módulos, luminárias…) difere entre peças e ficha-base | Crítico se afetar MDJ ou CTE; aviso se afetar só o MQT |
+| COE-02 | Coerência | Fonte com data posterior à ficha-base e que diverge dela → propor atualização da **ficha** | Aviso |
+| COE-03 | Coerência | Sistema presente na ficha ou na Tabela de Cálculo sem bloco correspondente na MDJ ou no CTE, ou o inverso (ex.: troços `ENT` sem bloco de canalizações enterradas) | Aviso |
+| COE-04 | Coerência | Identificação diferente entre peças: requerente, obra, localização, tipo de utilização ou dados do técnico (MDJ, CTE, MQT, ficha eletrotécnica, identificação, termo, carimbadura dos desenhos) | Crítico |
+| COE-05 | Coerência | Potência instalada ou a alimentar diferente entre ficha eletrotécnica, identificação, MDJ, CTE e 1.ª linha da Tabela de Cálculo | Crítico |
+| COE-06 | Coerência | Designação de cabos diferente entre MDJ, CTE, Tabela de Cálculo e MQT/LPU **depois de normalizada** pelo dicionário; designação desconhecida → pedir ao curador | Crítico se forem cabos diferentes (ex.: fio rígido vs flexível); aviso se a designação for desconhecida |
+| TIP-01 | Coerência | Texto incompatível com a tipologia (ex.: "apartamento" numa moradia unifamiliar) ou nomes de outro projeto do arquivo (requerente, obra, morada) | Crítico |
+| DES-01 | Peças desenhadas | O índice (EL001…) não corresponde às folhas do PDF (número ou códigos) | Aviso |
+| CAL-01 | Cálculo (verificação) | Com os valores já existentes na Tabela de Cálculo: IB ≤ In ≤ Iz; I2 ≤ 1,45·Iz; queda de tensão total dentro dos limites indicados na MDJ (3% iluminação, 5% outros usos); PdC ≥ mínimo declarado na MDJ. O alerta mostra os valores e pede ao projetista que confirme na folha. **Não recalcula nada.** | Aviso |
+| CCP-01 | Contratação | Marca ou modelo sem "ou equivalente" quando `public_procurement = true` | Aviso |
+| CNT-01 | Conteúdo | Falta um bloco obrigatório do esqueleto | Aviso |
+| TXT-01 | Qualidade | Quebras de linha a meio de frase, itens de lista repetidos, referências de produto duplicadas | Informação |
+| EQP-01 | Fichas técnicas | Parâmetro da ficha técnica não cumpre o requisito do CTE (parâmetros só `reviewed`; os `extracted` geram aviso "confirmar parâmetro") | Crítico |
+| EQP-02 | Fichas técnicas | Ficha técnica com mais de N anos (N = 3 por omissão) | Aviso |
+| EQP-03 | Fichas técnicas | Equipamento de referência sem ficha técnica na biblioteca | Informação |
+
+Cada alerta mostra o que foi encontrado, a evidência (excerto, valores comparados e origem), a leitura provável e as ações possíveis. **Nenhuma correção é aplicada sem clique humano.** "Ignorar" exige justificação.
+
+A "leitura provável" é determinística: quando só uma peça difere da ficha-base, essa peça é a suspeita; quando a peça divergente é mais recente do que a ficha, a suspeita é a ficha.
+
+---
+
+## 10. Ecrãs e critérios de aceitação
+
+Os ecrãs seguem o mock-up. Nas *fixtures* da Fase 1, os exemplos de ITED/SCIE do mock-up devem ser substituídos por exemplos de eletricidade (quadros, potência, cabos, carregadores, FV).
+
+### A · Painel
+- Projetos e peças em curso, com estado (revisão *x/y*, alertas críticos) e responsável.
+- ✅ Um alerta crítico novo aparece no painel sem ser preciso abrir a peça.
+
+### B · Novo projeto
+- Assistente: Projeto → Âmbito → Ficheiros → Ficha-base → Montar.
+- Carregamento de ficha eletrotécnica, Tabela de Cálculo, 09-Folhas de Cálculo, MQT/LPU e PDF das peças desenhadas, com resumo do que foi lido e avisos (ex.: "versão do modelo DGEG desconhecida", "3 designações de cabo desconhecidas").
+- ✅ Não é possível montar peças sem ficha-base confirmada.
+
+### C · Ficha do projeto
+- Grupos da secção 7.2, com etiqueta de origem em cada valor (FICHA ELE, CÁLCULO, MQT, DES, MANUAL) e detalhe ao passar o rato (célula, linha, página).
+- Tabela dos quadros e troços (a partir dos `Circuit`), com os valores da CAL-01 destacados quando falham.
+- Dados pessoais mascarados por omissão, visíveis só para quem tem permissão.
+- ✅ Alterar um valor numa nova revisão marca para rever todos os blocos que o usam.
+- ✅ O agente nunca resolve um conflito por maioria ou por data.
+
+### D · Editor assistido
+- Três colunas: blocos com estado e modo (fixo, paramétrico, adaptativo) · documento · fontes e pedidos ao agente.
+- Blocos `fixed` protegidos (`locked`); editá-los exige desbloqueio com justificação.
+- Blocos desativados pela regra de ativação aparecem acinzentados, com a razão (ex.: "sem FV na ficha") e opção de ativar com justificação.
+- ✅ Editar manualmente um valor que vem de *placeholder* pede confirmação e cria COE-01 se divergir da ficha.
+
+### E · Validação
+- Resumo, alertas com evidência e ações, e **matriz de coerência** do projeto: ficha-base como referência e colunas MDJ, CTE, MQT/LPU, Ficha ELE, Identificação/Termo, Tabela de Cálculo e Desenhos.
+- Linhas mínimas da matriz: requerente, obra, localização, tipo de utilização, potência, n.º de quadros, cabos principais, n.º de carregadores VE, potência FV, dados do técnico.
+- ✅ Com alertas críticos abertos, as peças não podem ser enviadas para revisão.
+
+### F · Equipamentos
+- Equipamentos de referência do CTE com modelo, data da ficha técnica e resultado da verificação.
+- Detalhe por equipamento: parâmetro, exigido (bloco do CTE), valor da ficha (com página) e resultado; alternativas da biblioteca quando não cumpre.
+- Biblioteca semeada a partir dos CTE de referência.
+- ✅ Com `or_equivalent = true`, a verificação compara requisitos mínimos e nunca exige a marca.
+
+### G · Base de conhecimento
+- Corpus regulamentar, **biblioteca de blocos** (com modo, regra de ativação e versão), arquivo TUU, dicionário de cabos e léxico de tipologias.
+- ✅ Só um curador pode aprovar blocos, equivalências de cabos e o estado `citable` de um documento.
+
+### H · Revisão e exportação
+- Diff entre a proposta do agente e a edição do técnico.
+- Cartão de aprovação com as condições (blocos revistos, sem críticos, ficha-base confirmada).
+- Registo de auditoria cronológico que distingue o sistema, o agente e as pessoas.
+- ✅ "Aprovar" só fica ativo quando todas as condições estão cumpridas.
+- Exportação do **conjunto do projeto**: MDJ e CTE (`.docx`), ficha eletrotécnica (`.xlsm`), identificação e termo (`.docx`), com os nomes de ficheiro da convenção TUU (ex.: `<CÓDIGO>_MDJ_PE_ELE_V<n>.docx`).
+- ✅ Na exportação, as etiquetas internas são removidas, os blocos `fixed` saem com o OOXML original e os formulários saem sem data nem assinatura.
+
+---
+
+## 11. Exportação
+
+- Os modelos TUU (`.docx`) mantêm os estilos atuais: títulos de nível 1 como faixa numa tabela de 1 célula, `Heading 2`, `Estilo1`, `List Paragraph` e `Caption` ("Imagens meramente ilustrativas").
+- A montagem junta blocos com `docxcompose`/`python-docx`, preservando o OOXML dos blocos fixos (fórmulas e imagens).
+- A capa e o bloco de assinatura usam os campos da ficha-base e do perfil do técnico.
+- Cada ficheiro exportado fica guardado com a versão e aparece no registo de auditoria.
+
+---
+
+## 12. Segurança e dados
+
+### 12.1 Geral
+
+- SSO por OIDC; papéis verificados no backend em todos os endpoints.
+- Alojamento na UE, cópias de segurança diárias, encriptação em repouso e em trânsito.
+- LLM (Gemini API): chave de um **projeto Google da TUU**, nunca pessoal. Segundo os termos atuais, no EEE aplicam-se à quota gratuita as regras de tratamento de dados dos serviços pagos. A direção deve confirmar antes de se usarem dados reais **[A CONFIRMAR]**.
+- Enviar ao LLM apenas o necessário (excertos de blocos, sem dados pessoais — P9).
+- Segredos em variáveis de ambiente (`.env.example` sem valores). Auditoria só de inserção.
+
+### 12.2 Dados pessoais e anonimização
+
+Os documentos reais contêm dados pessoais do requerente e do técnico: nomes, NIF, n.º de CC, telefones, emails, moradas, coordenadas GPS e números DGEG/OET.
+
+- **Script de anonimização** (`tools/anonymize.py`), a criar na Fase 0:
+  - lê `.docx`, `.xls`, `.xlsx`, `.xlsm` e `.pdf` de `data/private/`;
+  - substitui, de forma consistente em todo o projeto, nomes, NIF (9 dígitos), CC, telefones, emails, moradas, códigos postais, coordenadas e números DGEG/OET por pseudónimos;
+  - usa as células conhecidas da ficha eletrotécnica e das tabelas dos formulários para saber o que é pessoal, e expressões regulares para o resto do texto;
+  - escreve os resultados em `data/fixtures/` e a tabela de correspondências em `data/private/` (nunca no Git);
+  - falha se encontrar um padrão de dado pessoal que não conseguiu substituir.
+- Os códigos dos projetos de referência no repositório são **R1** e **R2** (Anexo C).
+- No produto, campos com `personal_data = true` estão mascarados na interface e nos registos da aplicação.
+
+---
+
+## 13. Design system (a partir do mock-up)
+
+Os tokens abaixo são os do mock-up. Ficam em `frontend/src/styles/tokens.css` e são usados por todos os componentes. Não usar cores literais nos componentes.
+
+```css
+:root {
+  --paper:#f4f2ec; --surface:#ffffff; --surface-2:#ebe8df; --sheet:#ffffff;
+  --ink:#0a0a0a; --ink-2:#46443f; --ink-3:#77746b; --line:#dcd8cc; --line-2:#c9c4b5;
+  --yellow:#ffd21e; --on-yellow:#0a0a0a; --hl:rgba(255,210,30,.34);
+  --ok:#1d7447; --ok-bg:#e1f0e6; --warn:#9a5c00; --warn-bg:#fbedd2;
+  --crit:#b3362a; --crit-bg:#f8e0dc; --info:#285686; --info-bg:#e0e9f3;
+  --f-ui:"Archivo", system-ui, sans-serif;
+  --f-doc:"Source Serif 4", Georgia, serif;
+  --f-mono:"JetBrains Mono", ui-monospace, monospace;
+}
+/* Tema escuro: ver o bloco equivalente no mock-up (prefers-color-scheme + [data-theme]) */
+```
+
+Componentes base: `Pill`, `Chip`, `OriginTag` (FICHA ELE, CÁLCULO, MQT, DES, MANUAL), `Card`, `DataTable`, `StatusDot`, `BlockModeBadge` (fixo, paramétrico, adaptativo), `Button`, `SeverityStripe`, `DiffView`, `Timeline`, `Toast`, `MaskedValue` (dados pessoais).
+
+Regras: o amarelo TUU é o acento e o marcador de "texto gerado por rever"; as cores semânticas são independentes do acento; foco visível, navegação por teclado e contraste AA nos dois temas.
+
+---
+
+## 14. Fases de desenvolvimento
+
+No fim de cada fase: testes a passar, um commit por tarefa e `CLAUDE.md` atualizado.
+
+| Fase | Entrega | Pronto quando |
+|---|---|---|
+| **0 · Base** | Monorepo, Docker Compose (Postgres + pgvector, Redis, MinIO), CI, `.env.example`, **script de anonimização** | `docker compose up` arranca tudo e R1/R2 estão anonimizados em `data/fixtures/` sem nenhum dado pessoal detetado |
+| **1 · UI com dados fictícios** | Ecrãs A–H em React com *fixtures* de eletricidade baseadas em R1/R2 anonimizados | Os 8 ecrãs reproduzem o mock-up, nos dois temas e a 400 px de largura |
+| **2 · Ficha-base e ingestão** | Modelo de dados 7.1–7.2, autenticação, carregamento de ficheiros, leitores da ficha eletrotécnica, Tabela de Cálculo, 09-Folhas, MQT/LPU e PDF | As fichas-base de R1 e R2 são criadas a partir dos ficheiros, com os conflitos reais do Anexo C a aparecer como `FichaConflict` |
+| **3 · Biblioteca de blocos e conhecimento** | Extração de blocos a partir dos MDJ/CTE de R1 e R2, aprovação pelo curador, corpus regulamentar, dicionário de cabos, léxico de tipologias | Os esqueletos da secção 8.3 estão completos com blocos aprovados e regras de ativação |
+| **4 · Montagem e redação** | Montagem `fixed`/`parametric`, redação `adaptive`, editor TipTap com blocos protegidos, pré-preenchimento dos formulários | O MDJ e o CTE de R1 são montados a partir da ficha-base, e a diferença para o original aprovado é só texto adaptativo e correções de incoerências |
+| **5 · Validação** | Regras da secção 9 e matriz de coerência do projeto | Todos os casos do Anexo C são detetados, com a leitura provável correta |
+| **6 · Revisão e exportação** | Diff, aprovação, exportação do conjunto do projeto | O conjunto de R1 exporta e abre no Word/Excel com os estilos e macros intactos |
+| **7 · Equipamentos** | Biblioteca semeada a partir dos CTE, fichas técnicas, requisitos, regras EQP | Os equipamentos de referência de R1 têm ficha técnica associada e verificada |
+| **8 · Piloto** | Três projetos reais de eletricidade feitos no Maestro Especiais | Tempos medidos e comparados com o processo atual |
+| **9 · Especialidades seguintes** | ITED, depois SCIE/segurança | Biblioteca de blocos e ficha-base da nova especialidade aprovadas |
+
+---
+
+## 15. Dados de teste
+
+### 15.1 Já disponíveis
+
+- **R1**: moradia unifamiliar, projeto de execução de eletricidade (MDJ, CTE, MQT, ficha eletrotécnica, identificação, termo, 09-Folhas, Tabela de Cálculo, DWG e PDF das peças desenhadas).
+- **R2**: reabilitação de biblioteca municipal, projeto de execução de eletricidade com FV, VE, SADI, KNX, UPS e audiovisual (MDJ, CTE, LPU, ficha eletrotécnica, 09-Folhas, Tabela de Cálculo, DWG e PDF das peças desenhadas).
+- Nota: alguns ficheiros vieram corrompidos no arquivo `.rar` de R2 (duas 09-Folhas, as exportações Hager) e de R1 (um DWG antigo e um PDF assinado). Pedir novas cópias se forem precisos.
+
+### 15.2 A pedir à equipa
+
+- [ ] 3 a 5 conjuntos de eletricidade aprovados (idealmente tipologias diferentes: habitação coletiva, comércio, serviços).
+- [ ] Modelos `.docx` TUU **vazios** do MDJ e do CTE, e os modelos dos formulários.
+- [ ] Confirmação do mapa de células das 09-Folhas e da Tabela de Cálculo (e se os modelos têm versões).
+- [ ] Lista do corpus regulamentar a incluir, validada por um técnico (ver Anexo D).
+- [ ] Tabela de equivalências de designações de cabos usada pela equipa.
+- [ ] Fichas técnicas dos equipamentos de referência mais usados.
+- [ ] Outros casos de erro conhecidos, para testes de regressão.
+
+---
+
+## 16. Decisões em aberto
+
+| # | Decisão | Recomendação | Responsável |
+|---|---|---|---|
+| D1 | Stack do backend | Python (FastAPI) | Equipa técnica |
+| D2 | Base de dados | PostgreSQL + pgvector | Equipa técnica |
+| D3 | Embeddings | ✅ Decidido: modelo de embeddings do Gemini | — |
+| D4 | Alojamento | Cloud na UE para o piloto | Direção |
+| D5 | Termos de tratamento de dados da Gemini API | Confirmar a aplicação das regras de serviço pago no EEE; ponderar plano pago no piloto | Direção |
+| D6 | Autenticação | Microsoft Entra ID, se aplicável | TI |
+| D7 | Curador do corpus, blocos e dicionários | Um técnico sénior de eletricidade, ~2 h/mês | Coordenação |
+| D8 | Esqueletos e blocos obrigatórios (CNT-01) | Validar a secção 8.3 com a equipa | Técnicos |
+| D9 | Integração com o TUU Maestro | Endpoint de exportação no MVP | Equipa TUU Maestro |
+| D10 | LLM | ✅ Decidido: Gemini Flash (quota gratuita) no desenvolvimento | — |
+| D11 | Especialidade do MVP | ✅ Decidido: instalações elétricas (ITED na Fase 9) | — |
+| D12 | Leitura de DWG (fase posterior) | Avaliar conversor DWG→DXF e respetiva licença | Equipa técnica |
+| D13 | Severidade da CAL-01 | Aviso, com confirmação do projetista na folha | Técnicos |
+
+---
+
+## 17. Como trabalhar com o Claude Code
+
+- Comece cada fase com: *"Lê `docs/SPEC.md` e `CLAUDE.md`. Vamos implementar a Fase N. Entra em plan mode e propõe um plano com tarefas pequenas, testes e ficheiros afetados."*
+- Reveja o plano antes de aprovar. Peça alterações se algo contrariar os princípios da secção 3.
+- Uma tarefa, um commit. Testes sempre junto com o código.
+- Nunca dê ao Claude Code os ficheiros de `data/private/`: trabalhe só com `data/fixtures/`.
+- Quando uma decisão da secção 16 for tomada, atualize este documento e o `CLAUDE.md`.
+
+**Primeira mensagem sugerida (Fase 0):**
+
+> Lê `docs/SPEC.md` e `CLAUDE.md`. Vamos começar pela Fase 0: estrutura do monorepo, Docker Compose, CI e o script de anonimização da secção 12.2. Os ficheiros reais estão em `data/private/R1` e `data/private/R2` e não podem ser lidos por ti diretamente: escreve o script e os testes com ficheiros sintéticos, e eu corro-o localmente. Entra em plan mode e espera pela minha aprovação.
+
+---
+
+## Anexo A · `CLAUDE.md` inicial
+
+Copiar para a raiz do repositório.
+
+```markdown
+# Maestro Especiais
+
+Agente de IA da TUU para montar, redigir e validar o processo de projeto de instalações elétricas
+(MDJ, CTE, MQT/LPU, ficha eletrotécnica, identificação e termo).
+Especificação completa: docs/SPEC.md · Mock-up: docs/mockup/maestro-especiais.html
+
+## Regras invioláveis
+- O agente não decide: propõe e sinaliza. Correções, conflitos e aprovações exigem ação humana registada.
+- O agente não calcula. CAL-01 só compara valores que já estão na Tabela de Cálculo.
+- O LLM nunca escreve números, nomes ou valores do projeto: usa {{v:<chave>}} resolvidos pelo backend.
+- Dados pessoais (requerente e técnico) nunca são enviados ao LLM nem escritos em logs.
+- Blocos fixed são copiados com o OOXML original e nunca passam pelo LLM.
+- Só se citam documentos do corpus com citable = true.
+- A ficha-base é a fonte de verdade. Fonte mais recente que diverge → propor atualizar a ficha.
+- Formulários saem sem data nem assinatura. O agente nunca assina.
+- AuditEvent é só de inserção.
+- Nunca ler data/private/. Trabalhar só com data/fixtures/ (anonimizado).
+
+## Convenções
+- UI em PT-PT. Código, tabelas, endpoints e commits em inglês.
+- Frontend: React + TypeScript + Vite. Cores e fontes só via tokens em frontend/src/styles/tokens.css.
+- Backend: Python 3.12, FastAPI, SQLAlchemy 2, Alembic.
+- Leitores de ficheiros em backend/app/ingest/, um por tipo, com testes sobre as fixtures R1/R2.
+- Ficha eletrotécnica: leitura e escrita por células fixas, mapa por versão do modelo DGEG.
+- Tabela de Cálculo: colunas detetadas pelo texto do cabeçalho, nunca por posição.
+- LLM: Gemini Flash via google-genai, SEMPRE através de LlmProvider em backend/app/llm/.
+- Nomes de modelos só em variáveis de ambiente (LLM_MODEL_*).
+- Quota gratuita: rate limiting, retry com backoff em 429/503, retoma a meio.
+- Saídas do LLM sempre em JSON validado por Pydantic. Prompts em backend/app/llm/prompts/.
+- Regras de validação em backend/app/validation/rules/, uma por ficheiro, cada uma com um caso do Anexo C.
+
+## Comandos
+- docker compose up          # ambiente completo
+- make test                  # pytest + vitest
+- make e2e                   # Playwright
+- make anonymize             # corre tools/anonymize.py (local, fora do Git)
+
+## Dados
+- data/fixtures/ : R1 e R2 anonimizados (versionados)
+- data/private/  : originais e tabela de correspondências (NUNCA versionar)
+
+## Estado atual
+- Fase: 0
+- Decisões tomadas: D3 (embeddings Gemini), D10 (Gemini Flash), D11 (MVP em eletricidade)
+```
+
+---
+
+## Anexo B · Glossário
+
+| Termo | Significado |
+|---|---|
+| MDJ | Memória descritiva e justificativa |
+| CTE | Condições técnicas (gerais e especiais) do caderno de encargos |
+| MQT / LPU | Mapa de quantidades de trabalhos / lista de preços unitários |
+| Ficha eletrotécnica | Formulário da DGEG que caracteriza a instalação elétrica de serviço particular |
+| Ficha-base | Dados principais do projeto, versionados e confirmados, usados como fonte de verdade |
+| RTIEBT | Regras Técnicas das Instalações Elétricas de Baixa Tensão (Portaria n.º 949-A/2006, na redação atual) |
+| DGEG / E-REDES / RESP | Direção-Geral de Energia e Geologia / operador da rede de distribuição / rede elétrica de serviço público |
+| OET / OE | Ordem dos Engenheiros Técnicos / Ordem dos Engenheiros |
+| Tipo A / B / C | Classificação das instalações: geradores de segurança e socorro / alimentadas em MT/AT/MAT / alimentadas em BT |
+| Q.E.G. / Q.P. | Quadro elétrico geral / quadro parcial |
+| PBT / portinhola | Caixa de entrada da alimentação em BT |
+| IB, In, Iz, I2 | Corrente de serviço, corrente estipulada da proteção, corrente admissível na canalização, corrente convencional de funcionamento |
+| QDT | Queda de tensão |
+| PdC | Poder de corte |
+| TT / IT / TN | Esquemas de ligação à terra |
+| RPC / CPR | Regulamento dos Produtos de Construção (classes de reação ao fogo dos cabos) |
+| NIP / CPE | Número de identificação do prédio / código do ponto de entrega |
+| FV / VE / UPS | Fotovoltaico / veículos elétricos / fonte de alimentação ininterrupta |
+| SADI / CDI | Sistema automático de deteção de incêndio / central de deteção de incêndio |
+| KNX / DALI | Protocolos de automação de edifícios e de controlo de iluminação |
+| Bloco fixo / paramétrico / adaptativo | Modos de montagem da secção 8.3 |
+| Placeholder | Marcador `{{v:chave}}` que o backend substitui por um valor com origem |
+
+---
+
+## Anexo C · Casos de teste reais (R1 e R2)
+
+Incoerências encontradas nos projetos de referência. Cada uma tem de ser detetada pela regra indicada, com a leitura provável indicada. Não contêm dados pessoais.
+
+| # | Projeto | O que acontece | Regra | Leitura provável esperada |
+|---|---|---|---|---|
+| C1 | R1 | MDJ indica fios H07V-K; CTE e Tabela de Cálculo indicam H07V-U | COE-06 | Erro provável na MDJ |
+| C2 | R1 | O CTE (videoporteiro) refere "ecrã na entrada de cada apartamento" numa moradia unifamiliar | TIP-01 | Texto herdado de outro projeto |
+| C3 | R1 | O n.º de membro OET do técnico difere entre MDJ/CTE e identificação/termo | COE-04 | Confirmar com o perfil do técnico |
+| C4 | R1 | O índice das peças desenhadas lista 17 folhas (EL001–EL017) e o PDF tem 16 páginas | DES-01 | Folha em falta no PDF ou índice desatualizado |
+| C5 | R1 | Videoporteiro com modelo de marca sem "ou equivalente"; referência de comutador repetida | CCP-01 (se aplicável), TXT-01 | — |
+| C6 | R2 | Potência: ficha eletrotécnica 180 kVA; CTE e Tabela de Cálculo 200 kVA; MDJ sem valor | COE-05, CNT-01 | Erro provável na ficha eletrotécnica |
+| C7 | R2 | A ficha eletrotécnica tem outro requerente (não o da MDJ/CTE/LPU), tipo de utilização "Escritório" e rua/freguesia vazias | COE-04, TIP-01 | Ficha reaproveitada de outro projeto |
+| C8 | R2 | Carregadores VE: MDJ e Tabela de Cálculo 5; CTE descreve 3 pedestais com 2 carregadores cada (6) | COE-01 | Erro provável no CTE |
+| C9 | R2 | Cabos: "FXZ1" (MDJ/CTE), "RZ1-K (AS)" (Tabela de Cálculo), "XZ1(frt,zh)" (LPU) | COE-06 | Pedir equivalência ao curador |
+| C10 | R2 | Troço Portinhola → Q.E.G.: I2 = 504 A e 1,45·Iz = 503,4 A na Tabela de Cálculo | CAL-01 | Confirmar na folha de cálculo |
+| C11 | R2 | "Segundo a secção das RTIEBT" e "secções da RTIEBT" sem número | REF-03 | — |
+| C12 | R2 | Tabela de Cálculo com troços enterrados (`ENT`: carregadores VE, UPS) e MDJ sem bloco de canalizações enterradas | COE-03 | Bloco em falta na MDJ |
+| C13 | R2 | Parágrafos da MDJ com quebras de linha a meio de frase | TXT-01 | — |
+| C14 | R1 | Duas entradas quase iguais sobre normas portuguesas na lista de legislação e normas da MDJ | TXT-01 (itens quase duplicados) | — |
+
+Casos de controlo (não podem gerar alertas): em R1, a potência (34,5 kVA) coincide entre ficha eletrotécnica, identificação, MDJ e Tabela de Cálculo, e o número de quadros (6) coincide entre MDJ, CTE, MQT e Tabela de Cálculo.
+
+---
+
+## Anexo D · Referências encontradas nos documentos de referência
+
+Ponto de partida para o corpus. **O curador confirma a edição em vigor de cada uma antes de a marcar como `citable`.**
+
+- RTIEBT – Portaria n.º 949-A/2006, na redação atual
+- Decreto-Lei n.º 96/2017 (instalações elétricas de serviço particular: termo de responsabilidade e identificação do projeto)
+- Despacho n.º 1/2018 da DGEG (classificação das instalações usada na ficha eletrotécnica)
+- Guia Técnico das Instalações Elétricas para carregamento de VE (DGEG)
+- Guia Técnico das classes de reação ao fogo dos cabos elétricos (RPC)
+- Especificações da E-REDES (ex.: elétrodos de terra, DMA-C65-210/N)
+- NP EN 60529 (códigos IP) · NP EN 50102 (códigos IK) · EN 60898 (disjuntores) · NP EN 61386 (tubos) · EN 50086-2-4 (tubos enterrados) · EN 12464-1 (iluminação de locais de trabalho) · HD 602 / HD 606 (comportamento dos cabos em incêndio)
+- Portaria n.º 701-H/2008 (conteúdo dos projetos)

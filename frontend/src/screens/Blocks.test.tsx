@@ -76,6 +76,7 @@ function detail(): BlockDetail {
     },
     labels: { "ele.potencia_alimentar_kva": "Potência a alimentar" },
     archive_refs: ["arc:R1:ele.mdj.x", "arc:R2:ele.mdj.x"],
+    equipment_slots: [{ entry: 2, reasons: ["ou equivalente"], projects: ["R1"] }],
   };
 }
 
@@ -124,6 +125,7 @@ describe("block library (screen G)", () => {
     // the template and the evidence of R1 both show the placeholder, highlighted
     expect(within(article).getAllByText("Potência a alimentar", { selector: "mark" })).toHaveLength(2);
     expect(within(article).getByText("evidência de um só projeto")).toBeInTheDocument();
+    expect(within(article).getByText("equipamento de referência (ou equivalente)")).toBeInTheDocument();
     const sides = within(article).getAllByLabelText("Evidência lado a lado");
     expect(sides).toHaveLength(2); // the adaptive and the parametric paragraphs, not the equal title
     expect(within(sides[0]!).getByText("A entrada de energia será mantida…")).toBeInTheDocument();

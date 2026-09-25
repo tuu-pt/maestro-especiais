@@ -46,7 +46,7 @@ def test_everyone_reads_the_proposed_blocks(api: Api, seeded: None) -> None:
 
     assert len(mdj) == 42 and [b["order"] for b in mdj] == list(range(1, 43))
     assert {b["status"] for b in mdj} == {"proposed"}
-    assert blocks(api, doc_type="CTE") == []
+    assert len(blocks(api, doc_type="CTE")) == 53
     rpc = by_key(api, "regulamento_dos_produtos_de_construcao_rpc")
     assert rpc["activation_rule"] == 'ele.classificacao != "Locais de habitação"'
     assert rpc["projects"] == ["R2"]
@@ -206,3 +206,12 @@ def test_unknown_block(api: Api) -> None:
         .status_code
         == 404
     )
+
+
+def test_detail_of_a_cte_block_marks_its_equipment_slots(api: Api, seeded: None) -> None:
+    b = by_key(api, "condicoes_tecnicas_especiais.servidor_knx")
+
+    detail = api.as_("redator").get(f"/api/library/blocks/{b['id']}").json()
+
+    assert detail["equipment_slots"]
+    assert {"entry", "reasons", "projects"} == set(detail["equipment_slots"][0])

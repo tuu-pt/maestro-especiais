@@ -18,6 +18,7 @@ Cover and signature are always parametric. The block's mode is the strongest of 
 paragraphs keep only references to the archive and to the source sections.
 """
 
+import re
 from dataclasses import dataclass, field
 from difflib import SequenceMatcher
 from typing import Any
@@ -95,6 +96,7 @@ class ProposedBlock:
     source_refs: list[dict[str, Any]]
     rels: dict[str, dict[str, Any]]  # project -> {rId: relationship}
     notes: list[str]
+    equipment_slots: list[dict[str, Any]] = field(default_factory=list)
 
     @property
     def required_keys(self) -> list[str]:
@@ -195,7 +197,70 @@ def _lone(unit: Unit, where: str) -> Entry:
 # ---------------------------------------------------------------- alignment
 
 
-def _compare(base: list[Unit], other: list[Unit]) -> list[Entry]:
+def _joined(units: list[Unit]) -> str:
+    return fold(" ".join(u.text for u in units)).rstrip(" ;.:,")
+
+
+def _joins(unit: Unit, seq: list[Unit], start: int) -> int:
+    """How many paragraphs of seq, from start, make the text of unit (2 to 4), or 0."""
+    for k in range(2, 5):
+        part = seq[start : start + k]
+        if (
+            len(part) == k
+            and all(u.kind == "paragraph" for u in part)
+            and _joined(part) == unit.norm
+        ):
+            return k
+    return 0
+
+
+def _refine(ra: list[Unit], rb: list[Unit]) -> list[tuple[str, list[Unit], list[Unit]]]:
+    """Inside a range difflib found different: equal paragraphs, split ones, and the rest."""
+    out: list[tuple[str, list[Unit], list[Unit]]] = []
+    pending_a: list[Unit] = []
+    pending_b: list[Unit] = []
+
+    def flush() -> None:
+        if pending_a or pending_b:
+            out.append(("diff", pending_a[:], pending_b[:]))
+            pending_a.clear()
+            pending_b.clear()
+
+    i = j = 0
+    while i < len(ra) and j < len(rb):
+        x, y = ra[i], rb[j]
+        if _same(x, y):
+            flush()
+            out.append(("equal", [x], [y]))
+            i, j = i + 1, j + 1
+        elif k := _joins(x, rb, j):
+            flush()
+            out.append(("split", [x], rb[j : j + k]))
+            i, j = i + 1, j + k
+        elif k := _joins(y, ra, i):
+            flush()
+            out.append(("split", ra[i : i + k], [y]))
+            i, j = i + k, j + 1
+        elif any(_same(x, z) or _joins(x, rb, n) for n, z in enumerate(rb[j + 1 :], j + 1)):
+            pending_b.append(y)  # x comes later in the other project
+            j += 1
+        else:
+            pending_a.append(x)
+            i += 1
+    pending_a += ra[i:]
+    pending_b += rb[j:]
+    flush()
+    if not out and len(ra) and len(rb) and _joined(ra) == _joined(rb):
+        return [("split", ra, rb)]
+    return out
+
+
+def _compare(base: list[Unit], other: list[Unit], prefer_fixed: bool = False) -> list[Entry]:
+    """Entries of a section present in two projects (base first).
+
+    prefer_fixed: general conditions (SPEC 8.3): wording that differs is kept from the base
+    project as fixed, with a note; only paragraphs with project values stay adaptive.
+    """
     a = [u for u in base if u.kind != "empty"]
     b = [u for u in other if u.kind != "empty"]
     matcher = SequenceMatcher(None, [(u.kind, u.norm) for u in a], [(u.kind, u.norm) for u in b],
@@ -203,18 +268,17 @@ def _compare(base: list[Unit], other: list[Unit]) -> list[Entry]:
     placed: dict[int, Entry] = {}  # base element index -> entry (to keep the base order)
     extra: list[Entry] = []  # entries that come only from the other project
     base_project, other_project = base[0].project, other[0].project
+    pieces: list[tuple[str, list[Unit], list[Unit]]] = []
     for tag, i1, i2, j1, j2 in matcher.get_opcodes():
-        ra, rb = a[i1:i2], b[j1:j2]
         if tag == "equal":
-            for x, y in zip(ra, rb, strict=True):
-                placed[x.index] = _proven(x, y)
+            pieces += [("equal", [x], [y]) for x, y in zip(a[i1:i2], b[j1:j2], strict=True)]
+        else:
+            pieces += _refine(a[i1:i2], b[j1:j2])
+    for piece, ra, rb in pieces:
+        if piece == "equal":
+            placed[ra[0].index] = _proven(ra[0], rb[0])
             continue
-        if (
-            ra
-            and rb
-            and fold(" ".join(u.text for u in ra)).rstrip(" ;.:,")
-            == fold(" ".join(u.text for u in rb)).rstrip(" ;.:,")
-        ):
+        if piece == "split":
             for x in ra:  # the same text, split into other paragraphs
                 placed[x.index] = _proven(x)
                 placed[x.index].units[other_project] = [u.index for u in rb]
@@ -229,11 +293,23 @@ def _compare(base: list[Unit], other: list[Unit]) -> list[Entry]:
                     entry.note = (f"Diferente em {other_project}: fica a de {base_project} "
                                   "(a confirmar).")  # fmt: skip
                 placed[x.index] = entry
-        if paragraphs_a and paragraphs_b:
-            placed[paragraphs_a[0].index] = _adaptive(
-                paragraphs_a + paragraphs_b,
-                note=f"Texto diferente em {base_project} e {other_project}.",
-            )
+        plain = not any(u.keys or u.hits for u in paragraphs_a + paragraphs_b)
+        if paragraphs_a and paragraphs_b and prefer_fixed and plain:
+            for n, x in enumerate(paragraphs_a):
+                entry = _entry(
+                    x,
+                    "fixed",
+                    note=f"Texto diferente em {other_project}: fica o de "
+                    f"{base_project} (condições gerais, a confirmar).",
+                )
+                if n == 0:
+                    entry.units[other_project] = [u.index for u in paragraphs_b]
+                placed[x.index] = entry
+        elif paragraphs_a and paragraphs_b:
+            note = f"Texto diferente em {base_project} e {other_project}."
+            if prefer_fixed:
+                note += " Tem valores do projeto: fica adaptativo."
+            placed[paragraphs_a[0].index] = _adaptive(paragraphs_a + paragraphs_b, note=note)
             for x in paragraphs_a[1:]:
                 placed[x.index] = Entry("adaptive", base_project, {}, note="(continuação)")
         elif paragraphs_a:
@@ -301,9 +377,12 @@ def _rels(entries: list[Entry], sections: dict[str, Section]) -> dict[str, dict[
 
 
 def classify(
-    doc_type: str, docs: list[ProjectDoc]
+    doc_type: str, docs: list[ProjectDoc], fixed_prefixes: tuple[str, ...] = ()
 ) -> tuple[list[ProposedBlock], list[ArchiveText]]:
-    """Blocks proposed from the same document type of several reference projects."""
+    """Blocks proposed from the same document type of several reference projects.
+
+    fixed_prefixes: block keys proposed as fixed (the general conditions of the CTE).
+    """
     if not docs:
         return [], []
     order = _merged_keys([d.split.sections for d in docs])
@@ -316,6 +395,7 @@ def classify(
         first = sections[present[0].project]
         units = {d.project: _units(d, sections[d.project]) for d in present}
         where = present[0].project
+        block_key = f"{base_specialty()}.{doc_type.lower()}.{key}"
         if first.kind in ("cover", "signature"):
             other = units[present[1].project] if len(present) > 1 else None
             entries = _forced_parametric(units[where], other)
@@ -325,17 +405,18 @@ def classify(
         elif len(present) == 1:
             entries = _single(units[where], where)
         else:
-            entries = _compare(units[present[0].project], units[present[1].project])
+            prefer_fixed = block_key.startswith(fixed_prefixes) if fixed_prefixes else False
+            entries = _compare(units[present[0].project], units[present[1].project], prefer_fixed)
         notes = [e.note for e in entries if e.note and not e.note.startswith("Título")]
         if len(present) == 1:
             notes.insert(0, f"Bloco só em {where}: candidato, a regra de ativação decide.")
-        block_key = f"{base_specialty()}.{doc_type.lower()}.{key}"
         blocks.append(ProposedBlock(
             key=block_key, doc_type=doc_type, kind=first.kind, level=first.level,
             title=first.title, order=n, mode=_mode(entries, first.kind), entries=entries,
             projects=[d.project for d in present],
             source_refs=[_source_ref(d, sections[d.project]) for d in present],
             rels=_rels(entries, sections), notes=list(dict.fromkeys(notes)),
+            equipment_slots=equipment_slots(entries, units) if doc_type == "CTE" else [],
         ))  # fmt: skip
         if any(e.mode == "adaptive" for e in entries):
             for d in present:
@@ -345,6 +426,28 @@ def classify(
                     ArchiveText(d.project, doc_type, block_key, n, privacy.mask(text), section_id)
                 )
     return blocks, archive
+
+
+_SLOTS = (
+    ("ou equivalente", re.compile(r"\bou equivalente\b")),
+    ("marca/modelo", re.compile(r"\b(?:marca|modelo|ref\.|refa|referencia)\b")),  # folded text
+)
+
+
+def equipment_slots(entries: list[Entry], units: dict[str, list[Unit]]) -> list[dict[str, Any]]:
+    """Paragraphs of a CTE block that name reference equipment (SPEC 8.3, Phase 7 fills them).
+
+    Only where they are and why: the equipment library is not linked in Phase 3.
+    """
+    by_index = {p: {u.index: u for u in us} for p, us in units.items()}
+    slots = []
+    for n, entry in enumerate(entries):
+        texts = [fold(by_index[p][i].text) for p, idx in entry.units.items() for i in idx
+                 if i in by_index.get(p, {})]  # fmt: skip
+        reasons = [name for name, pattern in _SLOTS if any(pattern.search(t) for t in texts)]
+        if reasons:
+            slots.append({"entry": n, "reasons": reasons, "projects": sorted(entry.units)})
+    return slots
 
 
 def _source_ref(doc: ProjectDoc, section: Section) -> dict[str, Any]:

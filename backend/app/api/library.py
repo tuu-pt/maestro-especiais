@@ -71,6 +71,7 @@ class BlockDetail(BlockSummary):
     evidence: dict[str, list[EvidenceUnit]]  # project -> elements of its source section
     labels: dict[str, str]  # placeholder key -> Portuguese label
     archive_refs: list[str]
+    equipment_slots: list[dict[str, Any]]  # CTE: {"entry", "reasons", "projects"}
 
 
 class ParagraphOut(BaseModel):
@@ -149,6 +150,7 @@ def get_block(block_id: uuid.UUID, db: DB, _: CurrentUser) -> BlockDetail:
         evidence=evidence,
         labels={k: label(k) for k in sorted(keys)},
         archive_refs=b.archive_refs,
+        equipment_slots=b.equipment_slots,
     )  # fmt: skip
 
 

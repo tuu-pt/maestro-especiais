@@ -208,7 +208,7 @@ function BlockView({ id }: { id: string }) {
         ) : (
           <ol className={s.entries}>
             {b.entries.map((e, i) => (
-              <EntryView key={i} entry={e} block={b} />
+              <EntryView key={i} entry={e} block={b} slot={b.equipment_slots.find((x) => x.entry === i)} />
             ))}
           </ol>
         )}
@@ -223,7 +223,15 @@ function unitOf(b: BlockDetail, project: string, index: number) {
   return b.evidence[project]?.find((u) => u.index === index);
 }
 
-function EntryView({ entry: e, block: b }: { entry: BlockEntry; block: BlockDetail }) {
+function EntryView({
+  entry: e,
+  block: b,
+  slot,
+}: {
+  entry: BlockEntry;
+  block: BlockDetail;
+  slot?: BlockDetail["equipment_slots"][number];
+}) {
   const projects = Object.keys(e.units);
   const empty =
     e.mode === "fixed" && !e.text && projects.every((p) => e.units[p]!.every((i) => !unitOf(b, p, i)?.text));
@@ -233,6 +241,7 @@ function EntryView({ entry: e, block: b }: { entry: BlockEntry; block: BlockDeta
       <div className={s.entryHead}>
         <BlockModeBadge mode={e.mode} />
         {e.single_source ? <Chip>evidência de um só projeto</Chip> : null}
+        {slot ? <Chip>equipamento de referência ({slot.reasons.join(", ")})</Chip> : null}
         {e.note ? <span className={s.muted}>{e.note}</span> : null}
       </div>
       {e.text ? (

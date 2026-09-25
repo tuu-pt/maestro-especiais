@@ -278,6 +278,7 @@ export type BlockDetail = BlockSummary & {
   evidence: Record<string, EvidenceUnit[]>;
   labels: Record<string, string>;
   archive_refs: string[];
+  equipment_slots: { entry: number; reasons: string[]; projects: string[] }[];
 };
 
 export type BlockPreview = {

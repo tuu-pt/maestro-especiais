@@ -84,6 +84,7 @@ const DETAIL = {
   },
   labels: { "ele.potencia_alimentar_kva": "Potência a alimentar" },
   archive_refs: [`arc:R1:${KEY}`, `arc:R2:${KEY}`],
+  equipment_slots: [],
 };
 
 async function open(page: Page) {

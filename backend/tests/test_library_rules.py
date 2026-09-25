@@ -103,7 +103,8 @@ def seeded(db: Session, store: ObjectStore) -> list[TemplateBlock]:
         pytest.skip("data/fixtures/R1 e R2 são precisos")
     seed_sources(db, store, FIXTURES, ("R1", "R2"))
     seed_blocks(db, FIXTURES, ("R1", "R2"))
-    return list(db.scalars(select(TemplateBlock).order_by(TemplateBlock.order)))
+    order = (TemplateBlock.doc_type.desc(), TemplateBlock.order)  # MDJ, then CTE
+    return list(db.scalars(select(TemplateBlock).order_by(*order)))
 
 
 def test_every_block_has_a_rule_that_parses(seeded: list[TemplateBlock]) -> None:

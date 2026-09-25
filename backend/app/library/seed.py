@@ -19,7 +19,7 @@ from app.library.classify import ArchiveText, ProjectDoc, ProposedBlock, classif
 from app.library.docx_blocks import split
 from app.library.facts import Fact, cover_facts, ficha_facts, signature_facts
 from app.library.rules import parse
-from app.library.skeleton import SKELETON_ONLY, rule_for
+from app.library.skeleton import FIXED_PREFIXES, SKELETON_ONLY, rule_for
 from app.library.sources import reference_documents
 from app.models import ArchiveChunk, ArchiveDoc, SourceDocument, SourceSection, TemplateBlock
 
@@ -103,6 +103,7 @@ def _write_blocks(db: Session, blocks: list[ProposedBlock]) -> int:
         row.projects = proposed.projects
         row.source_refs = proposed.source_refs
         row.notes = proposed.notes
+        row.equipment_slots = proposed.equipment_slots
         row.activation_rule = rule_for(proposed.key)
         row.activation_ast = parse(row.activation_rule)
         row.archive_refs = (
@@ -138,14 +139,14 @@ def _write_archive(
 
 
 def seed_blocks(
-    db: Session, fixtures: Path, codes: tuple[str, ...], doc_types: tuple[str, ...] = ("MDJ",)
+    db: Session, fixtures: Path, codes: tuple[str, ...], doc_types: tuple[str, ...] = ("MDJ", "CTE")
 ) -> dict[str, int]:
     per_project = {c: project_docs(db, fixtures, c) for c in codes if (fixtures / c).is_dir()}
     sources = {(d.project_code, d.doc_type): str(d.id) for d in db.scalars(select(SourceDocument))}
     blocks = chunks = 0
     for doc_type in doc_types:
         docs = [p[doc_type] for p in per_project.values() if doc_type in p]
-        proposed, archive = classify(doc_type, docs)
+        proposed, archive = classify(doc_type, docs, FIXED_PREFIXES.get(doc_type, ()))
         proposed = with_skeleton(proposed, doc_type)
         _write_evidence(db, docs)
         blocks += _write_blocks(db, proposed)

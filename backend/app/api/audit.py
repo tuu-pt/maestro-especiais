@@ -102,6 +102,10 @@ def describe(action: str, payload: dict[str, Any]) -> str:
         case "library.block_edited":
             what = ", ".join(EDIT_LABELS_PT.get(k, k) for k in payload.get("changed") or {})
             return f"Editou o bloco «{payload.get('title', '')}»: {what}"
+        case "document.assembled":
+            return f"Montou o {payload.get('type', '')} ({payload.get('sections', 0)} secções)"
+        case "document.draft_downloaded":
+            return f"Descarregou o rascunho do {payload.get('type', '')}"
         case "ficha.confirmed":
             return f"Confirmou a ficha-base rev. {payload.get('label', '')}"
     return action

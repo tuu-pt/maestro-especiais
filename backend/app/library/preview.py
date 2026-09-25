@@ -30,19 +30,25 @@ def label(key: str) -> str:
 
 
 def project_context(db: Session, project_id: uuid.UUID) -> tuple[Context, dict[str, FichaValue]]:
+    """Context of the latest revision of the ficha-base (preview: any revision)."""
     revision = latest_revision(db, project_id)
     if revision is None:
         return Context(), {}
+    return revision_context(db, revision.id)
+
+
+def revision_context(db: Session, revision_id: uuid.UUID) -> tuple[Context, dict[str, FichaValue]]:
+    """What the rules see of one revision: values, circuits, articles and their links."""
     values = {
         v.key: v
-        for v in db.scalars(select(FichaValue).where(FichaValue.revision_id == revision.id))
+        for v in db.scalars(select(FichaValue).where(FichaValue.revision_id == revision_id))
     }
     ctx = Context(values={k: v.value for k, v in values.items()})
-    for c in db.scalars(select(Circuit).where(Circuit.revision_id == revision.id)):
+    for c in db.scalars(select(Circuit).where(Circuit.revision_id == revision_id)):
         ctx.circuits.append({f: getattr(c, f, None) for f in CIRCUIT_FIELDS})
     chapter = None
     items = db.scalars(
-        select(BomItem).where(BomItem.revision_id == revision.id).order_by(BomItem.row_index)
+        select(BomItem).where(BomItem.revision_id == revision_id).order_by(BomItem.row_index)
     )
     for item in items:
         if item.kind == "chapter":

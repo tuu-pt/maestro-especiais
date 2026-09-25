@@ -268,3 +268,44 @@ def evaluate(tree: dict[str, Any], ctx: Context) -> bool:
 
 def check(text: str, ctx: Context) -> bool:
     return evaluate(parse(text), ctx)
+
+
+# ---------------------------------------------------------------- why a rule is false
+
+_FIELD_PT = {"installation": "instalação", "designation": "designação", "chapter": "capítulo",
+             "unit": "unidade", "cable_raw": "cabo", "kva": "potência"}  # fmt: skip
+
+
+def _shown(value: Any) -> str:
+    if isinstance(value, list):
+        return ", ".join(f"«{v}»" for v in value)
+    return f"«{value}»"
+
+
+def explain(tree: dict[str, Any], ctx: Context) -> str:
+    """Why the rule does not activate the block, for people (only called when it is false)."""
+    op = tree["op"]
+    if op == "const":
+        return "Regra sempre falsa."
+    if op == "present":
+        label = KEYS[tree["key"]].label_pt
+        return f"Sem «{label}» na ficha-base nem artigos do MQT/LPU associados."
+    if op == "cmp":
+        label = KEYS[tree["key"]].label_pt
+        actual = ctx.values.get(tree["key"])
+        if actual in (None, ""):
+            return f"«{label}» sem valor na ficha-base."
+        return f"«{label}» é «{actual}» (a regra pede {tree['cmp']} {_shown(tree['value'])})."
+    if op == "any":
+        where = (
+            "troço da Tabela de Cálculo" if tree["collection"] == "circuit" else "artigo do MQT/LPU"
+        )
+        field_pt = _FIELD_PT.get(tree["field"], tree["field"])
+        return f"Nenhum {where} com {field_pt} {tree['cmp']} {_shown(tree['value'])}."
+    if op == "not":
+        return "A condição negada verifica-se."
+    if op == "and":
+        return next(explain(a, ctx) for a in tree["args"] if not evaluate(a, ctx))
+    if op == "or":
+        return " ".join(explain(a, ctx) for a in tree["args"])
+    raise ValueError(f"unknown rule node: {op}")

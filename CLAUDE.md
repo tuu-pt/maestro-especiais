@@ -125,7 +125,7 @@ Decisões da Fase 0:
   quando as imagens públicas do MinIO deixaram de estar disponíveis (a CI falhava no download). Só a API S3 fica
   exposta no host; as interfaces web do SeaweedFS não têm autenticação.
 - Anonimização:
-  - PyMuPDF (AGPL-3.0) só em tools/, nunca no backend (que usa pdfplumber).
+  - PyMuPDF (AGPL-3.0) só em tools/, nunca no backend (que usa pypdfium2).
   - `.xls` reescritos só com valores (as fórmulas passam a valores).
   - Pseudonimizar só dados pessoais: empresas, câmaras, designação da obra, concelho, freguesia e distrito ficam reais.
   - Tabela de pseudónimos global (R1 e R2) e injetiva: valores reais diferentes dão pseudónimos diferentes, para que C3 e C7 continuem detetáveis.

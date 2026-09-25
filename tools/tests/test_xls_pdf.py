@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import pdfplumber
 import pymupdf
 import pytest
@@ -119,3 +121,19 @@ def test_pdf_value_hidden_outside_the_text_layer_fails_the_run(run_anonymizer: R
 
     assert not result.outcome.promoted
     assert ("pii_in_binary", "nif") in {(x.code, x.kind) for _, x in result.outcome.errors}
+
+
+def test_pdf_output_is_the_same_on_every_run(tmp_path: Path) -> None:
+    """Running the anonymizer again must not rewrite unchanged PDFs (the trailer /ID stays)."""
+    from anonymizer import pdf
+    from anonymizer.engine import TextAnonymizer
+    from anonymizer.pseudonyms import PseudonymMap
+
+    src = s.pecas_desenhadas(tmp_path / "src.pdf")
+    outputs = []
+    for n in (1, 2):
+        dst = tmp_path / f"out{n}.pdf"
+        pdf.transform_file(src, dst, TextAnonymizer(PseudonymMap()), strip_images=False)
+        outputs.append(dst.read_bytes())
+
+    assert outputs[0] == outputs[1]

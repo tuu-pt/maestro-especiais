@@ -188,7 +188,9 @@ def transform_file(
     if counts["images"]:
         findings.append(Finding("images_present", count=counts["images"]))
     dst.parent.mkdir(parents=True, exist_ok=True)
-    doc.save(str(dst), garbage=4, deflate=True, clean=True)
+    # no_new_id: keep the /ID of the source, so the same input always gives the same bytes and
+    # running the anonymizer again does not rewrite every PDF in data/fixtures.
+    doc.save(str(dst), garbage=4, deflate=True, clean=True, no_new_id=True)
     doc.close()
     return findings
 

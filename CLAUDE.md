@@ -170,8 +170,8 @@ Decisões da Fase 0:
   - páginas PDF com muito vetor e pouco texto (fontes SHX) geram aviso de revisão visual;
   - dados que o script não encontra sozinho (nomes soltos, falsos positivos): data/private/anonymize_overrides.yaml (ver README).
   - os valores da tabela de pseudónimos de execuções anteriores também respeitam o `allow:` dos overrides; foi assim que
-    a freguesia de R1 (tomada por morada pelo mapa antigo) voltou a ficar real em 25 set 2026. Os PDF regravados só
-    mudam o `/ID` do trailer: esses não se versionam.
+    a freguesia de R1 (tomada por morada pelo mapa antigo) voltou a ficar real em 25 set 2026;
+  - os PDF são gravados com o `/ID` da origem (`no_new_id`): uma nova execução só muda os PDF cujo conteúdo muda.
 - Próximo: Fase 3 (biblioteca de blocos a partir dos MDJ/CTE de R1 e R2, aprovação pelo curador, corpus
   regulamentar, dicionário de cabos, léxico de tipologias). Antes: D5 (termos da Gemini API) e D7 (curador);
   D6 (Entra ID) continua por decidir com a TI.

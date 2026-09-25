@@ -176,6 +176,21 @@ def test_allowlist_keeps_confirmed_false_positives() -> None:
     assert engine.anonymize(text)[0] == text
 
 
+def test_allowlist_also_wins_over_the_table_of_earlier_runs() -> None:
+    """A value an earlier run put in the table is kept once a person allows it."""
+    mapping = PseudonymMap()
+    mapping.number("address", "Santo Exemplo dos Olivais")  # taken for an address before
+    text = "Freguesia: Santo Exemplo dos Olivais"
+    assert "Olivais" not in TextAnonymizer.for_verification(mapping).anonymize(text)[0]
+
+    allow = Allowlist.from_items([("address", "Santo Exemplo dos Olivais")])
+    engine = TextAnonymizer(mapping, allowlist=allow)
+    engine.include_table()
+
+    assert engine.anonymize(text)[0] == text
+    assert TextAnonymizer.for_verification(mapping, allow).residuals(text) == []
+
+
 def test_residuals_find_real_values_and_accept_the_output() -> None:
     mapping = PseudonymMap()
     engine = TextAnonymizer(mapping, [JOAO, Seed("nif", NIF_A), Seed("email", "joao@mail.pt")])

@@ -168,10 +168,13 @@ class TextAnonymizer:
         """Also replace every real value already in the table (other projects, earlier runs).
 
         The verification looks for all of them, so the transformation must know them too.
+        A value confirmed as a false positive (overrides "allow") is left out: an earlier run may
+        have put it in the table (e.g. a freguesia taken for an address by an old cell map).
         """
         for kind, keys in self.mapping.entries.items():
             for key in list(keys):
-                self._add_key(kind, key)
+                if not self.allowlist.allows(kind, key):
+                    self._add_key(kind, key)
 
     # ------------------------------------------------------------ seeds
 

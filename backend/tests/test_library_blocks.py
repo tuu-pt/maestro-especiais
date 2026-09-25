@@ -101,7 +101,7 @@ def entries(b: TemplateBlock, mode: str | None = None) -> list[dict[str, Any]]:
 def test_every_section_of_both_mdj_is_a_proposed_block(db: Session, seeded: dict[str, int]) -> None:
     blocks = db.scalars(select(TemplateBlock).order_by(TemplateBlock.order)).all()
 
-    assert seeded["blocks"] == len(blocks) == 41
+    assert seeded["blocks"] == len(blocks) == 42  # 41 sections and 1 of the skeleton
     assert all(b.status == "proposed" and b.doc_type == "MDJ" for b in blocks)
     assert [b.kind for b in blocks[:2]] == ["cover", "index"] and blocks[-1].kind == "signature"
     assert {b.mode for b in blocks} == {"fixed", "parametric", "adaptive"}
@@ -211,7 +211,7 @@ def test_seeding_again_keeps_the_curator_decisions(db: Session, seeded: dict[str
     assert again["blocks"] == seeded["blocks"] - 1  # the approved one is not rewritten
     db.refresh(b)
     assert (b.status, b.title) == ("approved", "Legislação (editado)")
-    assert db.scalars(select(TemplateBlock)).all().__len__() == 41
+    assert len(db.scalars(select(TemplateBlock)).all()) == 42
 
 
 # ---------------------------------------------------------------- no project or personal data

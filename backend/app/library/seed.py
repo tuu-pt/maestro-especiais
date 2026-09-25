@@ -17,6 +17,8 @@ from app.knowledge.sources import unique_files
 from app.library.classify import ArchiveText, ProjectDoc, ProposedBlock, classify
 from app.library.docx_blocks import split
 from app.library.facts import Fact, cover_facts, ficha_facts, signature_facts
+from app.library.rules import parse
+from app.library.skeleton import SKELETON_ONLY, rule_for
 from app.library.sources import reference_documents
 from app.models import ArchiveChunk, ArchiveDoc, SourceDocument, TemplateBlock
 
@@ -50,6 +52,24 @@ def project_docs(db: Session, fixtures: Path, code: str) -> dict[str, ProjectDoc
     return docs
 
 
+def with_skeleton(blocks: list[ProposedBlock], doc_type: str) -> list[ProposedBlock]:
+    """Add the blocks of SPEC 8.3 no reference document has, empty, after their neighbour."""
+    out = list(blocks)
+    for item in SKELETON_ONLY:
+        prefix = f"ele.{doc_type.lower()}."
+        if not item.key.startswith(prefix) or any(b.key == item.key for b in out):
+            continue
+        at = next((i + 1 for i, b in enumerate(out) if b.key == item.after), len(out))
+        out.insert(at, ProposedBlock(
+            key=item.key, doc_type=doc_type, kind="block", level=item.level, title=item.title,
+            order=0, mode="adaptive", entries=[], projects=[], source_refs=[], rels={},
+            notes=["Esqueleto 8.3: nenhum projeto de referência tem este bloco; falta o texto."],
+        ))  # fmt: skip
+    for n, b in enumerate(out, start=1):
+        b.order = n
+    return out
+
+
 def _write_blocks(db: Session, blocks: list[ProposedBlock]) -> int:
     existing = {
         (b.doc_type, b.key): b
@@ -72,6 +92,8 @@ def _write_blocks(db: Session, blocks: list[ProposedBlock]) -> int:
         row.projects = proposed.projects
         row.source_refs = proposed.source_refs
         row.notes = proposed.notes
+        row.activation_rule = rule_for(proposed.key)
+        row.activation_ast = parse(row.activation_rule)
         row.archive_refs = (
             [f"arc:{p}:{proposed.key}" for p in proposed.projects]
             if any(e.mode == "adaptive" for e in proposed.entries)
@@ -113,6 +135,7 @@ def seed_blocks(
     for doc_type in doc_types:
         docs = [p[doc_type] for p in per_project.values() if doc_type in p]
         proposed, archive = classify(doc_type, docs)
+        proposed = with_skeleton(proposed, doc_type)
         blocks += _write_blocks(db, proposed)
         chunks += _write_archive(db, [a for a in archive if (a.project, doc_type) in sources],
                                  sources)  # fmt: skip

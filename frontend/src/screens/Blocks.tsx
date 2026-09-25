@@ -179,6 +179,7 @@ function BlockView({ id }: { id: string }) {
             <Chip key={p}>{p}</Chip>
           ))}
         </div>
+        {b.archive_refs.length ? <p className={s.key}>Arquivo: {b.archive_refs.join(" · ")}</p> : null}
         <p className={s.muted}>
           Modo {b.mode === "fixed" ? "fixo" : b.mode === "parametric" ? "paramétrico" : "adaptativo"}:{" "}
           {MODE_TEXT[b.mode]}.{b.reviewed_at ? ` ${STATUS[b.status].label} em ${formatDateTime(b.reviewed_at)}.` : ""}
@@ -249,9 +250,7 @@ function EntryView({
           <WithPlaceholders text={e.text} labels={b.labels} />
         </p>
       ) : e.mode === "adaptive" ? (
-        <p className={s.muted}>
-          O texto é adaptado a cada projeto na Fase 4, a partir do arquivo ({b.archive_refs.join(", ")}).
-        </p>
+        <p className={s.muted}>Adaptado a cada projeto na Fase 4, a partir do arquivo.</p>
       ) : null}
       {e.mode !== "fixed" || e.note ? (
         <div className={s.sides} aria-label="Evidência lado a lado">

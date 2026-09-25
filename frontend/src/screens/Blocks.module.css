@@ -139,6 +139,7 @@
 .rule {
   display: block;
   font-family: var(--f-mono);
+  font-variant-ligatures: none; /* "!=" and ">=" as typed, not as ≠ ≥ */
   font-size: 12px;
   padding: 6px 8px;
   background: var(--surface-2);
@@ -242,6 +243,7 @@
 }
 .mono {
   font-family: var(--f-mono);
+  font-variant-ligatures: none;
 }
 .actions,
 .form {

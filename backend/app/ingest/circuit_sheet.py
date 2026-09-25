@@ -150,7 +150,7 @@ def _open_conflict(circuit: Circuit, name: str) -> FichaConflict | None:
     return next((c for c in circuit.conflicts if c.field == name and c.resolved_at is None), None)
 
 
-def _compare(db: Session, sheet: CircuitSheet, circuit: Circuit) -> int:
+def compare_sheet(db: Session, sheet: CircuitSheet, circuit: Circuit) -> int:
     opened = 0
     for name, item in sheet.values.items():
         ours = getattr(circuit, name, None)
@@ -192,6 +192,21 @@ def _compare(db: Session, sheet: CircuitSheet, circuit: Circuit) -> int:
     return opened
 
 
+def drop_open_conflicts(db: Session, sheet: CircuitSheet, revision: FichaRevision) -> None:
+    """Unresolved conflicts this sheet opened: they go when the sheet is linked elsewhere."""
+    mine = str(sheet.source_file_id) if sheet.source_file_id else None
+    for circuit in revision.circuits:
+        for conflict in list(circuit.conflicts):
+            ours = any(
+                x["source_type"] == SOURCE_TYPE and x.get("source_file_id") == mine
+                for x in conflict.candidates
+            )
+            if conflict.resolved_at is None and ours:
+                circuit.conflicts.remove(conflict)
+                db.delete(conflict)
+    db.flush()
+
+
 def link_and_compare(db: Session, revision: FichaRevision) -> int:
     """Link every sheet not linked by a person, then compare each linked sheet. New conflicts."""
     db.flush()
@@ -206,11 +221,14 @@ def link_and_compare(db: Session, revision: FichaRevision) -> int:
                 if sheet.origin_hint and sheet.destination_hint
                 else []
             )
-            sheet.circuit_ids = [str(ids[0])] if len(ids) == 1 else []
+            new_ids = [str(ids[0])] if len(ids) == 1 else []
+            if new_ids != sheet.circuit_ids:
+                drop_open_conflicts(db, sheet, revision)
+            sheet.circuit_ids = new_ids
             sheet.link_status = "rule" if len(ids) == 1 else "unlinked"
         for cid in sheet.circuit_ids:
             if cid in circuits:
-                opened += _compare(db, sheet, circuits[cid])
+                opened += compare_sheet(db, sheet, circuits[cid])
     db.flush()
     return opened
 

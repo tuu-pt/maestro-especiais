@@ -21,6 +21,7 @@ from sqlalchemy.orm import Session
 
 from app.ingest import consolidate
 from app.ingest.base import Candidate, ReadResult, to_number
+from app.ingest.bom_links import board_name, link_for
 from app.ingest.detect import fold
 from app.ingest.pipeline import ReaderError
 from app.models import BomItem, ProjectFile
@@ -37,7 +38,6 @@ COLUMNS: tuple[tuple[str, str], ...] = (
 # Identification rows above the header: label → ficha key (SPEC 7.2).
 ID_LABELS = {"designacao": "id.obra.designacao", "adjudicante": "id.requerente.nome"}
 _CODE = re.compile(r"^\d+(?:\.\d+)*$")
-_BOARD = re.compile(r"^Q[.\s]?[A-Z0-9]", re.I)
 
 
 @dataclass
@@ -126,11 +126,6 @@ def _identification(rows: list[tuple[Any, ...]], header: int, sheet: str) -> lis
     return out
 
 
-def _board_name(designation: str) -> str | None:
-    name = re.sub(r"\s*\(.*?\)\s*$", "", designation).strip()
-    return name if _BOARD.match(name) and len(name) <= 30 else None
-
-
 def read(data: bytes) -> BomReading:
     try:
         workbook = openpyxl.load_workbook(io.BytesIO(data), data_only=True)
@@ -169,7 +164,7 @@ def _read_sheet(title: str, rows: list[tuple[Any, ...]], header: int) -> BomRead
         line = _line(title, r, cell, texts)
         reading.lines.append(line)
         if line.kind == "article" and line.designation:
-            board = _board_name(line.designation)
+            board = board_name(line.designation)
             if board and board not in boards:
                 boards.append(board)
     if boards:
@@ -215,24 +210,41 @@ def _line(title: str, r: int, cell: dict[str, Any], texts: list[Any]) -> BomLine
 def add_reading(db: Session, file: ProjectFile, reading: BomReading) -> str:
     """Store the lines (replacing the previous file of the same variant) and merge the values."""
     revision = consolidate.draft_revision(db, file.project_id, None)
+    # Links made by a person survive a newer file: same code and designation, same link.
+    manual = {
+        (i.code, i.designation): (i.link_key, i.linked_by, i.linked_at)
+        for i in revision.bom_items
+        if i.variant == reading.variant and i.link_status == "manual"
+    }
     db.execute(
         delete(BomItem).where(
             BomItem.revision_id == revision.id, BomItem.variant == reading.variant
         )
     )
+    linked = 0
     for line in reading.lines:
-        db.add(
-            BomItem(
-                revision_id=revision.id, source_file_id=file.id, variant=reading.variant,
-                row_index=line.row_index, source_ref=line.source_ref, code=line.code,
-                level=line.level, parent_code=line.parent_code, kind=line.kind,
-                designation=line.designation, unit=line.unit, quantity=line.quantity,
-                unit_price=line.unit_price, total=line.total, chapter_total=line.chapter_total,
-                link_status="unlinked",
-            )
+        item = BomItem(
+            revision_id=revision.id, source_file_id=file.id, variant=reading.variant,
+            row_index=line.row_index, source_ref=line.source_ref, code=line.code,
+            level=line.level, parent_code=line.parent_code, kind=line.kind,
+            designation=line.designation, unit=line.unit, quantity=line.quantity,
+            unit_price=line.unit_price, total=line.total, chapter_total=line.chapter_total,
+            link_status="unlinked",
         )  # fmt: skip
+        if line.kind == "article":
+            kept = manual.get((line.code, line.designation))
+            rule = link_for(line.designation)
+            if kept:
+                item.link_key, item.linked_by, item.linked_at = kept
+                item.link_status = "manual" if kept[0] else "unlinked"
+            elif rule:
+                item.link_key, item.link_rule, item.link_status = rule.key, rule.rule, "rule"
+            linked += item.link_status != "unlinked"
+        db.add(item)
+    db.expire(revision, ["bom_items"])
     reading.result.warnings = reading.warnings
     summary = consolidate.apply(db, file, reading.result)
     articles = sum(1 for line in reading.lines if line.kind == "article")
     label = "LPU" if reading.variant == "lpu" else "MQT"
-    return f"{label}: {articles} artigos · {summary}"
+    counts = f"{linked} associados, {articles - linked} por associar"
+    return f"{label}: {articles} artigos ({counts}) · {summary}"

@@ -19,6 +19,7 @@ from app.ingest.circuit_sheet import compare_sheet, drop_open_conflicts
 from app.ingest.consolidate import latest_revision, open_conflict
 from app.ingest.keys import GROUPS, KEYS
 from app.models import (
+    BomItem,
     Circuit,
     CircuitSheet,
     FichaConflict,
@@ -123,6 +124,31 @@ class CircuitSheetOut(BaseModel):
     link_status: str
 
 
+class BomItemOut(BaseModel):
+    """One MQT/LPU line and the ficha key it is associated with."""
+
+    id: uuid.UUID
+    variant: str
+    source_ref: str
+    source_file: str | None
+    code: str | None
+    level: int
+    kind: str
+    designation: str | None
+    unit: str | None
+    quantity: Decimal | None
+    link_key: str | None
+    link_label: str | None
+    link_status: str
+    link_rule: str | None
+
+
+class LinkKeyOut(BaseModel):
+    key: str
+    label: str
+    group: str
+
+
 class RevisionOut(BaseModel):
     id: uuid.UUID
     label: str
@@ -138,6 +164,8 @@ class FichaOut(BaseModel):
     groups: list[GroupOut]
     circuits: list[CircuitOut]
     circuit_sheets: list[CircuitSheetOut]
+    bom_items: list[BomItemOut]
+    bom_link_keys: list[LinkKeyOut]
     open_conflicts: int
     can_confirm: bool
     cal01_note: str
@@ -225,11 +253,30 @@ def _sheet_out(s: CircuitSheet, names: dict[str, str]) -> CircuitSheetOut:
     return CircuitSheetOut.model_validate(data)
 
 
+def _bom_out(i: BomItem, names: dict[str, str]) -> BomItemOut:
+    key = KEYS.get(i.link_key or "")
+    data = {
+        **i.__dict__,
+        "source_file": names.get(str(i.source_file_id)),
+        "link_label": key.label_pt if key else None,
+    }
+    return BomItemOut.model_validate(data)
+
+
+# Keys an MQT/LPU article can be associated with by hand (not personal, not identification).
+BOM_LINK_KEYS = [
+    LinkKeyOut(key=k, label=v.label_pt, group=v.group)
+    for k, v in KEYS.items()
+    if v.group in {"Distribuição", "Sistemas", "Equipamentos", "Alimentação"} and not v.personal
+]
+
+
 def _sheet_names(db: Session, revision: FichaRevision | None) -> dict[str, str]:
     if revision is None:
         return {}
     ids = {s.source_file_id for s in revision.circuit_sheets if s.source_file_id}
     ids |= {c.source_file_id for c in revision.circuits if c.source_file_id}
+    ids |= {i.source_file_id for i in revision.bom_items if i.source_file_id}
     return _file_names(db, ids)
 
 
@@ -260,6 +307,8 @@ def read_ficha(project_id: uuid.UUID, db: DB, _: CurrentUser) -> FichaOut:
         groups=groups,
         circuits=circuits,
         circuit_sheets=sheets,
+        bom_items=[_bom_out(i, file_names) for i in (current.bom_items if current else [])],
+        bom_link_keys=BOM_LINK_KEYS,
         open_conflicts=open_count,
         can_confirm=bool(current and current.status == "draft" and values and not open_count),
         cal01_note=cal_01.PENDING_NOTE,
@@ -431,3 +480,31 @@ def link_sheet(sheet_id: uuid.UUID, body: LinkSheetIn, db: DB, user: Writer) -> 
            project_id=revision.project_id)  # fmt: skip
     db.commit()
     return _sheet_out(sheet, _sheet_names(db, revision))
+
+
+class LinkBomIn(BaseModel):
+    key: str | None = Field(description="Ficha key, or null to leave the article unlinked")
+
+
+@router.post("/bom-items/{item_id}/link")
+def link_bom_item(item_id: uuid.UUID, body: LinkBomIn, db: DB, user: Writer) -> BomItemOut:
+    """A person associates an MQT/LPU article with a ficha key (or removes the association)."""
+    item = db.get(BomItem, item_id)
+    if item is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Artigo não encontrado.")
+    if item.revision.status != "draft":
+        raise HTTPException(status.HTTP_409_CONFLICT, "A revisão já está confirmada.")
+    if item.kind != "article":
+        raise HTTPException(status.HTTP_409_CONFLICT, "Só se associam artigos.")
+    if body.key is not None and body.key not in {k.key for k in BOM_LINK_KEYS}:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "Chave da ficha inválida.")
+    item.link_key = body.key
+    item.link_status = "manual" if body.key else "unlinked"
+    item.link_rule = None
+    item.linked_by, item.linked_at = user.id, datetime.now(UTC)
+    record(db, user, "bom_item.linked", "bom_item", item.id,
+           {"code": item.code, "variant": item.variant, "link_key": body.key},
+           project_id=item.revision.project_id)  # fmt: skip
+    db.commit()
+    names = _file_names(db, {item.source_file_id} if item.source_file_id else set())
+    return _bom_out(item, names)

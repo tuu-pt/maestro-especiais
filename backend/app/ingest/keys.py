@@ -57,6 +57,14 @@ KEYS: dict[str, KeyInfo] = {
     # Distribuição (Tabela de Cálculo)
     "ele.quadros": KeyInfo("Distribuição", "Quadros"),
     "ele.cabos": KeyInfo("Distribuição", "Cabos"),
+    # Sistemas and Equipamentos: for now only targets of MQT/LPU article links (Phase 2)
+    "sys.fv": KeyInfo("Sistemas", "Fotovoltaico"),
+    "sys.ve": KeyInfo("Sistemas", "Carregamento de veículos elétricos"),
+    "sys.ups": KeyInfo("Sistemas", "UPS"),
+    "sys.iluminacao_seguranca": KeyInfo("Sistemas", "Iluminação de segurança"),
+    "eq.portinhola": KeyInfo("Equipamentos", "Portinhola"),
+    "eq.luminarias": KeyInfo("Equipamentos", "Luminárias"),
+    "eq.quadros_modelo": KeyInfo("Equipamentos", "Quadros (modelo)"),
 }
 
 

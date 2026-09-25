@@ -66,6 +66,12 @@ def describe(action: str, payload: dict[str, Any]) -> str:
         case "ficha.circuit_conflict_resolved":
             how = "valor manual" if payload.get("choice") == "manual" else "candidato escolhido"
             return f"Resolveu o conflito do troço {payload.get('circuit', '')} ({how})"
+        case "bom_item.linked":
+            target = KEYS.get(str(payload.get("link_key")))
+            art = f"artigo {payload.get('code') or ''}".strip()
+            if target:
+                return f"Associou o {art} a «{target.label_pt}»"
+            return f"Retirou a associação do {art}"
         case "circuit_sheet.linked":
             n = int(payload.get("circuits") or 0)
             where = f"a {n} troço{'s' if n != 1 else ''}" if n else "sem troço"

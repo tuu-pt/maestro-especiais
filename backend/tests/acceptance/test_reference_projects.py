@@ -10,9 +10,12 @@ from typing import Any
 
 import pytest
 from conftest import Api
+from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from app.ingest import ficha_eletrotecnica, tabela_calculo
 from app.ingest.detect import detect
+from app.models import CircuitSheet, FichaConflict
 
 pytestmark = pytest.mark.usefixtures("inline_ingestion")
 
@@ -94,3 +97,52 @@ def test_r2_c10_entry_circuit_fails_i2(api: Api) -> None:
     body = load(api, "R2")
     entry = next(c for c in body["circuits"] if "portinhola" in (c["origin"] or "").casefold())
     assert entry["cal01"]["i2_iz145"] == "fail"
+
+
+# ---------------------------------------------------------------- Phase 2: 09-Folhas
+
+
+def load_with_sheets(api: Api, db: Session, code: str) -> dict[str, list[Any]]:
+    """Tabela + every 09-Folha of the project; conflicts per "destination field"."""
+    reference_files(code)  # skips when the fixtures are missing
+    client = api.as_("redator")
+    project_id = client.post("/api/projects", json={"code": code, "name": code}).json()["id"]
+    tabela = next(
+        p
+        for p in (FIXTURES / code).rglob("*.xlsx")
+        if detect(p.name, p.read_bytes()).kind == "calc_summary"
+    )
+    sheets = sorted((FIXTURES / code).rglob("*.xls"))
+    for path in [tabela, *sheets]:
+        response = client.post(
+            f"/api/projects/{project_id}/files", files={"file": (path.name, path.read_bytes())}
+        )
+        assert response.status_code == 202, response.text
+    listed = client.get(f"/api/projects/{project_id}/files").json()
+    assert {f["ingest_status"] for f in listed} == {"done"}, listed
+    rows = db.scalars(select(FichaConflict).where(FichaConflict.circuit_id.is_not(None)))
+    return {
+        f"{c.circuit.destination if c.circuit else None} {c.field}": [
+            x["value"] for x in c.candidates
+        ]
+        for c in rows
+    }
+
+
+def test_r1_sheets_agree_with_the_tabela_except_one_voltage_drop(api: Api, db: Session) -> None:
+    """Control case (decision of 24 Sep 2026): only Q.E.G. → Q.P.1.2 differs, 0,9 % vs 0,76 %."""
+    conflicts = load_with_sheets(api, db, "R1")
+    assert list(conflicts) == ["Q.P.1.2 vd_section_pct"]
+    tabela, sheet = conflicts["Q.P.1.2 vd_section_pct"]
+    assert tabela == 0.9 and round(sheet, 2) == 0.76
+    links = {s.link_status for s in db.scalars(select(CircuitSheet))}
+    assert links == {"rule"}  # the 6 sheets found their circuit by file name
+
+
+def test_r2_sheets_show_the_real_divergences(api: Api, db: Session) -> None:
+    conflicts = load_with_sheets(api, db, "R2")
+    assert {"Q.E.G. in_a", "Q.E.G. i2_a", "Q.E.G. length_m", "Q.AVAC i2_a"} <= set(conflicts)
+    assert conflicts["Q.E.G. in_a"] == [315, 250]
+    assert conflicts["Q.AVAC i2_a"] == [290, 42]
+    unlinked = [s for s in db.scalars(select(CircuitSheet)) if s.link_status == "unlinked"]
+    assert [(s.origin_hint, s.destination_hint) for s in unlinked] == [("QPEXT", "CVE")]

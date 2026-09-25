@@ -10,7 +10,7 @@ import openpyxl
 import xlrd
 
 # Kinds with a reader in Phase 1. The others are stored and read in Phase 2.
-READABLE_KINDS = ("ficha_eletrotecnica", "calc_summary")
+READABLE_KINDS = ("ficha_eletrotecnica", "calc_summary", "calc_circuit")
 
 FE_VERSION_CELL = "R45"
 _CALC_SHEETS = {"ib", "condutores", "tensao", "proteccao"}

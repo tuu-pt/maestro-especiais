@@ -2,7 +2,7 @@
 
 from sqlalchemy.orm import Session
 
-from app.ingest import consolidate, ficha_eletrotecnica, tabela_calculo
+from app.ingest import circuit_sheet, consolidate, ficha_eletrotecnica, tabela_calculo
 from app.ingest.pipeline import register
 from app.models import ProjectFile
 
@@ -16,4 +16,19 @@ def ficha(db: Session, file: ProjectFile, data: bytes) -> str:
 
 @register("calc_summary")
 def tabela(db: Session, file: ProjectFile, data: bytes) -> str:
-    return consolidate.apply(db, file, tabela_calculo.read(data))
+    result = tabela_calculo.read(data)
+    revision = consolidate.draft_revision(db, file.project_id, None)
+    kept = circuit_sheet.manual_links(revision)  # circuits are replaced: keep what people linked
+    summary = consolidate.apply(db, file, result)
+    circuit_sheet.restore_manual_links(db, revision, kept)
+    opened = circuit_sheet.link_and_compare(db, revision)
+    if opened:
+        summary += f" · {opened} conflito{'s' if opened > 1 else ''} com as 09-Folhas"
+    return summary
+
+
+@register("calc_circuit")
+def folha09(db: Session, file: ProjectFile, data: bytes) -> str:
+    reading = circuit_sheet.read(data, file.filename)
+    file.template_version = reading.template
+    return circuit_sheet.add_reading(db, file, reading)

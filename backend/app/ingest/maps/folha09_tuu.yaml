@@ -1,0 +1,21 @@
+# 09-Folha de Cálculo (.xls, uma por troço), modelo TUU (SPEC 8.2).
+# [A CONFIRMAR] pela equipa. Células vistas nas 6 folhas de R1 e nas 16 de R2 (data/fixtures).
+# Sem célula de versão: o modelo reconhece-se pelas folhas e pelos títulos.
+# A origem e o destino do troço não estão na folha: vêm do nome do ficheiro (boards.py).
+template: TUU_09
+signature:
+  sheets: [IB, condutores, tensao, proteccao]
+  titles:                     # texto (sem acentos, minúsculas) contido na célula
+    IB!B2: calculo corrente de servico
+    condutores!B2: seccao dos condutores
+    proteccao!B2: dimensionamento da proteccao
+cells:
+  kva: {cell: IB!H7}                   # Potência = … kVA
+  ib_a: {cell: IB!H17}                 # IB = … A
+  length_m: {cell: condutores!N8}      # Comprimento do circuito L = … metros
+  section_mm2: {cell: condutores!H47}  # Secção Fase … mm2
+  iz_a: {cell: proteccao!Z7}           # IZ corrigido (a SPEC dizia condutores!H52, o Iz antes da correção)
+  in_a: {cell: proteccao!E9}           # In = … A
+  i2_a: {cell: proteccao!J9}           # I2 = … A
+  iz145_a: {cell: proteccao!U15}       # 1,45xIZ
+  vd_section_pct: {cell: tensao!T12, scale: 100}  # queda de tensão do troço, em fração → %

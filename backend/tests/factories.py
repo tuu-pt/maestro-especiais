@@ -7,6 +7,7 @@ import io
 from typing import Any
 
 import openpyxl
+import xlwt
 
 FE_VERSION = "FE_v.20190222"
 
@@ -89,6 +90,57 @@ CALC_ROWS: list[list[Any]] = [
 
 def tabela_calculo(header: list[str] | None = None, rows: list[list[Any]] | None = None) -> bytes:
     return workbook_bytes({"Tabela": [header or CALC_HEADER, *(rows or CALC_ROWS)]})
+
+
+# ---------------------------------------------------------------- 09-Folha de Cálculo (.xls)
+
+FOLHA09_TITLES = {
+    "IB": "CÁLCULO CORRENTE DE SERVIÇO IB",
+    "condutores": "SECÇÃO DOS CONDUTORES OU CABO",
+    "tensao": "Queda de Tensão",
+    "proteccao": "Dimensionamento da Protecção",
+}
+# Q.E.G. → Q.P.1 of CALC_ROWS, as the TUU sheet writes it (voltage drop as a fraction).
+FOLHA09_VALUES: dict[str, Any] = {
+    "IB!H7": 12,
+    "IB!H17": 18.0412,
+    "condutores!N8": 18,
+    "condutores!H47": 6,
+    "proteccao!Z7": 32,
+    "proteccao!E9": 25,
+    "proteccao!J9": 36.25,
+    "proteccao!U15": 46.4,
+    "tensao!T12": 0.011,
+}
+
+
+def _xls_cell(ref: str) -> tuple[str, int, int]:
+    sheet, cell = ref.split("!")
+    letters = "".join(c for c in cell if c.isalpha())
+    column = 0
+    for c in letters:
+        column = column * 26 + ord(c) - 64
+    return sheet, int(cell[len(letters) :]) - 1, column - 1
+
+
+def folha09(
+    titles: dict[str, str] | None = None, sheets: tuple[str, ...] | None = None, **cells: Any
+) -> bytes:
+    """A 09-Folha with the TUU layout; cell overrides as IB_H7=…, None to leave a cell empty."""
+    values = {**FOLHA09_VALUES, **{k.replace("_", "!", 1): v for k, v in cells.items()}}
+    book = xlwt.Workbook()
+    names = sheets or ("Dimensionamento", "IB", "condutores", "tensao", "proteccao", "impressao")
+    ws = {name: book.add_sheet(name) for name in names}
+    for name, title in (titles or FOLHA09_TITLES).items():
+        if name in ws:
+            ws[name].write(1, 1, title)
+    for ref, value in values.items():
+        sheet, row, col = _xls_cell(ref)
+        if sheet in ws and value is not None:
+            ws[sheet].write(row, col, value)
+    buffer = io.BytesIO()
+    book.save(buffer)
+    return buffer.getvalue()
 
 
 def mqt() -> bytes:

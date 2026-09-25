@@ -233,6 +233,9 @@ describe("ficha do projeto: 09-Folhas, MQT/LPU and drawings", () => {
     const user = userEvent.setup();
 
     expect(await screen.findByRole("heading", { name: "Conflitos por resolver (1)" })).toBeInTheDocument();
+    // Conflicts of a circuit with its 09-Folha are grouped and folded: one line per circuit.
+    expect(screen.queryByRole("region", { name: /Portinhola → Q.E.G. · In/ })).not.toBeInTheDocument();
+    await user.click(screen.getByRole("heading", { name: "Portinhola → Q.E.G.: difere da 09-Folha" }));
     const box = screen.getByRole("region", { name: "Portinhola → Q.E.G. · In: as fontes não coincidem" });
     expect(within(box).getByText(/09-FOLHA · ARM-QEG.xls/)).toBeInTheDocument();
     const table = screen.getByRole("region", { name: "Troços da Tabela de Cálculo" });
@@ -285,7 +288,11 @@ describe("ficha do projeto: 09-Folhas, MQT/LPU and drawings", () => {
     renderAt("/projetos/p1/ficha");
     const user = userEvent.setup();
 
-    const table = await screen.findByRole("region", { name: "Tabela dos artigos do LPU" });
+    // Folded by default, with the count in its title.
+    expect(await screen.findByText("1 de 2 por associar")).toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "Tabela dos artigos do LPU" })).not.toBeInTheDocument();
+    await user.click(screen.getByRole("heading", { name: "Artigos do LPU" }));
+    const table = screen.getByRole("region", { name: "Tabela dos artigos do LPU" });
     expect(within(table).getByText("XAV 4(1x185)mm²")).toBeInTheDocument();
     expect(within(table).queryByText("Q.E.G.")).not.toBeInTheDocument(); // "Por associar" first
     expect(screen.getByRole("button", { name: "Por associar (1)" })).toHaveAttribute("aria-pressed", "true");
@@ -308,5 +315,26 @@ describe("ficha do projeto: 09-Folhas, MQT/LPU and drawings", () => {
     expect(screen.getByRole("note")).toHaveTextContent("O índice lista 2 folhas e o PDF tem 1 página. Sem página no PDF: EL002.");
     const index = screen.getByRole("region", { name: "Folhas do índice" });
     expect(within(index).getByText("Sem página")).toBeInTheDocument();
+  });
+});
+
+describe("long sections fold", () => {
+  it("opens and closes, and the index stays closed when it matches the PDF", async () => {
+    serve(fichaWith([
+      value({ id: "p1", key: "pd.indice", label: "Índice das folhas", unit: null, source_type: "drawing",
+        value: [{ codigo: "EL001", titulo: "ÍNDICE", data: "06/26", revisao: null }] }),
+    ], { drawings_check: { index_sheets: 1, pages: 1, missing_in_pdf: [], not_in_index: [], matches: true } })); // prettier-ignore
+    renderAt("/projetos/p1/ficha");
+    const user = userEvent.setup();
+
+    const heading = await screen.findByRole("heading", { name: "Índice das peças desenhadas" });
+    expect(screen.getByText("Índice e PDF coincidem")).toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "Folhas do índice" })).not.toBeInTheDocument();
+
+    // The keyboard (Enter on the summary) is checked in a real browser: e2e/ficha-layout.spec.ts.
+    await user.click(heading);
+    expect(screen.getByRole("region", { name: "Folhas do índice" })).toBeInTheDocument();
+    await user.click(heading);
+    expect(screen.queryByRole("region", { name: "Folhas do índice" })).not.toBeInTheDocument();
   });
 });

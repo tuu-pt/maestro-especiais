@@ -1,6 +1,6 @@
 /** Base components (SPEC 13). Colours and fonts come only from tokens.css. */
 
-import type { ButtonHTMLAttributes, ReactNode } from "react";
+import { type ButtonHTMLAttributes, type ReactNode, useState } from "react";
 import { Link } from "react-router";
 
 import type { SourceType } from "../api/types";
@@ -191,5 +191,41 @@ export function ErrorNote({ children }: { children: ReactNode }) {
     <p role="alert" className={s.error}>
       {children}
     </p>
+  );
+}
+
+/**
+ * A long section that can be folded (native details/summary: keyboard and screen readers work).
+ * The title is a heading inside the summary; `meta` (counts, a status pill) stays visible closed.
+ */
+export function Collapsible({
+  title,
+  meta,
+  defaultOpen = true,
+  level = 2,
+  children,
+}: {
+  title: string;
+  meta?: ReactNode;
+  defaultOpen?: boolean;
+  level?: 2 | 3;
+  children: ReactNode;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+  const Heading = level === 2 ? "h2" : "h3";
+  return (
+    <details className={cx(s.collapsible, level === 3 && s.nested)} open={open}>
+      <summary
+        className={s.collapsibleSummary}
+        onClick={(e) => {
+          e.preventDefault(); // one source of truth for the state, in every browser and in jsdom
+          setOpen((o) => !o);
+        }}
+      >
+        <Heading className={s.collapsibleTitle}>{title}</Heading>
+        {meta ? <span className={s.collapsibleMeta}>{meta}</span> : null}
+      </summary>
+      {open ? <div className={s.collapsibleBody}>{children}</div> : null}
+    </details>
   );
 }

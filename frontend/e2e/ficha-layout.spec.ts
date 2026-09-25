@@ -110,3 +110,20 @@ test("ficha with data: fits a 400 px phone", async ({ page }, info) => {
   expect(await horizontalOverflow(page)).toBeLessThanOrEqual(0);
   await screenshot(page, info, "ficha-com-dados-telemovel");
 });
+
+test("long sections fold and open with the keyboard", async ({ page }) => {
+  await page.goto("/projetos/p1/ficha");
+  const articles = page.getByRole("region", { name: "Tabela dos artigos do LPU" });
+  await expect(page.getByText("1 de 2 por associar")).toBeVisible();
+  await expect(articles).toHaveCount(0); // folded by default
+
+  await page.locator("summary", { hasText: "Artigos do LPU" }).focus();
+  await page.keyboard.press("Enter");
+  await expect(articles).toBeVisible();
+  await page.keyboard.press(" ");
+  await expect(articles).toHaveCount(0);
+
+  // Circuit conflicts are grouped per circuit; the index is open because it does not match the PDF.
+  await expect(page.getByRole("heading", { name: "Portinhola → Q.E.G.: difere da 09-Folha" })).toBeVisible();
+  await expect(page.getByRole("region", { name: "Folhas do índice" })).toBeVisible();
+});

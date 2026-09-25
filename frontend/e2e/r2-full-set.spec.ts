@@ -52,6 +52,8 @@ test("R2 full set: new conflicts, resolve one, link an article by hand", async (
   await page.getByRole("link", { name: "Ver a ficha do projeto →" }).click();
   await expect(page.getByRole("heading", { name: /^Conflitos por resolver \(\d+\)$/ })).toBeVisible();
   // New in Phase 2: a circuit conflict from a 09-Folha and C7 from the LPU (C6 is still there).
+  // Circuit conflicts are grouped per circuit and folded.
+  await page.getByRole("heading", { name: "Portinhola → Q.E.G.: difere da 09-Folha" }).click();
   const inConflict = page.getByRole("region", { name: "Portinhola → Q.E.G. · In: as fontes não coincidem" });
   await expect(inConflict).toBeVisible();
   await expect(page.getByRole("region", { name: "Requerente: as fontes não coincidem" })).toBeVisible();
@@ -68,6 +70,7 @@ test("R2 full set: new conflicts, resolve one, link an article by hand", async (
   await expect(inConflict).toHaveCount(0);
 
   // Link an article that no rule recognized.
+  await page.getByRole("heading", { name: "Artigos do LPU" }).click(); // folded by default
   const articles = page.getByRole("region", { name: "Tabela dos artigos do LPU" });
   await expect(page.getByRole("button", { name: /^Por associar \(\d+\)$/ })).toHaveAttribute("aria-pressed", "true");
   const firstSelect = articles.getByRole("combobox").first();

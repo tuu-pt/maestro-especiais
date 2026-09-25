@@ -27,6 +27,7 @@ import {
   ButtonLink,
   Buttons,
   Card,
+  Collapsible,
   DataTable,
   EmptyState,
   ErrorNote,
@@ -189,20 +190,53 @@ function manualValue(text: string): unknown {
   return trimmed !== "" && Number.isFinite(number) && /^[\d\s.,-]+$/.test(trimmed) ? number : trimmed;
 }
 
-function openConflicts(ficha: Ficha): Open[] {
-  const values = ficha.groups
+function valueConflicts(ficha: Ficha): Open[] {
+  return ficha.groups
     .flatMap((g) => g.values)
     .filter((v) => v.conflict)
     .map((v) => ({ id: v.conflict!.id, label: v.label, unit: v.unit, candidates: v.conflict!.candidates }));
-  const circuits = ficha.circuits.flatMap((c) =>
-    c.conflicts.map((k) => ({
-      id: k.id,
-      label: `${c.origin} → ${c.destination} · ${k.label}`,
-      unit: null,
-      candidates: k.candidates,
-    })),
+}
+
+/** Conflicts of each circuit with its 09-Folha, grouped: one circuit can have several fields. */
+function circuitConflicts(ficha: Ficha): { circuit: string; conflicts: Open[] }[] {
+  return ficha.circuits
+    .filter((c) => c.conflicts.length)
+    .map((c) => ({
+      circuit: `${c.origin} → ${c.destination}`,
+      conflicts: c.conflicts.map((k) => ({
+        id: k.id,
+        label: `${c.origin} → ${c.destination} · ${k.label}`,
+        unit: null,
+        candidates: k.candidates,
+      })),
+    }));
+}
+
+function Conflicts({ ficha, projectId, canResolve }: { ficha: Ficha; projectId: string; canResolve: boolean }) {
+  const values = valueConflicts(ficha);
+  const circuits = circuitConflicts(ficha);
+  const total = values.length + circuits.reduce((n, g) => n + g.conflicts.length, 0);
+  if (!total) return null;
+  return (
+    <Collapsible title={`Conflitos por resolver (${total})`}>
+      {values.map((c) => (
+        <ConflictBox key={c.id} projectId={projectId} conflict={c} canResolve={canResolve} />
+      ))}
+      {circuits.map((g) => (
+        <Collapsible
+          key={g.circuit}
+          level={3}
+          defaultOpen={false}
+          title={`${g.circuit}: difere da 09-Folha`}
+          meta={<Pill tone="warn">{`${g.conflicts.length} campo${g.conflicts.length > 1 ? "s" : ""}`}</Pill>}
+        >
+          {g.conflicts.map((c) => (
+            <ConflictBox key={c.id} projectId={projectId} conflict={c} canResolve={canResolve} />
+          ))}
+        </Collapsible>
+      ))}
+    </Collapsible>
   );
-  return [...values, ...circuits];
 }
 
 // ---------------------------------------------------------------- circuits and 09-Folhas
@@ -389,19 +423,19 @@ function Drawings({ ficha }: { ficha: Ficha }) {
   const rows = index.value as { codigo: string; titulo: string; data: string | null; revisao: string | null }[];
   const missing = new Set(check?.missing_in_pdf ?? []);
   return (
-    <section aria-labelledby="drawings-title">
-      <div className={s.circuitsHead}>
-        <h2 id="drawings-title" className={s.h2}>
-          Índice das peças desenhadas
-        </h2>
-        {check ? (
+    <Collapsible
+      title="Índice das peças desenhadas"
+      defaultOpen={!!check && !check.matches}
+      meta={
+        check ? (
           check.matches ? (
             <Pill tone="ok">Índice e PDF coincidem</Pill>
           ) : (
             <Pill tone="warn">Índice e PDF não coincidem</Pill>
           )
-        ) : null}
-      </div>
+        ) : null
+      }
+    >
       {check && !check.matches ? (
         <p className={s.warnNote} role="note">
           {`O índice lista ${check.index_sheets} folha${check.index_sheets === 1 ? "" : "s"} e o PDF tem ${check.pages} página${check.pages === 1 ? "" : "s"}.`}
@@ -434,7 +468,7 @@ function Drawings({ ficha }: { ficha: Ficha }) {
           ))}
         </tbody>
       </DataTable>
-    </section>
+    </Collapsible>
   );
 }
 
@@ -458,11 +492,16 @@ function BomItems({ ficha, projectId, canLink }: { ficha: Ficha; projectId: stri
     ["all", "Todos", articles.length],
   ];
   return (
-    <section aria-labelledby="bom-title">
+    <Collapsible
+      title={`Artigos do ${variant}`}
+      defaultOpen={false}
+      meta={
+        <Pill tone={unlinkedCount ? "mute" : "ok"}>
+          {unlinkedCount ? `${unlinkedCount} de ${articles.length} por associar` : `${articles.length} associados`}
+        </Pill>
+      }
+    >
       <div className={s.circuitsHead}>
-        <h2 id="bom-title" className={s.h2}>
-          Artigos do {variant}
-        </h2>
         <div className={s.filters} role="group" aria-label="Filtrar artigos">
           {counts.map(([f, label, n]) => (
             <button key={f} type="button" aria-pressed={filter === f} onClick={() => setFilter(f)}>
@@ -492,7 +531,7 @@ function BomItems({ ficha, projectId, canLink }: { ficha: Ficha; projectId: stri
         </tbody>
       </DataTable>
       {link.error ? <ErrorNote>{link.error.message}</ErrorNote> : null}
-    </section>
+    </Collapsible>
   );
 }
 
@@ -557,7 +596,6 @@ export function FichaScreen() {
     );
   }
   const revision = ficha?.revision;
-  const conflicts = ficha ? openConflicts(ficha) : [];
   const confirmReason = !revision
     ? "Ainda não há ficha-base."
     : revision.status !== "draft"
@@ -593,12 +631,7 @@ export function FichaScreen() {
       {ficha && revision ? (
         <div className={s.main}>
           <div className={s.content}>
-            {conflicts.length ? (
-              <h2 className={s.h2}>{`Conflitos por resolver (${conflicts.length})`}</h2>
-            ) : null}
-            {conflicts.map((c) => (
-              <ConflictBox key={c.id} projectId={projectId} conflict={c} canResolve={isTecnico} />
-            ))}
+            <Conflicts ficha={ficha} projectId={projectId} canResolve={isTecnico} />
             <Groups ficha={ficha} />
             <Drawings ficha={ficha} />
             <Circuits ficha={ficha} />

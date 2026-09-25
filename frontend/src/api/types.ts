@@ -40,6 +40,7 @@ export type ProjectFile = {
   template_version: string | null;
   ingest_status: IngestStatus;
   ingest_message: string | null;
+  ingest_warnings: string[];
   created_at: string;
   created_by: string | null;
 };
@@ -51,6 +52,7 @@ export type FileEvent = {
   kind: string;
   status: IngestStatus;
   message: string | null;
+  warnings?: string[];
   step: string | null;
   at: string;
 };

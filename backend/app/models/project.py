@@ -2,6 +2,7 @@
 
 import uuid
 from datetime import date
+from typing import Any
 
 from sqlalchemy import BigInteger, Date, ForeignKey, String, Text, UniqueConstraint
 from sqlalchemy.dialects.postgresql import ARRAY
@@ -53,5 +54,7 @@ class ProjectFile(Entity):
     ingest_status: Mapped[str] = mapped_column(String(20), default="pending")
     # Message for people, never with values from the file.
     ingest_message: Mapped[str | None] = mapped_column(Text)
+    # Warnings of the last reading, for people (never values from the file).
+    ingest_warnings: Mapped[list[Any]] = mapped_column(default=list, server_default="[]")
 
     project: Mapped[Project] = relationship(back_populates="files")

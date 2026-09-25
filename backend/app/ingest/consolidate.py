@@ -202,7 +202,8 @@ def apply(db: Session, file: ProjectFile, result: ReadResult) -> str:
         conflicts += 1
     circuits = _replace_circuits(db, revision, file, result)
     db.flush()
-    return _summary(len(result.values), added, circuits, conflicts, result.warnings)
+    add_warnings(file, result.warnings)
+    return _summary(len(result.values), added, circuits, conflicts)
 
 
 def _self_conflict(
@@ -259,10 +260,15 @@ def _replace_circuits(
     return len(result.circuits)
 
 
-def _summary(read: int, added: int, circuits: int, conflicts: int, warnings: list[str]) -> str:
+def add_warnings(file: ProjectFile, warnings: list[str]) -> None:
+    """Warnings go to the file, apart from the summary, so the interface can list them."""
+    file.ingest_warnings = list(dict.fromkeys([*(file.ingest_warnings or []), *warnings]))
+
+
+def _summary(read: int, added: int, circuits: int, conflicts: int) -> str:
     parts = [f"{read} valores lidos ({added} novos)"]
     if circuits:
         parts.append(f"{circuits} troços")
     if conflicts:
         parts.append(f"{conflicts} conflito{'s' if conflicts > 1 else ''} para resolver")
-    return " · ".join(parts + warnings)
+    return " · ".join(parts)

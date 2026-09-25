@@ -29,6 +29,7 @@ export const file = (over: Partial<ProjectFile> = {}): ProjectFile => ({
   template_version: "FE_v.20190222",
   ingest_status: "pending",
   ingest_message: null,
+  ingest_warnings: [],
   created_at: "2026-09-24T10:01:00Z",
   created_by: "dev:redator",
   ...over,

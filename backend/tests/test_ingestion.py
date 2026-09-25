@@ -150,3 +150,14 @@ def test_event_stream_sends_the_current_state_then_live_updates() -> None:
     received = asyncio.run(scenario())
     assert [m["event"] for m in received] == ["file", "file"]
     assert '"a"' in received[0]["data"] and '"running"' in received[1]["data"]
+
+
+@pytest.mark.usefixtures("inline_ingestion")
+def test_warnings_are_kept_apart_from_the_summary(api: Api) -> None:
+    header = [*factories.CALC_HEADER, "Observações"]
+    project_id = new_project(api)
+    upload(api, project_id, factories.tabela_calculo(header=header), "Tabela.xlsx")
+
+    [file] = api.as_("redator").get(f"/api/projects/{project_id}/files").json()
+    assert file["ingest_warnings"] == ["Coluna não reconhecida: «Observações»."]
+    assert "Observações" not in file["ingest_message"]

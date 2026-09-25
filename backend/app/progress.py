@@ -27,6 +27,7 @@ def file_event(file: ProjectFile, step: str | None = None) -> dict[str, Any]:
         "kind": file.kind,
         "status": file.ingest_status,
         "message": file.ingest_message,
+        "warnings": list(file.ingest_warnings or []),
         "step": step,
         "at": datetime.now(UTC).isoformat(timespec="seconds"),
     }

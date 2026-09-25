@@ -190,7 +190,14 @@ export function ProjectFilesScreen() {
   useProjectEvents(projectId, (event: FileEvent) => {
     client.setQueryData<ProjectFile[]>(keys.files(projectId), (old) =>
       old?.map((f) =>
-        f.id === event.file_id ? { ...f, ingest_status: event.status, ingest_message: event.message } : f,
+        f.id === event.file_id
+          ? {
+              ...f,
+              ingest_status: event.status,
+              ingest_message: event.message,
+              ingest_warnings: event.warnings ?? f.ingest_warnings,
+            }
+          : f,
       ),
     );
     if (event.status === "done" || event.status === "failed") refresh(projectId);
@@ -226,7 +233,7 @@ export function ProjectFilesScreen() {
     <Screen
       crumb={project ? `${project.code} · ${project.name}` : "Projeto"}
       title="Ficheiros do projeto"
-      description="Carregue a ficha eletrotécnica e a Tabela de Cálculo para criar a ficha-base. Os restantes ficheiros ficam guardados e são lidos na Fase 2."
+      description="Carregue os ficheiros do projeto. A ficha eletrotécnica, a Tabela de Cálculo, as 09-Folhas de Cálculo, o MQT ou a LPU e o PDF das peças desenhadas são lidos e juntam-se à ficha-base, cada valor com a sua origem. Os restantes (DWG, DOCX…) ficam guardados."
     >
       <div className={s.wiz}>
         <Steps current={step} />
@@ -240,7 +247,10 @@ export function ProjectFilesScreen() {
             onDragLeave={() => setDragging(false)}
             onDrop={onDrop}
           >
-            <p>Arraste para aqui a ficha eletrotécnica (.xlsm), a Tabela de Cálculo (.xlsx) e os restantes ficheiros do projeto</p>
+            <p>
+              Arraste para aqui os ficheiros do projeto: ficha eletrotécnica (.xlsm), Tabela de Cálculo e
+              MQT/LPU (.xlsx), 09-Folhas de Cálculo (.xls) e peças desenhadas (.pdf)
+            </p>
             <label className={s.pick}>
               Escolher ficheiros
               <input
@@ -272,6 +282,7 @@ export function ProjectFilesScreen() {
             ))}
             {(files ?? []).map((f) => {
               const [tone, label] = STATUS[f.ingest_status];
+              const warnings = f.ingest_warnings ?? [];
               return (
                 <li key={f.id} className={s.file}>
                   <span className={s.ext}>{f.filename.split(".").pop()?.toUpperCase().slice(0, 4)}</span>
@@ -281,8 +292,23 @@ export function ProjectFilesScreen() {
                       {kindLabel(f.kind)} · {fileSize(f.size_bytes)}
                       {f.ingest_message ? ` · ${f.ingest_message}` : ""}
                     </span>
+                    {f.ingest_status === "failed" ? (
+                      <span className={s.failed}>
+                        Este ficheiro não entrou na ficha-base; os outros continuam a ser lidos. Confirme
+                        que é o ficheiro certo ou peça uma nova cópia.
+                      </span>
+                    ) : null}
+                    {warnings.length ? (
+                      <ul className={s.warnings} aria-label={`Avisos de ${f.filename}`}>
+                        {warnings.map((w) => (
+                          <li key={w}>{w}</li>
+                        ))}
+                      </ul>
+                    ) : null}
                   </span>
-                  <Pill tone={tone}>{label}</Pill>
+                  <Pill tone={warnings.length && f.ingest_status === "done" ? "warn" : tone}>
+                    {warnings.length && f.ingest_status === "done" ? "Lido com avisos" : label}
+                  </Pill>
                 </li>
               );
             })}
@@ -290,6 +316,7 @@ export function ProjectFilesScreen() {
           {files && files.length === 0 && uploading.length === 0 ? (
             <p className={s.hint}>Ainda não há ficheiros neste projeto.</p>
           ) : null}
+          {files && files.length ? <ReadSummary files={files} /> : null}
           <Card title="A seguir">
             <Checklist
               items={[
@@ -323,5 +350,49 @@ export function ProjectFilesScreen() {
         </div>
       </div>
     </Screen>
+  );
+}
+
+
+/** The five kinds that are read (SPEC 8.2), with what arrived of each. */
+const READ_KINDS: [kinds: string[], label: string][] = [
+  [["ficha_eletrotecnica"], "Ficha eletrotécnica"],
+  [["calc_summary"], "Tabela de Cálculo"],
+  [["calc_circuit"], "09-Folhas de Cálculo"],
+  [["mqt", "lpu"], "MQT / LPU"],
+  [["drawing_pdf"], "Peças desenhadas (PDF)"],
+];
+
+function ReadSummary({ files }: { files: ProjectFile[] }) {
+  return (
+    <Card title="O que foi lido">
+      <ul className={s.summary} aria-label="Resumo por tipo de ficheiro">
+        {READ_KINDS.map(([kinds, label]) => {
+          const mine = files.filter((f) => kinds.includes(f.kind));
+          const done = mine.filter((f) => f.ingest_status === "done").length;
+          const failed = mine.filter((f) => f.ingest_status === "failed").length;
+          const warned = mine.filter((f) => (f.ingest_warnings ?? []).length > 0).length;
+          const reading = mine.length - done - failed;
+          const [tone, text]: [Tone, string] = !mine.length
+            ? ["mute", "Por carregar"]
+            : failed
+              ? ["crit", `${failed} não lido${failed > 1 ? "s" : ""}`]
+              : reading
+                ? ["info", "A ler…"]
+                : warned
+                  ? ["warn", `${warned} com avisos`]
+                  : ["ok", "Lido"];
+          return (
+            <li key={label}>
+              <span>
+                <b>{label}</b>
+                {mine.length ? ` · ${mine.length} ficheiro${mine.length > 1 ? "s" : ""}` : ""}
+              </span>
+              <Pill tone={tone}>{text}</Pill>
+            </li>
+          );
+        })}
+      </ul>
+    </Card>
   );
 }

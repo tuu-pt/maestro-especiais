@@ -56,6 +56,7 @@ def run_ingestion(db: Session, store: ObjectStore, publish: Publish, file_id: uu
             "Guardado: este tipo de ficheiro não é lido (DWG, DOCX e outros).",
         )
         return
+    file.ingest_warnings = []
     _set(db, publish, file, "running", None, step="A ler o ficheiro")
     try:
         summary = processor(db, file, store.get(file.storage_key))

@@ -19,6 +19,7 @@ import xlrd
 import yaml
 from sqlalchemy.orm import Session
 
+from app.ingest import consolidate
 from app.ingest.base import json_number, to_number
 from app.ingest.boards import Named, match_circuits, parse_sheet_name
 from app.ingest.consolidate import draft_revision
@@ -287,4 +288,5 @@ def add_reading(db: Session, file: ProjectFile, reading: SheetReading) -> str:
         parts.append("por associar: escolha o troço na ficha")
     if opened:
         parts.append(f"{opened} conflito{'s' if opened > 1 else ''} para resolver")
-    return " · ".join(parts + reading.warnings)
+    consolidate.add_warnings(file, reading.warnings)
+    return " · ".join(parts)

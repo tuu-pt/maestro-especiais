@@ -107,3 +107,56 @@ describe("project files", () => {
     expect(screen.getByRole("link", { name: /Ver a ficha do projeto/ })).toHaveAttribute("href", "/projetos/p1/ficha");
   });
 });
+
+describe("what was read", () => {
+  const withFiles = (files: ProjectFile[]) =>
+    server.use(
+      http.get(api("/projects/p1"), () => HttpResponse.json(project())),
+      http.get(api("/projects/p1/files"), () => HttpResponse.json(files)),
+      http.get(api("/projects/p1/ficha"), () => HttpResponse.json(emptyFicha())),
+      http.get(api("/projects/p1/events"), () =>
+        new HttpResponse(sse(), { headers: { "Content-Type": "text/event-stream" } }),
+      ),
+    );
+
+  it("summarizes every kind that is read, with warnings and files not read", async () => {
+    withFiles([
+      file({ id: "a", kind: "calc_summary", filename: "Tabela.xlsx", ingest_status: "done",
+        ingest_message: "4 valores lidos (4 novos) · 20 troços" }),
+      file({ id: "b", kind: "calc_circuit", filename: "09-Folha QEG-ATRIO.xls", ingest_status: "done",
+        ingest_message: "9 valores lidos · associada ao troço pelo nome do ficheiro",
+        ingest_warnings: ["Célula proteccao!J9 vazia ou sem número."] }),
+      file({ id: "c", kind: "calc_circuit", filename: "09-Folha ARM-QEG.xls", ingest_status: "failed",
+        ingest_message: "09-Folha ilegível ou corrompida." }),
+      file({ id: "d", kind: "lpu", filename: "LPU.xlsx", ingest_status: "done",
+        ingest_message: "LPU: 170 artigos (34 associados, 136 por associar)" }),
+      file({ id: "e", kind: "other", filename: "MDJ.pdf", ingest_status: "skipped",
+        ingest_message: "PDF sem carimbadura: guardado, não lido como peças desenhadas." }),
+    ]); // prettier-ignore
+    renderAt("/projetos/p1/ficheiros");
+
+    const summary = await screen.findByRole("list", { name: "Resumo por tipo de ficheiro" });
+    const row = (label: string) => within(summary).getByText(label).closest("li") as HTMLElement;
+    expect(within(row("Tabela de Cálculo")).getByText("Lido")).toBeInTheDocument();
+    expect(within(row("09-Folhas de Cálculo")).getByText("1 não lido")).toBeInTheDocument();
+    expect(within(row("MQT / LPU")).getByText("Lido")).toBeInTheDocument();
+    expect(within(row("Ficha eletrotécnica")).getByText("Por carregar")).toBeInTheDocument();
+    expect(within(row("Peças desenhadas (PDF)")).getByText("Por carregar")).toBeInTheDocument();
+
+    const list = screen.getByRole("list", { name: "Ficheiros carregados" });
+    const warned = within(list).getByRole("list", { name: "Avisos de 09-Folha QEG-ATRIO.xls" });
+    expect(within(warned).getByText("Célula proteccao!J9 vazia ou sem número.")).toBeInTheDocument();
+    expect(within(list).getByText("Lido com avisos")).toBeInTheDocument();
+    expect(within(list).getByText(/não entrou na ficha-base; os outros continuam a ser lidos/)).toBeInTheDocument();
+    expect(within(list).getByText(/PDF sem carimbadura/)).toBeInTheDocument();
+  });
+
+  it("accepts the files of every reader", async () => {
+    withFiles([]);
+    renderAt("/projetos/p1/ficheiros");
+    const input = await screen.findByLabelText("Escolher ficheiros");
+    expect(input.getAttribute("accept")).toBe(".xlsm,.xlsx,.xls,.pdf,.dwg,.dwfx,.docx");
+    expect(screen.getByText(/09-Folhas de Cálculo \(\.xls\) e peças desenhadas \(\.pdf\)/)).toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByRole("list", { name: "Resumo por tipo de ficheiro" })).toBeNull());
+  });
+});

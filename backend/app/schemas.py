@@ -45,6 +45,7 @@ class ProjectFileOut(BaseModel):
     template_version: str | None
     ingest_status: str
     ingest_message: str | None
+    ingest_warnings: list[str]
     created_at: datetime
     created_by: str | None
 

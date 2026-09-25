@@ -1,0 +1,250 @@
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 320px) minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+@media (max-width: 900px) {
+  .layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.listPane,
+.detailPane {
+  min-width: 0;
+}
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+.filters button {
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 5px 10px;
+  border: 1px solid var(--line-2);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--ink-2);
+  cursor: pointer;
+}
+.filters button[aria-pressed="true"] {
+  background: var(--ink);
+  color: var(--paper);
+  border-color: var(--ink);
+}
+.muted {
+  color: var(--ink-3);
+  font-size: 12px;
+  margin: 4px 0;
+  overflow-wrap: anywhere; /* block keys and archive references are long words */
+}
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 4px;
+  max-height: 70vh;
+  overflow-y: auto;
+}
+@media (max-width: 900px) {
+  .list {
+    max-height: 40vh;
+  }
+}
+.item {
+  width: 100%;
+  text-align: left;
+  font: inherit;
+  display: grid;
+  gap: 4px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--ink);
+  cursor: pointer;
+}
+.item[aria-current="true"] {
+  border-color: var(--ink);
+  box-shadow: inset 3px 0 0 var(--ink);
+}
+.item:focus-visible {
+  outline: 2px solid var(--info);
+  outline-offset: 1px;
+}
+.itemTitle {
+  font-size: 13px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.order {
+  color: var(--ink-3);
+  margin-right: 4px;
+}
+.itemMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+.detail {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
+  padding: 14px 16px;
+  min-width: 0;
+}
+.detail > *,
+.entries {
+  min-width: 0; /* grid children may shrink below their content (phone width) */
+}
+.head {
+  display: grid;
+  gap: 4px;
+}
+.title {
+  margin: 0;
+  font-size: 17px;
+  overflow-wrap: anywhere;
+}
+.key {
+  margin: 0;
+  font-family: var(--f-mono);
+  font-size: 11px;
+  color: var(--ink-3);
+  overflow-wrap: anywhere;
+}
+.h4 {
+  margin: 0 0 6px;
+  font-size: 13px;
+  font-weight: 700;
+}
+.notes {
+  margin: 0;
+  padding: 8px 10px 8px 26px;
+  background: var(--warn-bg);
+  border-radius: 8px;
+  font-size: 12.5px;
+  color: var(--ink);
+  display: grid;
+  gap: 2px;
+}
+.rule {
+  display: block;
+  font-family: var(--f-mono);
+  font-size: 12px;
+  padding: 6px 8px;
+  background: var(--surface-2);
+  border-radius: 6px;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+.entries {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+.entry {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 6px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--line);
+  min-width: 0;
+}
+.entryHead {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+.template {
+  margin: 0;
+  font-family: var(--f-doc);
+  font-size: 14px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.placeholder {
+  background: var(--hl);
+  color: var(--ink);
+  border-radius: 3px;
+  padding: 0 3px;
+  font-family: var(--f-ui);
+  font-size: 0.85em;
+  font-weight: 600;
+}
+.sides {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr));
+  gap: 8px;
+}
+.side {
+  display: grid;
+  gap: 4px;
+  padding: 6px 8px;
+  border-left: 3px solid var(--line-2);
+  background: var(--surface-2);
+  font-size: 13px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.side p {
+  margin: 0;
+}
+.sideHead {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--ink-2);
+}
+.preview {
+  display: grid;
+  gap: 6px;
+}
+.previewBody {
+  display: grid;
+  gap: 6px;
+  padding: 8px 10px;
+  border: 1px dashed var(--line-2);
+  border-radius: 8px;
+}
+.previewBody p {
+  margin: 0;
+}
+.resolved {
+  font-family: var(--f-doc);
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+.label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink-2);
+}
+.input {
+  width: 100%;
+  font: inherit;
+  font-size: 13px;
+  padding: 7px 9px;
+  border: 1px solid var(--line-2);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--ink);
+}
+.mono {
+  font-family: var(--f-mono);
+}
+.actions,
+.form {
+  display: grid;
+  gap: 6px;
+}

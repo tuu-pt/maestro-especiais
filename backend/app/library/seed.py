@@ -5,6 +5,7 @@ blocks are rewritten from the documents; a block a curator approved or rejected 
 is. Every block the agent writes is "proposed".
 """
 
+import uuid
 from pathlib import Path
 from typing import Any
 
@@ -20,7 +21,7 @@ from app.library.facts import Fact, cover_facts, ficha_facts, signature_facts
 from app.library.rules import parse
 from app.library.skeleton import SKELETON_ONLY, rule_for
 from app.library.sources import reference_documents
-from app.models import ArchiveChunk, ArchiveDoc, SourceDocument, TemplateBlock
+from app.models import ArchiveChunk, ArchiveDoc, SourceDocument, SourceSection, TemplateBlock
 
 
 def ficha_values(fixtures: Path, code: str) -> dict[str, Any]:
@@ -68,6 +69,16 @@ def with_skeleton(blocks: list[ProposedBlock], doc_type: str) -> list[ProposedBl
     for n, b in enumerate(out, start=1):
         b.order = n
     return out
+
+
+def _write_evidence(db: Session, docs: list[ProjectDoc]) -> None:
+    """What the curator sees of each source section (placeholders, personal data masked)."""
+    for doc in docs:
+        for order, units in doc.evidence.items():
+            section_id = doc.section_ids.get(order)
+            section = db.get(SourceSection, uuid.UUID(section_id)) if section_id else None
+            if section is not None:
+                section.units = units
 
 
 def _write_blocks(db: Session, blocks: list[ProposedBlock]) -> int:
@@ -136,6 +147,7 @@ def seed_blocks(
         docs = [p[doc_type] for p in per_project.values() if doc_type in p]
         proposed, archive = classify(doc_type, docs)
         proposed = with_skeleton(proposed, doc_type)
+        _write_evidence(db, docs)
         blocks += _write_blocks(db, proposed)
         chunks += _write_archive(db, [a for a in archive if (a.project, doc_type) in sources],
                                  sources)  # fmt: skip

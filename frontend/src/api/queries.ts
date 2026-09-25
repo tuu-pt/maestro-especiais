@@ -3,6 +3,10 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ApiError, postJson, request } from "./client";
 import type {
   AuditEntry,
+  BlockDetail,
+  BlockEdit,
+  BlockPreview,
+  BlockSummary,
   BomItem,
   Cables,
   CircuitSheet,
@@ -31,6 +35,10 @@ export const keys = {
   activity: ["activity"] as const,
   cables: ["knowledge", "cables"] as const,
   typologies: ["knowledge", "typologies"] as const,
+  blocks: ["library", "blocks"] as const,
+  block: (id: string) => ["library", "blocks", id] as const,
+  blockPreview: (id: string, projectId: string) => ["library", "blocks", id, "preview", projectId] as const,
+  blockHistory: (id: string) => ["library", "blocks", id, "history"] as const,
 };
 
 export const useMe = () => useQuery({ queryKey: keys.me, queryFn: () => request<User>("/me") });
@@ -165,6 +173,49 @@ export function useReview() {
       postJson<Reviewed>(`/knowledge/${args.kind}/${args.id}/review`, { decision: args.decision, note: args.note }),
     onSuccess: () => {
       void client.invalidateQueries({ queryKey: ["knowledge"] });
+      void client.invalidateQueries({ queryKey: keys.activity });
+    },
+  });
+}
+
+export const useBlocks = () =>
+  useQuery({ queryKey: keys.blocks, queryFn: () => request<BlockSummary[]>("/library/blocks") });
+
+export const useBlock = (id: string | undefined) =>
+  useQuery({
+    queryKey: keys.block(id ?? ""),
+    queryFn: () => request<BlockDetail>(`/library/blocks/${id}`),
+    enabled: Boolean(id),
+  });
+
+export const useBlockPreview = (id: string | undefined, projectId: string | undefined) =>
+  useQuery({
+    queryKey: keys.blockPreview(id ?? "", projectId ?? ""),
+    queryFn: () => request<BlockPreview>(`/library/blocks/${id}/preview?project_id=${projectId}`),
+    enabled: Boolean(id && projectId),
+  });
+
+export const useBlockHistory = (id: string | undefined) =>
+  useQuery({
+    queryKey: keys.blockHistory(id ?? ""),
+    queryFn: () => request<AuditEntry[]>(`/library/blocks/${id}/history`),
+    enabled: Boolean(id),
+  });
+
+/** Approve, reject or edit a block (curator only; audited by the backend). */
+export function useBlockAction(id: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (action: { decision: "approved" | "rejected"; note: string } | { edit: BlockEdit }) =>
+      "edit" in action
+        ? request<BlockSummary>(`/library/blocks/${id}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(action.edit),
+          })
+        : postJson<BlockSummary>(`/library/blocks/${id}/review`, action),
+    onSuccess: () => {
+      void client.invalidateQueries({ queryKey: ["library"] });
       void client.invalidateQueries({ queryKey: keys.activity });
     },
   });

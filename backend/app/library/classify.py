@@ -58,6 +58,8 @@ class ProjectDoc:
     split: SplitDocument
     facts: list[Fact]
     section_ids: dict[int, str] = field(default_factory=dict)  # section order -> SourceSection id
+    # section order -> [{"kind", "text"}]: what the curator sees of each element (data masked)
+    evidence: dict[int, list[dict[str, str]]] = field(default_factory=dict)
 
 
 @dataclass
@@ -140,7 +142,9 @@ def _unit(project: str, index: int, element: Any, facts: list[Fact], scope: str)
 
 def _units(doc: ProjectDoc, section: Section) -> list[Unit]:
     scope = "signature" if section.kind == "signature" else "document"
-    return [_unit(doc.project, i, e, doc.facts, scope) for i, e in enumerate(section.elements)]
+    units = [_unit(doc.project, i, e, doc.facts, scope) for i, e in enumerate(section.elements)]
+    doc.evidence[section.order] = [{"kind": u.kind, "text": privacy.mask(u.text)} for u in units]
+    return units
 
 
 def _same(a: Unit, b: Unit) -> bool:

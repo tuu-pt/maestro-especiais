@@ -236,3 +236,56 @@ export type TypologyTerm = Reviewed & { id: string; term: string; relation: stri
 export type Typology = Reviewed & { id: string; name: string; evidence: TextEvidence[]; terms: TypologyTerm[] };
 
 export type KnowledgeKind = "cable-designations" | "cable-equivalences" | "typologies" | "typology-terms";
+
+// ---------------------------------------------------------------- block library (screen G)
+
+export type BlockMode = "fixed" | "parametric" | "adaptive";
+
+export type BlockSummary = {
+  id: string;
+  key: string;
+  doc_type: "MDJ" | "CTE";
+  kind: "cover" | "index" | "block" | "signature";
+  level: number;
+  title: string;
+  order: number;
+  mode: BlockMode;
+  status: ReviewStatus;
+  activation_rule: string | null;
+  projects: string[];
+  required_keys: string[];
+  notes: string[];
+  version: number;
+  reviewed_by: string | null;
+  reviewed_at: string | null;
+  review_note: string | null;
+};
+
+export type BlockEntry = {
+  mode: BlockMode;
+  project: string;
+  units: Record<string, number[]>;
+  text: string | null;
+  keys: string[];
+  single_source: boolean;
+  note: string | null;
+};
+
+export type EvidenceUnit = { index: number; kind: string; text: string };
+
+export type BlockDetail = BlockSummary & {
+  entries: BlockEntry[];
+  evidence: Record<string, EvidenceUnit[]>;
+  labels: Record<string, string>;
+  archive_refs: string[];
+};
+
+export type BlockPreview = {
+  project_id: string;
+  project_code: string;
+  active: boolean | null;
+  rule_error: string | null;
+  paragraphs: { mode: BlockMode; text: string | null; missing: string[]; masked: string[] }[];
+};
+
+export type BlockEdit = { title?: string; mode?: BlockMode; activation_rule?: string; note: string };

@@ -60,6 +60,9 @@ class SourceSection(Entity):
     rels: Mapped[dict[str, Any]] = mapped_column(default=dict)
     text: Mapped[str] = mapped_column(Text)
     stats: Mapped[dict[str, Any]] = mapped_column(default=dict)
+    # evidence for the curator, one item per body element: {"kind", "text"}; the text has the
+    # project's values as {{v:<key>}} and personal data masked (filled by the block seed)
+    units: Mapped[list[Any]] = mapped_column(default=list)
 
     document: Mapped[SourceDocument] = relationship(back_populates="sections")
 

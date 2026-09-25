@@ -37,6 +37,10 @@ async function errorMessage(response: Response): Promise<string> {
   if (body && typeof body === "object" && "detail" in body) {
     const detail = (body as { detail: unknown }).detail;
     if (typeof detail === "string") return detail;
+    if (detail && typeof detail === "object" && "message" in detail) {
+      const message = (detail as { message: unknown }).message; // e.g. an invalid rule, with its position
+      if (typeof message === "string") return message;
+    }
     if (Array.isArray(detail) && detail.length > 0) {
       const first = detail[0] as { msg?: unknown };
       if (typeof first.msg === "string") return first.msg.replace(/^Value error, /, "");

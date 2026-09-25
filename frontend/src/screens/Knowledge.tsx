@@ -15,6 +15,7 @@ import type {
 } from "../api/types";
 import { Button, Buttons, Card, Chip, DataTable, EmptyState, ErrorNote, Pill, type Tone } from "../components/ui";
 import { formatDateTime } from "../lib/format";
+import { BlocksPanel } from "./Blocks";
 import { Loading } from "./common";
 import s from "./Knowledge.module.css";
 import { Screen } from "./Screen";
@@ -94,14 +95,7 @@ export function KnowledgeScreen() {
       >
         {current === "cabos" ? <CablesPanel /> : null}
         {current === "lexico" ? <LexiconPanel /> : null}
-        {current === "blocos" ? (
-          <EmptyState
-            title="Ainda não há blocos propostos"
-            next="Aqui vão aparecer os blocos do MDJ e do CTE com o modo (fixo, paramétrico, adaptativo), a regra de ativação, a evidência de R1 e R2 e a pré-visualização."
-          >
-            A biblioteca é extraída das MDJ e dos CTE dos projetos de referência. {SEED_HINT}
-          </EmptyState>
-        ) : null}
+        {current === "blocos" ? <BlocksPanel /> : null}
         {current === "corpus" ? (
           <EmptyState
             title="Ainda não há documentos no corpus"

@@ -17,6 +17,7 @@ from app.db import get_session
 from app.ingest.base import to_number
 from app.ingest.circuit_sheet import compare_sheet, drop_open_conflicts
 from app.ingest.consolidate import latest_revision, open_conflict
+from app.ingest.drawings import index_check
 from app.ingest.keys import GROUPS, KEYS
 from app.models import (
     BomItem,
@@ -166,6 +167,8 @@ class FichaOut(BaseModel):
     circuit_sheets: list[CircuitSheetOut]
     bom_items: list[BomItemOut]
     bom_link_keys: list[LinkKeyOut]
+    # Index of the drawings vs the sheets of the PDF (case C4), when both were read.
+    drawings_check: dict[str, Any] | None
     open_conflicts: int
     can_confirm: bool
     cal01_note: str
@@ -271,6 +274,14 @@ BOM_LINK_KEYS = [
 ]
 
 
+def _drawings_check(values: list[FichaValue]) -> dict[str, Any] | None:
+    by_key = {v.key: v.value for v in values}
+    index, sheets = by_key.get("pd.indice"), by_key.get("pd.folhas")
+    if not isinstance(index, list) or not isinstance(sheets, list):
+        return None
+    return index_check(index, sheets, int(by_key.get("pd.n_paginas_pdf") or len(sheets)))
+
+
 def _sheet_names(db: Session, revision: FichaRevision | None) -> dict[str, str]:
     if revision is None:
         return {}
@@ -309,6 +320,7 @@ def read_ficha(project_id: uuid.UUID, db: DB, _: CurrentUser) -> FichaOut:
         circuit_sheets=sheets,
         bom_items=[_bom_out(i, file_names) for i in (current.bom_items if current else [])],
         bom_link_keys=BOM_LINK_KEYS,
+        drawings_check=_drawings_check(values),
         open_conflicts=open_count,
         can_confirm=bool(current and current.status == "draft" and values and not open_count),
         cal01_note=cal_01.PENDING_NOTE,

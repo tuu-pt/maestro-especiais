@@ -48,7 +48,13 @@ def run_ingestion(db: Session, store: ObjectStore, publish: Publish, file_id: uu
         return
     processor = PROCESSORS.get(file.kind)
     if processor is None:
-        _set(db, publish, file, "skipped", "Leitura deste tipo na Fase 2.")
+        _set(
+            db,
+            publish,
+            file,
+            "skipped",
+            "Guardado: este tipo de ficheiro não é lido (DWG, DOCX e outros).",
+        )
         return
     _set(db, publish, file, "running", None, step="A ler o ficheiro")
     try:

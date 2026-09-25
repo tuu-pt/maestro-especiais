@@ -138,11 +138,11 @@ def test_empty_and_too_large_files_are_rejected(api: Api, store: ObjectStore, ap
 
 def test_files_without_a_reader_yet_are_stored_and_skipped(api: Api, store: ObjectStore) -> None:
     project = create(api)
-    file = upload(api, project["id"], "Desenhos.pdf", factories.PDF_MINIMAL).json()["file"]
+    file = upload(api, project["id"], "Desenhos.dwg", b"AC1027 not read").json()["file"]
 
-    assert file["kind"] == "drawing_pdf"
+    assert file["kind"] == "drawing_dwg"  # reading DWG was postponed (D12)
     assert file["ingest_status"] == "skipped"
-    assert "Fase 2" in file["ingest_message"]
+    assert "não é lido" in file["ingest_message"]
 
 
 # ---------------------------------------------------------------- detection
@@ -154,7 +154,8 @@ def test_files_without_a_reader_yet_are_stored_and_skipped(api: Api, store: Obje
         ("FE.xlsm", factories.ficha_eletrotecnica(), "ficha_eletrotecnica"),
         ("qualquer nome.xlsx", factories.tabela_calculo(), "calc_summary"),
         ("MQT.xlsx", factories.mqt(), "mqt"),
-        ("pecas.pdf", factories.PDF_MINIMAL, "drawing_pdf"),
+        ("pecas.pdf", factories.drawings_set(["EL001", "EL002"]), "drawing_pdf"),
+        ("memoria.pdf", factories.PDF_MINIMAL, "other"),  # no title block
         ("EL001.dwg", b"AC1032", "drawing_dwg"),
         ("MDJ.docx", b"PK", "other"),
     ],

@@ -2,7 +2,14 @@
 
 from sqlalchemy.orm import Session
 
-from app.ingest import bom, circuit_sheet, consolidate, ficha_eletrotecnica, tabela_calculo
+from app.ingest import (
+    bom,
+    circuit_sheet,
+    consolidate,
+    drawings,
+    ficha_eletrotecnica,
+    tabela_calculo,
+)
 from app.ingest.pipeline import register
 from app.models import ProjectFile
 
@@ -40,3 +47,13 @@ def quantities(db: Session, file: ProjectFile, data: bytes) -> str:
     reading = bom.read(data)
     file.kind = reading.variant  # the title decides; detection and reader agree
     return bom.add_reading(db, file, reading)
+
+
+@register("drawing_pdf")
+def drawings_pdf(db: Session, file: ProjectFile, data: bytes) -> str:
+    reading = drawings.read(data)
+    result = reading.result
+    result.warnings = reading.warnings
+    summary = consolidate.apply(db, file, result)
+    listed = f"índice com {len(reading.index)} folhas" if reading.index else "sem índice"
+    return f"{reading.pages} páginas · {listed} · {summary}"

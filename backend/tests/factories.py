@@ -191,4 +191,94 @@ def bom(rows: list[list[Any]], title: str = "MQT") -> bytes:
     return workbook_bytes({title: rows})
 
 
+# ---------------------------------------------------------------- drawings PDF
+
+# (x, y from the top, text, mirrored) on a 1191 x 842 sheet; the title block is the right strip.
+Text = tuple[float, float, str, bool]
+
+
+def title_block(
+    sheet: str,
+    title: str,
+    *,
+    requerente: str = "Município de Teste",
+    fase: str = "PROJETO DE EXECUÇÃO",
+) -> list[Text]:
+    x = 1000
+    rows = [
+        (218, "Requerente"), (228, requerente), (252, "Projeto"), (262, "Edifício de Teste"),
+        (272, "Rua de Teste 1"), (319, "Especialidade"), (329, "PROJETO DE ELETRICIDADE"),
+        (338, fase), (368, "Designação"), (382, title), (437, "JUNHO 2026"), (447, "1:100"),
+        (472, sheet), (516, "Observações"), (525, "ESTE PROJETO DEVERÁ SER LIDO"),
+        (668, "Código"), (678, "12345678"), (696, "Equipa"), (706, "TÉCNICO | ENG"),
+        (735, "Reprodução proibida e código do direito de autor"),
+    ]  # fmt: skip
+    return [(x, y, t, False) for y, t in rows]
+
+
+def index_rows(codes: list[str]) -> list[Text]:
+    out: list[Text] = [(60, 60, "ÍNDICE", False), (60, 72, "TÍTULO DATA REV", False)]
+    for n, code in enumerate(codes):
+        out.append((60, 90 + n * 12, f"{code} PLANTA {n + 1} 06/26 -", False))
+    return out
+
+
+def _pdf_string(text: str) -> bytes:
+    raw = text.encode("cp1252")
+    return b"(" + raw.replace(b"\\", b"\\\\").replace(b"(", b"\\(").replace(b")", b"\\)") + b")"
+
+
+def drawings_pdf(pages: list[list[Text]], width: float = 1191, height: float = 842) -> bytes:
+    """A minimal PDF with Helvetica text at the given places (a mirrored text is flipped)."""
+    objects: list[bytes] = [
+        b"<< /Type /Catalog /Pages 2 0 R >>",
+        b"",  # pages, filled below
+        b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>",
+    ]
+    kids = []
+    for texts in pages:
+        stream = b""
+        for x, y, text, mirrored in texts:
+            a = b"-1" if mirrored else b"1"
+            e = x + 6 * len(text) if mirrored else x
+            stream += b"BT /F1 8 Tf %s 0 0 1 %.1f %.1f Tm %s Tj ET\n" % (
+                a,
+                e,
+                height - y,
+                _pdf_string(text),
+            )
+        objects.append(b"<< /Length %d >>\nstream\n" % len(stream) + stream + b"endstream")
+        content = len(objects)
+        objects.append(
+            b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 %d %d] /Contents %d 0 R "
+            b"/Resources << /Font << /F1 3 0 R >> >> >>" % (width, height, content)
+        )
+        kids.append(len(objects))
+    objects[1] = b"<< /Type /Pages /Kids [%s] /Count %d >>" % (
+        b" ".join(b"%d 0 R" % k for k in kids),
+        len(kids),
+    )
+    out = b"%PDF-1.4\n"
+    offsets = []
+    for n, body in enumerate(objects, start=1):
+        offsets.append(len(out))
+        out += b"%d 0 obj\n" % n + body + b"\nendobj\n"
+    xref = len(out)
+    out += b"xref\n0 %d\n0000000000 65535 f \n" % (len(objects) + 1)
+    out += b"".join(b"%010d 00000 n \n" % o for o in offsets)
+    out += b"trailer\n<< /Size %d /Root 1 0 R >>\nstartxref\n%d\n%%%%EOF\n" % (
+        len(objects) + 1,
+        xref,
+    )
+    return out
+
+
+def drawings_set(codes: list[str], sheets: int | None = None, **block: str) -> bytes:
+    """An index listing codes, then one page per sheet (the first `sheets` codes)."""
+    pages = [index_rows(codes) + title_block("EL000", "ÍNDICE", **block)]
+    for code in codes[: len(codes) if sheets is None else sheets]:
+        pages.append([(200, 300, "Q.E.G.", False), *title_block(code, f"PLANTA {code}", **block)])
+    return drawings_pdf(pages)
+
+
 PDF_MINIMAL = b"%PDF-1.4\n1 0 obj<</Type/Catalog>>endobj\ntrailer<</Root 1 0 R>>\n%%EOF\n"

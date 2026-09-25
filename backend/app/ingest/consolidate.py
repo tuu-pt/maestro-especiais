@@ -16,7 +16,7 @@ from typing import Any
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
-from app.ingest.base import ReadResult, to_number
+from app.ingest.base import Candidate, ReadResult, to_number
 from app.ingest.boards import core
 from app.ingest.detect import fold
 from app.ingest.keys import info
@@ -161,7 +161,15 @@ def apply(db: Session, file: ProjectFile, result: ReadResult) -> str:
     revision = draft_revision(db, file.project_id, None)
     by_key = {v.key: v for v in revision.values}
     added = conflicts = 0
+    grouped: dict[str, list[Candidate]] = {}
     for cand in result.values:
+        grouped.setdefault(cand.key, []).append(cand)
+    for key, cands in grouped.items():
+        distinct = list({repr(comparable(key, c.value)): c for c in cands}.values())
+        if len(distinct) > 1:  # the same source disagrees with itself (pages of a PDF)
+            conflicts += _self_conflict(db, revision, by_key, file, result, key, distinct)
+            continue
+        cand = distinct[0]
         meta = info(cand.key)
         new = _candidate(cand.value, result, cand.source_ref, file)
         existing = by_key.get(cand.key)
@@ -195,6 +203,40 @@ def apply(db: Session, file: ProjectFile, result: ReadResult) -> str:
     circuits = _replace_circuits(db, revision, file, result)
     db.flush()
     return _summary(len(result.values), added, circuits, conflicts, result.warnings)
+
+
+def _self_conflict(
+    db: Session,
+    revision: FichaRevision,
+    by_key: dict[str, FichaValue],
+    file: ProjectFile,
+    result: ReadResult,
+    key: str,
+    cands: list[Candidate],
+) -> int:
+    """One candidate per value of this source (and the other source's value, if any)."""
+    new = [_candidate(c.value, result, c.source_ref, file) for c in cands]
+    existing = by_key.get(key)
+    if existing is None:
+        meta = info(key)
+        existing = FichaValue(
+            revision_id=revision.id, key=key, group=meta.group, label_pt=meta.label_pt,
+            value=None, unit=meta.unit, personal_data=meta.personal, status="conflict",
+            source_type=result.source_type, source_ref=cands[0].source_ref, source_file_id=file.id,
+        )  # fmt: skip
+        db.add(existing)
+        by_key[key] = existing
+        existing.conflicts.append(FichaConflict(candidates=new))
+        return 1
+    conflict = open_conflict(existing)
+    if conflict is not None:
+        others = [c for c in conflict.candidates if c["source_type"] != result.source_type]
+        conflict.candidates = [*others, *new]
+        return 0
+    before = [] if existing.source_type == result.source_type else [_as_candidate(existing)]
+    existing.conflicts.append(FichaConflict(candidates=[*before, *new]))
+    existing.value, existing.status = None, "conflict"
+    return 1
 
 
 def _replace_circuits(

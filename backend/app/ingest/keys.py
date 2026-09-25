@@ -65,6 +65,14 @@ KEYS: dict[str, KeyInfo] = {
     "eq.portinhola": KeyInfo("Equipamentos", "Portinhola"),
     "eq.luminarias": KeyInfo("Equipamentos", "Luminárias"),
     "eq.quadros_modelo": KeyInfo("Equipamentos", "Quadros (modelo)"),
+    # Peças desenhadas (PDF): index, title block and number of pages
+    "pd.indice": KeyInfo("Peças desenhadas", "Índice das folhas"),
+    "pd.n_paginas_pdf": KeyInfo("Peças desenhadas", "Páginas do PDF", numeric=True),
+    "pd.folhas": KeyInfo("Peças desenhadas", "Folhas (carimbadura de cada página)"),
+    "pd.carimbadura.especialidade": KeyInfo("Peças desenhadas", "Especialidade (carimbadura)"),
+    "pd.carimbadura.fase": KeyInfo("Peças desenhadas", "Fase (carimbadura)"),
+    "pd.carimbadura.data": KeyInfo("Peças desenhadas", "Data (carimbadura)"),
+    "pd.carimbadura.codigo": KeyInfo("Peças desenhadas", "Código do projeto (carimbadura)"),
 }
 
 

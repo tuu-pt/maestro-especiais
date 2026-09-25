@@ -10,7 +10,14 @@ import openpyxl
 import xlrd
 
 # Kinds with a reader in Phase 1. The others are stored and read in Phase 2.
-READABLE_KINDS = ("ficha_eletrotecnica", "calc_summary", "calc_circuit", "mqt", "lpu")
+READABLE_KINDS = (
+    "ficha_eletrotecnica",
+    "calc_summary",
+    "calc_circuit",
+    "mqt",
+    "lpu",
+    "drawing_pdf",
+)
 
 FE_VERSION_CELL = "R45"
 _CALC_SHEETS = {"ib", "condutores", "tensao", "proteccao"}
@@ -104,9 +111,19 @@ def detect(filename: str, data: bytes) -> Detection:
     except (zipfile.BadZipFile, xlrd.XLRDError, OSError, ValueError, KeyError):
         return Detection("other", note="Ficheiro ilegível ou corrompido.")
     if suffix == "pdf":
-        if data[:5] == b"%PDF-":
-            return Detection("drawing_pdf")
-        return Detection("other", note="PDF ilegível ou corrompido.")
+        if data[:5] != b"%PDF-":
+            return Detection("other", note="PDF ilegível ou corrompido.")
+        from app.ingest.drawings import is_drawings  # pypdfium2 only when a PDF arrives
+        from app.ingest.pipeline import ReaderError
+
+        try:
+            if is_drawings(data):
+                return Detection("drawing_pdf")
+        except ReaderError:
+            return Detection("other", note="PDF ilegível ou corrompido.")
+        return Detection(
+            "other", note="PDF sem carimbadura: guardado, não é lido como peças desenhadas."
+        )
     if suffix == "dwg":
         return Detection("drawing_dwg")
     return Detection("other")

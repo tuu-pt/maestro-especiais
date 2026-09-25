@@ -56,7 +56,7 @@ def test_upload_queues_the_file_and_announces_it(
 
 
 def test_files_without_reader_are_not_queued(api: Api, queue: RecordingQueue) -> None:
-    body = upload(api, new_project(api), factories.PDF_MINIMAL, "EL.pdf")
+    body = upload(api, new_project(api), b"AC1027 not read", "EL.dwg")
     assert body["job_id"] is None and queue.enqueued == []
 
 

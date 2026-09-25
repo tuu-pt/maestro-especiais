@@ -183,3 +183,53 @@ def test_r2_c7_requerente_of_the_ficha_is_not_the_adjudicante(api: Api) -> None:
     sources = {c["source_type"] for c in requerente["conflict"]["candidates"]}
     assert sources == {"ficha_eletrotecnica", "mqt"}
     assert value(body, "id.obra.designacao")["source_type"] == "mqt"  # from the LPU
+
+
+# ---------------------------------------------------------------- Phase 2: drawings PDF
+
+
+def drawings_pdf(code: str) -> Path:
+    """The current drawings set: detected by content, the newest folder (not old/OLD)."""
+    reference_files(code)
+    found = [
+        p
+        for p in sorted((FIXTURES / code).rglob("*.pdf"))
+        if "signed" not in p.name
+        and not {"old", "OLD"} & set(p.parts)
+        and detect(p.name, p.read_bytes()).kind == "drawing_pdf"
+    ]
+    assert len(found) == 1, found
+    return found[0]
+
+
+def upload_all(api: Api, code: str, paths: list[Path]) -> dict[str, Any]:
+    client = api.as_("redator")
+    project_id = client.post("/api/projects", json={"code": code, "name": code}).json()["id"]
+    for path in paths:
+        response = client.post(
+            f"/api/projects/{project_id}/files", files={"file": (path.name, path.read_bytes())}
+        )
+        assert response.status_code == 202, response.text
+    listed = client.get(f"/api/projects/{project_id}/files").json()
+    assert {f["ingest_status"] for f in listed} == {"done"}, listed
+    body: dict[str, Any] = client.get(f"/api/projects/{project_id}/ficha").json()
+    return body
+
+
+def test_r1_c4_the_index_lists_a_sheet_the_pdf_does_not_have(api: Api) -> None:
+    body = upload_all(api, "R1", [drawings_pdf("R1")])
+    check = body["drawings_check"]
+    assert (check["index_sheets"], check["pages"]) == (17, 16)
+    assert check["missing_in_pdf"] == ["EL017"] and check["matches"] is False
+    for key in ("pd.carimbadura.especialidade", "pd.carimbadura.fase", "pd.carimbadura.codigo"):
+        assert value(body, key)["status"] != "conflict", key  # the same on every page
+
+
+def test_r2_title_block_agrees_with_the_lpu_and_the_index_with_the_pages(api: Api) -> None:
+    lpu = next(
+        p for p in (FIXTURES / "R2").rglob("*.xlsx") if detect(p.name, p.read_bytes()).kind == "lpu"
+    )
+    body = upload_all(api, "R2", [lpu, drawings_pdf("R2")])
+    assert value(body, "id.requerente.nome")["status"] != "conflict"  # Câmara Municipal = Município
+    assert body["drawings_check"]["matches"] is True
+    assert value(body, "pd.n_paginas_pdf")["value"] == 28

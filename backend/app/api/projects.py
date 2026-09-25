@@ -136,7 +136,11 @@ def upload_file(
         template_version=found.template_version,
         ingest_status="pending" if found.kind in READABLE_KINDS else "skipped",
         ingest_message=found.note
-        or (None if found.kind in READABLE_KINDS else "Leitura deste tipo na Fase 2."),
+        or (
+            None
+            if found.kind in READABLE_KINDS
+            else "Guardado: este tipo de ficheiro não é lido (DWG, DOCX e outros)."
+        ),
         created_by=user.id,
     )
     store.put(file.storage_key, data, content_type)

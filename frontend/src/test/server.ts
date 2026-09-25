@@ -17,6 +17,7 @@ export const DEV_USERS = [
       { id: "tecnico", label: "Técnico responsável" },
     ],
   },
+  { login: "curador", id: "dev:curador", name: "Curador (desenvolvimento)", roles: [{ id: "curador", label: "Curador" }] },
 ];
 
 export const seenUsers: string[] = [];
@@ -31,6 +32,8 @@ export const defaultHandlers = [
   http.get(api("/dev/users"), () => HttpResponse.json(DEV_USERS)),
   http.get(api("/projects"), () => HttpResponse.json([])),
   http.get(api("/activity"), () => HttpResponse.json([])),
+  http.get(api("/knowledge/cables"), () => HttpResponse.json({ designations: [], equivalences: [] })),
+  http.get(api("/knowledge/typologies"), () => HttpResponse.json([])),
   http.get(api("/health"), () =>
     HttpResponse.json({ status: "ok", services: { database: { status: "ok" } } }),
   ),

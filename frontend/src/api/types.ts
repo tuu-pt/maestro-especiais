@@ -185,3 +185,54 @@ export type AuditEntry = {
   project_id: string | null;
   project_code: string | null;
 };
+
+// ---------------------------------------------------------------- knowledge base (screen G)
+
+export type ReviewStatus = "proposed" | "approved" | "rejected";
+
+export type Reviewed = {
+  status: ReviewStatus;
+  reviewed_by: string | null;
+  reviewed_at: string | null;
+  review_note: string | null;
+};
+
+export type CableOccurrence = {
+  project_code: string;
+  source: string;
+  source_file: string;
+  locator: string;
+  raw_text: string;
+  geometry: string | null;
+};
+
+export type CableDesignation = Reviewed & {
+  id: string;
+  canonical: string;
+  aliases: string[];
+  kind: "fio" | "cabo";
+  flexible: boolean | null;
+  occurrences: CableOccurrence[];
+};
+
+export type EquivalenceSide = { source: string; file: string; locator: string; raw_text: string };
+
+export type EquivalenceEvidence = { project: string; geometry: string; a: EquivalenceSide; b: EquivalenceSide };
+
+export type CableEquivalence = Reviewed & {
+  id: string;
+  a: string;
+  b: string;
+  reason: string;
+  evidence: EquivalenceEvidence[];
+};
+
+export type Cables = { designations: CableDesignation[]; equivalences: CableEquivalence[] };
+
+export type TextEvidence = { project: string; source: string; file?: string; locator: string; text: string };
+
+export type TypologyTerm = Reviewed & { id: string; term: string; relation: string; evidence: TextEvidence[] };
+
+export type Typology = Reviewed & { id: string; name: string; evidence: TextEvidence[]; terms: TypologyTerm[] };
+
+export type KnowledgeKind = "cable-designations" | "cable-equivalences" | "typologies" | "typology-terms";

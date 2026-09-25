@@ -4,14 +4,18 @@ import { ApiError, postJson, request } from "./client";
 import type {
   AuditEntry,
   BomItem,
+  Cables,
   CircuitSheet,
   DevUser,
   Ficha,
   FichaValue,
+  KnowledgeKind,
   Project,
   ProjectFile,
   ProjectIn,
+  Reviewed,
   Revision,
+  Typology,
   UploadResult,
   User,
 } from "./types";
@@ -25,6 +29,8 @@ export const keys = {
   ficha: (id: string) => ["projects", id, "ficha"] as const,
   audit: (id: string) => ["projects", id, "audit"] as const,
   activity: ["activity"] as const,
+  cables: ["knowledge", "cables"] as const,
+  typologies: ["knowledge", "typologies"] as const,
 };
 
 export const useMe = () => useQuery({ queryKey: keys.me, queryFn: () => request<User>("/me") });
@@ -145,3 +151,21 @@ export function useLinkBomItem(projectId: string) {
 export const revealValue = (valueId: string) =>
   postJson<FichaValue>(`/ficha/values/${valueId}/reveal`);
 
+export const useCables = () =>
+  useQuery({ queryKey: keys.cables, queryFn: () => request<Cables>("/knowledge/cables") });
+
+export const useTypologies = () =>
+  useQuery({ queryKey: keys.typologies, queryFn: () => request<Typology[]>("/knowledge/typologies") });
+
+/** A curator's decision on something of the knowledge base (audited by the backend). */
+export function useReview() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (args: { kind: KnowledgeKind; id: string; decision: "approved" | "rejected"; note: string }) =>
+      postJson<Reviewed>(`/knowledge/${args.kind}/${args.id}/review`, { decision: args.decision, note: args.note }),
+    onSuccess: () => {
+      void client.invalidateQueries({ queryKey: ["knowledge"] });
+      void client.invalidateQueries({ queryKey: keys.activity });
+    },
+  });
+}

@@ -25,6 +25,7 @@ POLE_TYPES = ("MON", "MUL")
 INSTALLATIONS = ("TUB", "EST", "ENT", "AR")
 CONDUCTORS = ("Cu", "Al")
 LINK_STATUSES = ("rule", "manual", "unlinked")
+REVIEW_STATUSES = ("proposed", "approved", "rejected")  # what a curator reviews
 BOM_VARIANTS = ("mqt", "lpu")
 BOM_KINDS = ("chapter", "subchapter", "article", "description", "note", "total")
 

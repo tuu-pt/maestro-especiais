@@ -1,10 +1,9 @@
-/** Screens D, E, F and G: empty until later phases, with their real preconditions. */
+/** Screens D, E and F: empty until later phases, with their real preconditions. */
 
 import { useActiveProject } from "../app/activeProject";
 import { useFicha, useFiles, useProject } from "../api/queries";
-import { ButtonLink, Card, EmptyState } from "../components/ui";
+import { EmptyState } from "../components/ui";
 import { Checklist, NoProject } from "./common";
-import c from "./common.module.css";
 import { Screen } from "./Screen";
 
 function useReadiness(projectId: string | undefined) {
@@ -99,51 +98,6 @@ export function EquipmentScreen() {
           Os equipamentos vêm dos blocos do CTE e da biblioteca de equipamentos da TUU.
         </EmptyState>
       )}
-    </Screen>
-  );
-}
-
-const KNOWLEDGE = [
-  {
-    title: "Corpus regulamentar",
-    text: "Diplomas e normas com o estado (em vigor, revogado, só referência). Só se cita o que estiver marcado como citável.",
-  },
-  {
-    title: "Biblioteca de blocos",
-    text: "Blocos do MDJ e do CTE com o modo (fixo, paramétrico, adaptativo), a regra de ativação e a versão.",
-  },
-  {
-    title: "Arquivo TUU",
-    text: "MDJ e CTE aprovados, divididos por bloco, usados como base dos blocos adaptativos.",
-  },
-  {
-    title: "Dicionário de cabos",
-    text: "Equivalências entre designações de cabos (ex.: RZ1-K (AS) e XZ1(frt,zh)), validadas pelo curador.",
-  },
-  {
-    title: "Léxico de tipologias",
-    text: "Termos incompatíveis com cada tipologia (ex.: “apartamento” numa moradia unifamiliar).",
-  },
-];
-
-export function KnowledgeScreen() {
-  return (
-    <Screen
-      title="Base de conhecimento"
-      description="Aquilo em que o agente se apoia. Só um curador pode aprovar blocos, equivalências de cabos e o estado citável de um documento."
-    >
-      <div className={c.grid2}>
-        {KNOWLEDGE.map((k) => (
-          <Card key={k.title} title={k.title}>
-            <EmptyState title="Vazio" next="Construído na Fase 3, a partir dos documentos aprovados.">
-              {k.text}
-            </EmptyState>
-          </Card>
-        ))}
-      </div>
-      <p>
-        <ButtonLink to="/">Voltar ao painel</ButtonLink>
-      </p>
     </Screen>
   );
 }

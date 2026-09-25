@@ -9,11 +9,21 @@ from app.models.ficha import (
     FichaRevision,
     FichaValue,
 )
+from app.models.knowledge import (
+    CableDesignation,
+    CableEquivalence,
+    CableOccurrence,
+    Typology,
+    TypologyTerm,
+)
 from app.models.project import Project, ProjectFile
 
 __all__ = [
     "AuditEvent",
     "BomItem",
+    "CableDesignation",
+    "CableEquivalence",
+    "CableOccurrence",
     "Circuit",
     "CircuitSheet",
     "FichaConflict",
@@ -21,4 +31,6 @@ __all__ = [
     "FichaValue",
     "Project",
     "ProjectFile",
+    "Typology",
+    "TypologyTerm",
 ]

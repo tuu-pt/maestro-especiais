@@ -66,9 +66,12 @@ services:
       S3_BUCKET: ${S3_BUCKET:-maestro-especiais}
       S3_CREATE_BUCKET: "true"
       DEV_AUTH: "true"
+      FIXTURES_ROOT: /srv/data/fixtures
     volumes:
       - ./backend/app:/srv/backend/app:ro
       - ./backend/migrations:/srv/backend/migrations:ro
+      # anonymized reference projects, read by make seed-library (never data/private)
+      - ./data/fixtures:/srv/data/fixtures:ro
     ports:
       - "${BACKEND_HOST_PORT:-8000}:8000"
     depends_on:

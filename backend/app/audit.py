@@ -17,12 +17,13 @@ def record(
     entity_id: uuid.UUID | None,
     payload: dict[str, Any] | None = None,
     *,
-    project_id: uuid.UUID,
+    project_id: uuid.UUID | None,
     actor_type: str | None = None,
 ) -> AuditEvent:
     """Add one event to the session. actor None means the system (e.g. the ingestion worker).
 
-    Every event names its project, so that project timelines and the dashboard can find it.
+    Every project event names its project, so that project timelines and the dashboard can find
+    it. Events of the knowledge base and the block library (Phase 3) belong to no project: None.
     """
     event = AuditEvent(
         actor_type=actor_type or ("user" if actor else "system"),
@@ -30,7 +31,7 @@ def record(
         action=action,
         entity_type=entity_type,
         entity_id=entity_id,
-        payload={**(payload or {}), "project_id": str(project_id)},
+        payload={**(payload or {}), **({"project_id": str(project_id)} if project_id else {})},
     )
     db.add(event)
     return event

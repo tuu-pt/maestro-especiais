@@ -4,12 +4,8 @@ import { DashboardScreen } from "../screens/Dashboard";
 import { FichaScreen } from "../screens/Ficha";
 import { NewProjectScreen, ProjectFilesScreen } from "../screens/NewProject";
 import { NotFoundScreen } from "../screens/NotFound";
-import {
-  EditorScreen,
-  EquipmentScreen,
-  KnowledgeScreen,
-  ValidationScreen,
-} from "../screens/Pending";
+import { KnowledgeScreen } from "../screens/Knowledge";
+import { EditorScreen, EquipmentScreen, ValidationScreen } from "../screens/Pending";
 import { ReviewScreen } from "../screens/Review";
 import { SettingsScreen } from "../screens/Settings";
 import AppShell from "./AppShell";

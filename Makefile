@@ -8,7 +8,7 @@ PYTHON ?= python
 NPM := npm --prefix frontend
 PROJECTS ?= R1 R2
 
-.PHONY: help setup env up down logs lint format test test-integration e2e seed-library anonymize pii-check
+.PHONY: help setup env up down logs lint format test test-integration e2e seed-library curator-review anonymize pii-check
 
 help:
 	@echo "setup            .venv, dependencias Python, npm ci e Chromium do Playwright"
@@ -19,6 +19,7 @@ help:
 	@echo "test-integration testes contra a stack ligada (make up)"
 	@echo "e2e              Playwright"
 	@echo "seed-library     propostas da base de conhecimento a partir de data/fixtures (R1, R2)"
+	@echo "curator-review   escreve docs/revisao-curador.md a partir das propostas (depois de seed-library)"
 	@echo "anonymize        data/private/<PROJECTS> -> data/fixtures/<PROJECTS> (so localmente)"
 	@echo "pii-check        procura padroes de dados pessoais em data/fixtures"
 
@@ -65,6 +66,9 @@ e2e:
 
 seed-library:
 	docker compose exec backend python -m app.knowledge.seed
+
+curator-review:
+	docker compose exec -T backend python -m app.library.review_report > docs/revisao-curador.md
 
 anonymize:
 	$(VENV_PY) tools/anonymize.py $(PROJECTS)

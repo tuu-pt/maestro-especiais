@@ -83,6 +83,21 @@ Decisões da Fase 2 (25 set 2026):
 - Nas fixtures de R1, os campos pessoais da carimbadura saem baralhados (efeito do anonimizador): os testes de R1 só usam
   os campos não pessoais da carimbadura.
 
+Decisões da Fase 3 (25 set 2026; aprovadas pelo utilizador, o resto [A CONFIRMAR] pelo curador):
+- Sem LLM nem embeddings. O corpus é uma lista de referências; a pesquisa no texto integral fica para mais tarde (SPEC 7.5).
+- Regras de ativação: linguagem de texto curta, parser próprio (backend/app/library/rules.py), texto + árvore JSON; sem eval.
+- OOXML: fragmento por secção (SourceSection) + pacote por documento de origem no S3 (SourceDocument); media por SHA-256.
+- Adaptativos: o texto de cada projeto vai para ArchiveDoc/ArchiveChunk (com marcadores); o bloco guarda regra e referências.
+- Capa e assinatura: chaves novas `doc.local`, `doc.data`, `tec.*`, resolvidas na Fase 4 (`doc.data` vazio, P8).
+- Nenhum bloco guarda dados de um projeto ou de uma pessoa: teste de fuga em backend/tests/test_library_blocks.py.
+- [A CONFIRMAR] modo do bloco = o mais forte dos parágrafos; placeholder só com a mesma chave em R1 e R2, ou `single_source`
+  quando o parágrafo só existe num projeto; tabelas e imagens nunca adaptativas; condições técnicas gerais do CTE fixas;
+  valores trocados: `id.*`, potências (kVA), tensão (kV), capa e assinatura pelas etiquetas; valores das listas DGEG ficam
+  como texto; equivalências de cabos só com evidência (mesma secção, fontes diferentes), nunca -U com -K;
+  RegulationDoc com `review_status` e `citable` só com o documento confirmado e em vigor; `record()` com `project_id=None`
+  nos eventos da biblioteca; o cabeçalho (técnico, data, revisão) fica no pacote e terá de ser paramétrico na Fase 4.
+- Tudo o que o curador tem de rever: docs/revisao-curador.md (gerado por `make curator-review`).
+
 ## Comandos
 - make setup                 # .venv + dependências Python + npm ci + Chromium do Playwright
 - make env                   # gera .env local com segredos aleatórios de desenvolvimento
@@ -92,6 +107,8 @@ Decisões da Fase 2 (25 set 2026):
 - make e2e                   # Playwright
 - make anonymize             # corre tools/anonymize.py (local, fora do Git)
 - make pii-check             # procura padrões de dados pessoais em data/fixtures/ (também na CI)
+- make seed-library          # propostas da biblioteca e do conhecimento a partir de data/fixtures (idempotente)
+- make curator-review        # escreve docs/revisao-curador.md a partir das propostas
 - Sem make (Windows): `winget install ezwinports.make`
 
 ## Dados
@@ -139,20 +156,28 @@ Decisões da Fase 0:
     o histórico do Git fica como está. Também passam por placeholder no que for enviado ao LLM.
 
 ## Estado atual
-- Fase: 2 **implementada** (25 set 2026). Fases 0, 1 e 2 concluídas; próxima: Fase 3.
-- Feito na Fase 2:
-  - leitores sem LLM: 09-Folhas (.xls), MQT/LPU (.xlsx) e PDF das peças desenhadas, ligados à ficha-base com origem e
-    FichaConflict; modelos CircuitSheet e BomItem, conflitos em campos de troços (migrações 0003 e 0004);
-  - associação à mão de 09-Folhas e de artigos (auditada), resolução de conflitos de troço (só técnico);
-  - interface: assistente com o que foi lido por tipo e os avisos; ficha com conflitos de troço, coluna da 09-Folha,
-    folhas por associar, índice das peças desenhadas e artigos do MQT/LPU.
-- Verificado: pytest 395 (inclui a aceitação de R1/R2 das Fases 1 e 2: C4, C6, C7, C10 e os controlos), Vitest 32,
-  Playwright 51 + os dois percursos com R2 contra a stack real (Fase 1: ficha + Tabela; Fase 2: conjunto completo).
+- Fase: 3 **implementada** (25 set 2026), à espera do curador (D7): a fase fecha quando os blocos estiverem aprovados.
+  Fases 0, 1 e 2 concluídas.
+- Feito na Fase 3:
+  - dicionário de cabos (designações tal como aparecem e onde, equivalências propostas com evidência) e léxico de
+    tipologias (termos incompatíveis com a evidência, C2), migração 0005;
+  - MDJ/CTE de R1/R2 partidos em secções com o OOXML original e ida e volta verificada (0006); 95 blocos propostos
+    (42 MDJ, 53 CTE) com evidência, marcadores e arquivo (0007, 0008); regras de ativação para o esqueleto 8.3;
+    `equipment_slots` no CTE; corpus reduzido do Anexo D, só referências, nada citável (0009);
+  - ecrã G: dicionário, léxico, biblioteca (evidência lado a lado, pré-visualização, aprovar/editar/rejeitar, histórico)
+    e corpus; decisões só do papel Curador, na auditoria.
+- Verificado: pytest 500 (backend 334 + anonimizador 166; inclui a ida e volta dos quatro .docx, IP/IK fixas, potência de
+  R1 paramétrica, assinatura sem dados do técnico, teste de fuga, regras sobre R1/R2), Vitest 45, Playwright 66 + os
+  percursos com a stack real (R2 das Fases 1 e 2; curador da Fase 3), `make pii-check` limpo.
 - [A CONFIRMAR] pela equipa:
+  - Fase 3: as decisões de método acima e cada proposta em docs/revisao-curador.md;
   - mapa de células das 09-Folhas (maps/folha09_tuu.yaml) e a regra de comparação à precisão do menos preciso;
   - potência de cada troço da Tabela = "TOTAL INSTALADO" (em R1/R2 igual a "Norma [kVA]");
   - secção do troço lida da designação do cabo (Circuit.section_mm2);
   - em R2 a LPU lista 16 quadros e a Tabela 14 (Q.SEGURANÇA, Q.DESENF, "Q.UPS" vs "Q.UPS 10kVA"): conflito real a rever;
+- Biblioteca: `make up`, `make seed-library` (lê só data/fixtures, montada só para leitura no contentor do backend) e
+  `make curator-review`. Percurso do curador: `RUN_CURATOR_JOURNEY=1 npm run e2e` (aprova um bloco na BD de
+  desenvolvimento; repor com `docker compose down -v` e voltar a semear).
 - Percursos com R2: `make up` e depois `RUN_R2_JOURNEY=1 npm run e2e` (criam projetos na BD de desenvolvimento;
   repor com `docker compose down -v`). Depois de mudar dependências do backend: `docker compose build backend worker`.
 - Notas de ambiente:
@@ -172,6 +197,6 @@ Decisões da Fase 0:
   - os valores da tabela de pseudónimos de execuções anteriores também respeitam o `allow:` dos overrides; foi assim que
     a freguesia de R1 (tomada por morada pelo mapa antigo) voltou a ficar real em 25 set 2026;
   - os PDF são gravados com o `/ID` da origem (`no_new_id`): uma nova execução só muda os PDF cujo conteúdo muda.
-- Próximo: Fase 3 (biblioteca de blocos a partir dos MDJ/CTE de R1 e R2, aprovação pelo curador, corpus
-  regulamentar, dicionário de cabos, léxico de tipologias). Antes: D5 (termos da Gemini API) e D7 (curador);
+- Próximo: Fase 4 (montagem fixed/parametric, redação adaptive, editor, formulários), depois de o curador aprovar
+  os blocos. Antes: D7 (curador), D8 (esqueletos com os técnicos) e D5 (termos da Gemini API, para a redação adaptativa);
   D6 (Entra ID) continua por decidir com a TI.

@@ -149,4 +149,46 @@ def mqt() -> bytes:
     )
 
 
+# ---------------------------------------------------------------- MQT / LPU (.xlsx)
+
+MQT_ROWS: list[list[Any]] = [
+    [None, "MORADIA DE TESTE"],
+    [None, "MAPA DE QUANTIDADE DE TRABALHOS - ELETRICIDADE"],
+    [],
+    [None, "CÓDIGO", "DESIGNAÇÃO", "UNI.", "QUANT.", "PREÇO UNITÁRIO", "PREÇO TOTAL",
+     "TOTAL CAPÍTULO"],
+    [None, None, "NOTAS INICIAIS"],
+    [None, None, "Nota 1. Os preços não incluem IVA."],
+    [None, "8", "ELETRICIDADE", None, None, None, None, 4300],
+    [None, "8.1", "ENTRADA E DISTRIBUIÇÃO DE ENERGIA"],
+    [None, "8.1.1", "Caixa Portinhola P100", "cj", 1, 250, 250],
+    [None, "8.2", "QUADROS ELÉTRICOS"],
+    [None, "8.2.1", "Fornecimento e instalação dos quadros elétricos"],
+    [None, "8.2.1.1", "Q.E.G", "un", 1, 1100, 1100],
+    [None, "8.2.1.2", "Q.P.1", "un", 1, 600, 600],
+    [None, "8.3", "CARREGAMENTO DE VEÍCULOS ELÉTRICOS"],
+    [None, "8.3.1", "Carregador de veículos elétricos 7,4 kW", "un", 2, 1175, 2350],
+    [None, None, None, None, None, None, "TOTAL:", 4300],
+]  # fmt: skip
+LPU_ROWS: list[list[Any]] = [
+    [None, "LISTA DE PREÇOS UNITÁRIOS"],
+    [None, "Designação:", "Reabilitação do Edifício de Teste"],
+    [None, "Adjudicatário:"],
+    [None, "Adjudicante:", "Município de Teste"],
+    [None, "Data:", "2026-01-15"],
+    [],
+    [None, "Artº", "Designação", "Un", "QUANTIDADES ADJUDICADAS"],
+    [None, None, None, None, "Quant.", "Pr. Unit.", "Total", "Total Cap."],
+    [None, "1", "INSTALAÇÕES ELÉTRICAS", None, None, None, None, 7450],
+    [None, "1.8", "Quadros elétricos"],
+    [None, "1.8.1", "Fornecimento e montagem de quadros elétricos"],
+    [None, "1.8.1.1", "Q.E.G.", "Un", 1, 6470, 6470],
+    [None, "1.8.1.2", "Q.P.1 (piso 1)", "Un", 1, 980, 980],
+]  # fmt: skip
+
+
+def bom(rows: list[list[Any]], title: str = "MQT") -> bytes:
+    return workbook_bytes({title: rows})
+
+
 PDF_MINIMAL = b"%PDF-1.4\n1 0 obj<</Type/Catalog>>endobj\ntrailer<</Root 1 0 R>>\n%%EOF\n"

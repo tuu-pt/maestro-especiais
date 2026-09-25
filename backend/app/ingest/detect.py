@@ -10,7 +10,7 @@ import openpyxl
 import xlrd
 
 # Kinds with a reader in Phase 1. The others are stored and read in Phase 2.
-READABLE_KINDS = ("ficha_eletrotecnica", "calc_summary", "calc_circuit")
+READABLE_KINDS = ("ficha_eletrotecnica", "calc_summary", "calc_circuit", "mqt", "lpu")
 
 FE_VERSION_CELL = "R45"
 _CALC_SHEETS = {"ib", "condutores", "tensao", "proteccao"}
@@ -40,13 +40,16 @@ def looks_like_calc_table(rows: list[list[str]]) -> bool:
 
 
 def _quantities_kind(rows: list[list[str]]) -> str | None:
+    """MQT or LPU: a DESIGNAÇÃO/QUANT. header, told apart by the document title."""
+    has_header = False
     for words in _row_words(rows):
         text = " ".join(words)
-        has_designation = "designacao" in text
-        has_quantity = any(w.startswith("quant") for w in words)
-        if has_designation and has_quantity:
-            return "lpu" if "preco" in text else "mqt"
-    return None
+        if "designacao" in text and any(w.startswith("quant") for w in words):
+            has_header = True
+    if not has_header:
+        return None
+    titles = " ".join(" ".join(w) for w in _row_words(rows[:12]))
+    return "lpu" if "lista de precos" in titles else "mqt"
 
 
 def _detect_workbook(data: bytes) -> Detection:

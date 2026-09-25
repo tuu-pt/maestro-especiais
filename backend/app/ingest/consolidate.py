@@ -7,6 +7,7 @@
 - A confirmed revision is never changed: the next reading starts revision B, C…
 """
 
+import re
 import uuid
 from datetime import UTC, datetime
 from decimal import Decimal
@@ -16,6 +17,7 @@ from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
 from app.ingest.base import ReadResult, to_number
+from app.ingest.boards import core
 from app.ingest.detect import fold
 from app.ingest.keys import info
 from app.models import (
@@ -114,11 +116,23 @@ def comparable(key: str, value: Any) -> Any:
     if info(key).numeric:
         number = to_number(value)
         return number if number is not None else fold(value)
+    if key == "ele.quadros" and isinstance(value, list):
+        return sorted({core(str(v)) for v in value})  # same boards, however they are written
     if isinstance(value, list):
         return [fold(v) for v in value]
-    text = fold(value)
+    text = entity(fold(value))
     if key == "ele.entrada":
         return "trif" if text.startswith("tri") else ("mono" if text.startswith("mon") else text)
+    return text
+
+
+_ENTITY_SYNONYMS = ((re.compile(r"^(a\s+)?camara municipal d[eoa]\s+"), "municipio de "),)
+
+
+def entity(text: str) -> str:
+    """One name per public body (decision of 24 Sep 2026): Câmara Municipal = Município."""
+    for pattern, replacement in _ENTITY_SYNONYMS:
+        text = pattern.sub(replacement, text)
     return text
 
 

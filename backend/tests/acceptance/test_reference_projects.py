@@ -146,3 +146,40 @@ def test_r2_sheets_show_the_real_divergences(api: Api, db: Session) -> None:
     assert conflicts["Q.AVAC i2_a"] == [290, 42]
     unlinked = [s for s in db.scalars(select(CircuitSheet)) if s.link_status == "unlinked"]
     assert [(s.origin_hint, s.destination_hint) for s in unlinked] == [("QPEXT", "CVE")]
+
+
+# ---------------------------------------------------------------- Phase 2: MQT / LPU
+
+
+def load_kinds(api: Api, code: str, kinds: set[str]) -> dict[str, Any]:
+    """Upload the files of the given kinds (found by content) and return the ficha."""
+    reference_files(code)
+    client = api.as_("redator")
+    project_id = client.post("/api/projects", json={"code": code, "name": code}).json()["id"]
+    for path in sorted((FIXTURES / code).rglob("*.xls[xm]")):
+        if detect(path.name, path.read_bytes()).kind in kinds:
+            response = client.post(
+                f"/api/projects/{project_id}/files", files={"file": (path.name, path.read_bytes())}
+            )
+            assert response.status_code == 202, response.text
+    listed = client.get(f"/api/projects/{project_id}/files").json()
+    assert {f["ingest_status"] for f in listed} == {"done"}, listed
+    body: dict[str, Any] = client.get(f"/api/projects/{project_id}/ficha").json()
+    return body
+
+
+def test_r1_control_boards_of_the_mqt_match_the_tabela(api: Api) -> None:
+    """Control case: the 6 boards agree between MQT and Tabela de Cálculo."""
+    body = load_kinds(api, "R1", {"calc_summary", "mqt"})
+    boards = value(body, "ele.quadros")
+    assert boards["status"] != "conflict", boards
+    assert len(boards["value"]) == 6
+
+
+def test_r2_c7_requerente_of_the_ficha_is_not_the_adjudicante(api: Api) -> None:
+    body = load_kinds(api, "R2", {"ficha_eletrotecnica", "lpu"})
+    requerente = value(body, "id.requerente.nome")
+    assert requerente["status"] == "conflict"
+    sources = {c["source_type"] for c in requerente["conflict"]["candidates"]}
+    assert sources == {"ficha_eletrotecnica", "mqt"}
+    assert value(body, "id.obra.designacao")["source_type"] == "mqt"  # from the LPU

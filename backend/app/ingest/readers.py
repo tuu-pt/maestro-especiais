@@ -2,7 +2,7 @@
 
 from sqlalchemy.orm import Session
 
-from app.ingest import circuit_sheet, consolidate, ficha_eletrotecnica, tabela_calculo
+from app.ingest import bom, circuit_sheet, consolidate, ficha_eletrotecnica, tabela_calculo
 from app.ingest.pipeline import register
 from app.models import ProjectFile
 
@@ -32,3 +32,11 @@ def folha09(db: Session, file: ProjectFile, data: bytes) -> str:
     reading = circuit_sheet.read(data, file.filename)
     file.template_version = reading.template
     return circuit_sheet.add_reading(db, file, reading)
+
+
+@register("mqt")
+@register("lpu")
+def quantities(db: Session, file: ProjectFile, data: bytes) -> str:
+    reading = bom.read(data)
+    file.kind = reading.variant  # the title decides; detection and reader agree
+    return bom.add_reading(db, file, reading)

@@ -53,6 +53,22 @@ Decisões da Fase 1 (confirmam-se com R1/R2 anonimizados):
 - S3: chave `projects/<uuid>/files/<uuid>` (o nome original só na BD); SHA-256 e deduplicação por projeto.
 - Tokens: `--ink-3` escurecido (claro #66645c, escuro #99958a) para contraste AA; o mock-up tem #77746b/#8e8a80.
 
+Decisões da Fase 2 (25 set 2026):
+- 09-Folhas: mapa de células em backend/app/ingest/maps/folha09_tuu.yaml [A CONFIRMAR]; Iz corrigido em proteccao!Z7
+  (a SPEC dizia condutores!H52, que é o Iz antes da correção); queda de tensão em fração (× 100).
+- A 09-Folha não diz o troço: associa-se pelo nome do ficheiro, com a normalização dos nomes dos quadros
+  (backend/app/ingest/boards.py); sem correspondência única fica "por associar" e associa-se à mão.
+- Comparação 09-Folha ↔ Tabela à precisão do valor menos preciso (máx. 2 casas) [A CONFIRMAR]; cada diferença é um
+  FichaConflict no campo do troço. Em R1, a queda de tensão de Q.E.G. → Q.P.1.2 (0,9 % / 0,76 %) é divergência real.
+- MQT e LPU distinguem-se pelo título do documento. Associação de artigos só por regras (quadros, portinhola, VE, FV,
+  luminárias pelo código); o resto à mão. Associação assistida por LLM: trabalho futuro (SPEC 8.2).
+- "Câmara Municipal de X" = "Município de X" na comparação (regra explícita em consolidate.entity).
+- PDF das peças desenhadas com pypdfium2 (BSD/Apache), não pdfplumber (~12 s por página em R2). Só índice,
+  carimbadura e n.º de páginas; a legenda fica para mais tarde. A ficha mostra índice ≠ folhas (C4); DES-01 é da Fase 5.
+- Avisos da leitura em project_file.ingest_warnings, à parte do resumo.
+- Nas fixtures de R1, os campos pessoais da carimbadura saem baralhados (efeito do anonimizador): os testes de R1 só usam
+  os campos não pessoais da carimbadura.
+
 ## Comandos
 - make setup                 # .venv + dependências Python + npm ci + Chromium do Playwright
 - make env                   # gera .env local com segredos aleatórios de desenvolvimento
@@ -78,7 +94,7 @@ Seguem a recomendação da secção 16 da SPEC enquanto a equipa não decidir o 
 | D3 | Embeddings Gemini | ✅ Decidido |
 | D4 | Alojamento cloud na UE | Recomendação seguida; por agora só ambiente local |
 | D5 | Termos da Gemini API | **Pendente (direção).** Até lá nenhum dado real vai ao LLM; só fixtures anonimizadas |
-| D6 | Autenticação Entra ID, se aplicável | A decidir na Fase 2 (TI) |
+| D6 | Autenticação Entra ID, se aplicável | Por decidir com a TI (não decidida na Fase 2; o login de desenvolvimento continua) |
 | D7 | Curador | A designar (coordenação) |
 | D8 | Esqueletos da secção 8.3 | Seguidos tal como estão, a validar com os técnicos |
 | D9 | Integração TUU Maestro | Endpoint de exportação no MVP |
@@ -109,25 +125,23 @@ Decisões da Fase 0:
     o histórico do Git fica como está. Também passam por placeholder no que for enviado ao LLM.
 
 ## Estado atual
-- Fase: 1 **fechada** (24 set 2026). Fases 0 e 1 concluídas; próxima: Fase 2.
-- Feito na Fase 1:
-  - backend: modelos Project, ProjectFile, FichaRevision, FichaValue, FichaConflict, Circuit e AuditEvent
-    (insert-only por trigger) com Alembic; projetos, upload para S3 com checksum e tipo detetado,
-    ficha-base, revelar, resolver conflitos, confirmar, auditoria e atividade; worker RQ com SSE;
-  - leitores sem LLM da ficha eletrotécnica (mapa confirmado com R1/R2) e da Tabela de Cálculo (modelo TUU
-    com cabeçalho em duas linhas), consolidação com FichaConflict, CAL-01;
-  - frontend: ecrãs A–H com estados vazios e sem dados inventados; ecrã C com dados reais;
-  - fixtures R1 e R2 anonimizadas e versionadas (55 ficheiros, `make pii-check` limpo, revisão visual feita).
-- Verificado no fecho: pytest 279 (inclui a aceitação de R1/R2: controlo de potência de R1 sem conflitos,
-  C6 como FichaConflict, C10 na CAL-01), Vitest 26, Playwright 48 (estados vazios, axe WCAG 2.1 AA nos dois
-  temas, 400 px, teclado) e o percurso com R2 contra a stack real (criar → carregar → resolver o conflito de
-  potência → confirmar → auditoria), com capturas claro/escuro/telemóvel.
+- Fase: 2 **implementada** (25 set 2026). Fases 0, 1 e 2 concluídas; próxima: Fase 3.
+- Feito na Fase 2:
+  - leitores sem LLM: 09-Folhas (.xls), MQT/LPU (.xlsx) e PDF das peças desenhadas, ligados à ficha-base com origem e
+    FichaConflict; modelos CircuitSheet e BomItem, conflitos em campos de troços (migrações 0003 e 0004);
+  - associação à mão de 09-Folhas e de artigos (auditada), resolução de conflitos de troço (só técnico);
+  - interface: assistente com o que foi lido por tipo e os avisos; ficha com conflitos de troço, coluna da 09-Folha,
+    folhas por associar, índice das peças desenhadas e artigos do MQT/LPU.
+- Verificado: pytest 395 (inclui a aceitação de R1/R2 das Fases 1 e 2: C4, C6, C7, C10 e os controlos), Vitest 32,
+  Playwright 51 + os dois percursos com R2 contra a stack real (Fase 1: ficha + Tabela; Fase 2: conjunto completo).
 - [A CONFIRMAR] pela equipa:
+  - mapa de células das 09-Folhas (maps/folha09_tuu.yaml) e a regra de comparação à precisão do menos preciso;
   - potência de cada troço da Tabela = "TOTAL INSTALADO" (em R1/R2 igual a "Norma [kVA]");
-  - fixtures: em R1 a freguesia foi substituída por um pseudónimo de morada (mapa antigo do anonimizador);
-    uma nova execução do anonimizador, já com o mapa corrigido, deixa-a real.
-- Percurso com R2: `make up` e depois `RUN_R2_JOURNEY=1 npm run e2e` (cria um projeto na BD de desenvolvimento;
-  repor com `docker compose down -v`).
+  - secção do troço lida da designação do cabo (Circuit.section_mm2);
+  - em R2 a LPU lista 16 quadros e a Tabela 14 (Q.SEGURANÇA, Q.DESENF, "Q.UPS" vs "Q.UPS 10kVA"): conflito real a rever;
+  - fixtures: em R1 a freguesia foi substituída por um pseudónimo de morada (mapa antigo do anonimizador).
+- Percursos com R2: `make up` e depois `RUN_R2_JOURNEY=1 npm run e2e` (criam projetos na BD de desenvolvimento;
+  repor com `docker compose down -v`). Depois de mudar dependências do backend: `docker compose build backend worker`.
 - Notas de ambiente:
   - `make test` exige o Docker a correr (Postgres do compose);
   - o worker usa o código montado (PYTHONPATH=/srv/backend); o backend também (uvicorn);
@@ -142,5 +156,6 @@ Decisões da Fase 0:
   - imagens nos formulários são apagadas, as restantes geram aviso; as miniaturas da primeira página são removidas;
   - páginas PDF com muito vetor e pouco texto (fontes SHX) geram aviso de revisão visual;
   - dados que o script não encontra sozinho (nomes soltos, falsos positivos): data/private/anonymize_overrides.yaml (ver README).
-- Próximo: Fase 2 (leitores das 09-Folhas, MQT/LPU e PDF das peças desenhadas, ligados à ficha-base com origem
-  e conflitos). D6 (Entra ID) a decidir com a TI na Fase 2.
+- Próximo: Fase 3 (biblioteca de blocos a partir dos MDJ/CTE de R1 e R2, aprovação pelo curador, corpus
+  regulamentar, dicionário de cabos, léxico de tipologias). Antes: D5 (termos da Gemini API) e D7 (curador);
+  D6 (Entra ID) continua por decidir com a TI.

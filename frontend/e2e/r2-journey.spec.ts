@@ -17,12 +17,16 @@ import { expectNoSeriousA11yIssues, horizontalOverflow, screenshot } from "./sup
 // E2E_R2_DIR only to check this journey itself with synthetic files.
 const R2 = process.env.E2E_R2_DIR ?? resolve(dirname(fileURLToPath(import.meta.url)), "../../data/fixtures/R2");
 
-/** Spreadsheets of R2: the app finds the ficha eletrotécnica and the Tabela by content. */
+/**
+ * The two Phase 1 sources of R2: the ficha eletrotécnica (.xlsm) and the Tabela de Cálculo. The
+ * test picks them by file name; the app still detects every file by its content. The full set
+ * (09-Folhas, LPU, drawings) is the Phase 2 journey, r2-full-set.spec.ts.
+ */
 function spreadsheets(dir: string): string[] {
   return readdirSync(dir).flatMap((name) => {
     const path = join(dir, name);
     if (statSync(path).isDirectory()) return spreadsheets(path);
-    return /\.xls[xm]$/i.test(name) && !name.startsWith("~$") ? [path] : [];
+    return /\.xlsm$/i.test(name) || /^Tabela.*\.xlsx$/i.test(name) ? [path] : [];
   });
 }
 

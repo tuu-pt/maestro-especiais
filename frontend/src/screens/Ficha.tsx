@@ -7,11 +7,21 @@ import {
   revealValue,
   useConfirmRevision,
   useFicha,
+  useLinkBomItem,
+  useLinkSheet,
   useMe,
   useProject,
   useResolveConflict,
 } from "../api/queries";
-import type { Candidate, Circuit, Ficha, FichaValue } from "../api/types";
+import type {
+  BomItem,
+  Candidate,
+  CircuitSheet,
+  DrawingsCheck,
+  Ficha,
+  FichaValue,
+  LinkKey,
+} from "../api/types";
 import {
   Button,
   ButtonLink,
@@ -32,10 +42,20 @@ import { Screen } from "./Screen";
 
 const detail = (file: string | null, ref: string | null) => [file, ref].filter(Boolean).join(" · ");
 
+/** Lists of records (index, sheets) are shown in their own section: here only how many. */
+function listSummary(v: FichaValue): string | null {
+  if (!Array.isArray(v.value) || !v.value.some((x) => typeof x === "object" && x !== null)) return null;
+  const n = v.value.length;
+  if (v.key === "pd.indice") return `${n} folha${n === 1 ? "" : "s"} (ver o índice abaixo)`;
+  if (v.key === "pd.folhas") return `${n} página${n === 1 ? "" : "s"} com carimbadura`;
+  return `${n} registos`;
+}
+
 function Value({ value, revealed, onReveal }: { value: FichaValue; revealed?: unknown; onReveal: () => void }) {
   const shown = revealed !== undefined ? revealed : value.value;
-  const text = `${formatValue(shown)}${value.unit && shown !== null ? ` ${value.unit}` : ""}`;
   if (value.status === "conflict") return <Pill tone="warn">Conflito</Pill>;
+  const summary = listSummary(value);
+  const text = summary ?? `${formatValue(shown)}${value.unit && shown !== null ? ` ${value.unit}` : ""}`;
   return <MaskedValue masked={value.masked && revealed === undefined} value={text} onReveal={onReveal} />;
 }
 
@@ -77,17 +97,19 @@ function Groups({ ficha }: { ficha: Ficha }) {
   );
 }
 
+// ---------------------------------------------------------------- conflicts
+
 function candidateText(c: Candidate, unit: string | null): string {
   return `${formatValue(c.value)}${unit && c.value !== "•••" ? ` ${unit}` : ""}`;
 }
 
-function ConflictBox({ projectId, value, canResolve }: { projectId: string; value: FichaValue; canResolve: boolean }) {
-  const conflict = value.conflict;
+type Open = { id: string; label: string; unit: string | null; candidates: Candidate[] };
+
+function ConflictBox({ projectId, conflict, canResolve }: { projectId: string; conflict: Open; canResolve: boolean }) {
   const [choice, setChoice] = useState<number | "manual" | null>(null);
   const [manual, setManual] = useState("");
   const [note, setNote] = useState("");
   const resolve = useResolveConflict(projectId);
-  if (!conflict) return null;
   const idBase = `conflict-${conflict.id}`;
   const submit = () => {
     if (choice === null) return;
@@ -101,10 +123,10 @@ function ConflictBox({ projectId, value, canResolve }: { projectId: string; valu
   return (
     <section className={s.conflict} aria-labelledby={`${idBase}-title`}>
       <h3 id={`${idBase}-title`} className={s.conflictTitle}>
-        {value.label}: as fontes não coincidem
+        {conflict.label}: as fontes não coincidem
       </h3>
       <p>O agente não escolhe por maioria nem pela data: é preciso uma pessoa confirmar.</p>
-      <div className={s.pick} role="group" aria-label={`Candidatos para ${value.label}`}>
+      <div className={s.pick} role="group" aria-label={`Candidatos para ${conflict.label}`}>
         {conflict.candidates.map((c, i) => (
           <button
             key={i}
@@ -113,9 +135,9 @@ function ConflictBox({ projectId, value, canResolve }: { projectId: string; valu
             disabled={!canResolve}
             onClick={() => setChoice(i)}
           >
-            <b>{candidateText(c, value.unit)}</b>
+            <b>{candidateText(c, conflict.unit)}</b>
             <span>
-              {ORIGIN_LABELS[c.source_type]} · {detail(c.source_file, c.source_ref)}
+              {ORIGIN_LABELS[c.source_type] ?? c.source_type} · {detail(c.source_file, c.source_ref)}
               {c.file_date ? ` · ${formatDateTime(c.file_date)}` : ""}
             </span>
           </button>
@@ -167,16 +189,63 @@ function manualValue(text: string): unknown {
   return trimmed !== "" && Number.isFinite(number) && /^[\d\s.,-]+$/.test(trimmed) ? number : trimmed;
 }
 
-function Cell({ value, fail, label }: { value: string | null; fail: boolean; label: string }) {
+function openConflicts(ficha: Ficha): Open[] {
+  const values = ficha.groups
+    .flatMap((g) => g.values)
+    .filter((v) => v.conflict)
+    .map((v) => ({ id: v.conflict!.id, label: v.label, unit: v.unit, candidates: v.conflict!.candidates }));
+  const circuits = ficha.circuits.flatMap((c) =>
+    c.conflicts.map((k) => ({
+      id: k.id,
+      label: `${c.origin} → ${c.destination} · ${k.label}`,
+      unit: null,
+      candidates: k.candidates,
+    })),
+  );
+  return [...values, ...circuits];
+}
+
+// ---------------------------------------------------------------- circuits and 09-Folhas
+
+function Cell({ value, fail, label, conflict }: { value: string | null; fail: boolean; label: string; conflict?: boolean }) {
   return (
-    <td className={fail ? s.fail : s.num}>
+    <td className={fail ? s.fail : conflict ? s.conflictCell : s.num}>
       {formatValue(value)}
       {fail ? <span className="visually-hidden">{` (não cumpre ${label})`}</span> : null}
+      {conflict ? <span className="visually-hidden"> (difere da 09-Folha)</span> : null}
     </td>
   );
 }
 
-function Circuits({ circuits, note }: { circuits: Circuit[]; note: string }) {
+const SHEET_FIELDS: [field: string, label: string, unit: string][] = [
+  ["kva", "Potência", "kVA"],
+  ["ib_a", "IB", "A"],
+  ["in_a", "In", "A"],
+  ["iz_a", "Iz", "A"],
+  ["i2_a", "I2", "A"],
+  ["iz145_a", "1,45·Iz", "A"],
+  ["section_mm2", "Secção", "mm²"],
+  ["length_m", "Comprimento", "m"],
+  ["vd_section_pct", "QDT troço", "%"],
+];
+
+const sheetName = (sh: CircuitSheet) =>
+  sh.origin_hint && sh.destination_hint ? `${sh.origin_hint}-${sh.destination_hint}` : (sh.source_file ?? "09-Folha");
+
+function SheetDetail({ sheet }: { sheet: CircuitSheet }) {
+  const text = SHEET_FIELDS.filter(([f]) => sheet.values[f])
+    .map(([f, label, unit]) => `${label} ${formatValue(sheet.values[f]?.value)} ${unit}`)
+    .join(" · ");
+  return (
+    <OriginTag
+      source="calc_sheet"
+      detail={`${sheet.source_file ?? "09-Folha"}${sheet.link_status === "manual" ? " (associada à mão)" : ""} · ${text}`}
+    />
+  );
+}
+
+function Circuits({ ficha }: { ficha: Ficha }) {
+  const { circuits, cal01_note: note } = ficha;
   if (circuits.length === 0) {
     return (
       <EmptyState title="Sem troços" next="Os troços vêm da Tabela de Cálculo, uma linha por troço.">
@@ -184,6 +253,7 @@ function Circuits({ circuits, note }: { circuits: Circuit[]; note: string }) {
       </EmptyState>
     );
   }
+  const sheetOf = (id: string) => ficha.circuit_sheets.find((sh) => sh.circuit_ids.includes(id));
   const fails = circuits.filter((c) => c.cal01.ib_in_iz === "fail" || c.cal01.i2_iz145 === "fail").length;
   return (
     <>
@@ -209,30 +279,34 @@ function Circuits({ circuits, note }: { circuits: Circuit[]; note: string }) {
             <th scope="col">L (m)</th>
             <th scope="col">QDT (%)</th>
             <th scope="col">Origem</th>
+            <th scope="col">09-Folha</th>
           </tr>
         </thead>
         <tbody>
           {circuits.map((c) => {
             const a = c.cal01.ib_in_iz === "fail";
             const b = c.cal01.i2_iz145 === "fail";
+            const differs = new Set(c.conflicts.map((k) => k.field));
+            const sheet = sheetOf(c.id);
             return (
               <tr key={c.id}>
                 <th scope="row" className={s.rowHead}>
                   {c.origin} → {c.destination}
                   {c.section ? <span className={s.muted}>{c.section}</span> : null}
                 </th>
-                <td className={s.num}>{formatValue(c.kva)}</td>
-                <Cell value={c.ib_a} fail={a} label="IB ≤ In ≤ Iz" />
-                <Cell value={c.in_a} fail={a} label="IB ≤ In ≤ Iz" />
-                <Cell value={c.iz_a} fail={a} label="IB ≤ In ≤ Iz" />
-                <Cell value={c.i2_a} fail={b} label="I2 ≤ 1,45·Iz" />
-                <Cell value={c.iz145_a} fail={b} label="I2 ≤ 1,45·Iz" />
+                <Cell value={c.kva} fail={false} label="" conflict={differs.has("kva")} />
+                <Cell value={c.ib_a} fail={a} label="IB ≤ In ≤ Iz" conflict={differs.has("ib_a")} />
+                <Cell value={c.in_a} fail={a} label="IB ≤ In ≤ Iz" conflict={differs.has("in_a")} />
+                <Cell value={c.iz_a} fail={a} label="IB ≤ In ≤ Iz" conflict={differs.has("iz_a")} />
+                <Cell value={c.i2_a} fail={b} label="I2 ≤ 1,45·Iz" conflict={differs.has("i2_a")} />
+                <Cell value={c.iz145_a} fail={b} label="I2 ≤ 1,45·Iz" conflict={differs.has("iz145_a")} />
                 <td className={s.cable}>{c.cable_raw ?? "—"}</td>
-                <td className={s.num}>{formatValue(c.length_m)}</td>
-                <td className={s.num}>{formatValue(c.vd_total_pct)}</td>
+                <Cell value={c.length_m} fail={false} label="" conflict={differs.has("length_m")} />
+                <Cell value={c.vd_section_pct ?? c.vd_total_pct} fail={false} label="" conflict={differs.has("vd_section_pct")} />
                 <td>
                   <OriginTag source="calc" detail={c.source_ref} />
                 </td>
+                <td>{sheet ? <SheetDetail sheet={sheet} /> : <span className={s.muted}>—</span>}</td>
               </tr>
             );
           })}
@@ -240,11 +314,231 @@ function Circuits({ circuits, note }: { circuits: Circuit[]; note: string }) {
       </DataTable>
       <p className={s.muted}>
         A CAL-01 compara valores que já estão na Tabela de Cálculo (IB ≤ In ≤ Iz e I2 ≤ 1,45·Iz) e não
-        recalcula nada: um troço destacado pede confirmação na folha. {note}
+        recalcula nada: um troço destacado pede confirmação na folha. As células sublinhadas diferem da
+        09-Folha do troço e aparecem nos conflitos. {note}
       </p>
     </>
   );
 }
+
+function UnlinkedSheets({ ficha, projectId, canLink }: { ficha: Ficha; projectId: string; canLink: boolean }) {
+  const unlinked = ficha.circuit_sheets.filter((sh) => sh.link_status === "unlinked");
+  const link = useLinkSheet(projectId);
+  const [chosen, setChosen] = useState<Record<string, string[]>>({});
+  if (!unlinked.length) return null;
+  return (
+    <Card title={`09-Folhas por associar (${unlinked.length})`}>
+      <p className={s.muted}>
+        O nome do ficheiro não indica um único troço da Tabela de Cálculo. Escolha o troço (ou os troços iguais)
+        a que a folha corresponde: os valores passam a ser comparados.
+      </p>
+      <ul className={s.sheets}>
+        {unlinked.map((sh) => {
+          const id = `sheet-${sh.id}`;
+          return (
+            <li key={sh.id}>
+              <b>{sheetName(sh)}</b>
+              <span className={s.muted}>{sh.source_file}</span>
+              {canLink ? (
+                <>
+                  <label htmlFor={id}>Troço(s) da Tabela para {sheetName(sh)}</label>
+                  <select
+                    id={id}
+                    multiple
+                    size={Math.min(5, ficha.circuits.length)}
+                    className={s.input}
+                    value={chosen[sh.id] ?? []}
+                    onChange={(e) =>
+                      setChosen((c) => ({ ...c, [sh.id]: Array.from(e.target.selectedOptions, (o) => o.value) }))
+                    }
+                  >
+                    {ficha.circuits.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.origin} → {c.destination}
+                      </option>
+                    ))}
+                  </select>
+                  <Buttons>
+                    <Button
+                      disabled={!(chosen[sh.id] ?? []).length || link.isPending}
+                      onClick={() => link.mutate({ sheetId: sh.id, circuitIds: chosen[sh.id] ?? [] })}
+                    >
+                      Associar {sheetName(sh)}
+                    </Button>
+                  </Buttons>
+                </>
+              ) : (
+                <span className={s.muted}>Só o redator ou o técnico responsável associam folhas.</span>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+      {link.error ? <ErrorNote>{link.error.message}</ErrorNote> : null}
+    </Card>
+  );
+}
+
+// ---------------------------------------------------------------- drawings
+
+function Drawings({ ficha }: { ficha: Ficha }) {
+  const all = ficha.groups.flatMap((g) => g.values);
+  const index = all.find((v) => v.key === "pd.indice");
+  const check: DrawingsCheck | null = ficha.drawings_check;
+  if (!index || !Array.isArray(index.value)) return null;
+  const rows = index.value as { codigo: string; titulo: string; data: string | null; revisao: string | null }[];
+  const missing = new Set(check?.missing_in_pdf ?? []);
+  return (
+    <section aria-labelledby="drawings-title">
+      <div className={s.circuitsHead}>
+        <h2 id="drawings-title" className={s.h2}>
+          Índice das peças desenhadas
+        </h2>
+        {check ? (
+          check.matches ? (
+            <Pill tone="ok">Índice e PDF coincidem</Pill>
+          ) : (
+            <Pill tone="warn">Índice e PDF não coincidem</Pill>
+          )
+        ) : null}
+      </div>
+      {check && !check.matches ? (
+        <p className={s.warnNote} role="note">
+          {`O índice lista ${check.index_sheets} folha${check.index_sheets === 1 ? "" : "s"} e o PDF tem ${check.pages} página${check.pages === 1 ? "" : "s"}.`}
+          {check.missing_in_pdf.length ? ` Sem página no PDF: ${check.missing_in_pdf.join(", ")}.` : ""}
+          {check.not_in_index.length ? ` Fora do índice: ${check.not_in_index.join(", ")}.` : ""}
+          {" A regra DES-01 (Fase 5) vai sinalizar isto na validação."}
+        </p>
+      ) : null}
+      <DataTable caption="Folhas do índice">
+        <thead>
+          <tr>
+            <th scope="col">Código</th>
+            <th scope="col">Título</th>
+            <th scope="col">Data</th>
+            <th scope="col">Rev.</th>
+            <th scope="col">No PDF</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r) => (
+            <tr key={r.codigo}>
+              <th scope="row" className={s.rowHead}>
+                {r.codigo}
+              </th>
+              <td>{r.titulo}</td>
+              <td>{r.data ?? "—"}</td>
+              <td>{r.revisao ?? "—"}</td>
+              <td>{missing.has(r.codigo) ? <Pill tone="warn">Sem página</Pill> : <Pill tone="ok">Sim</Pill>}</td>
+            </tr>
+          ))}
+        </tbody>
+      </DataTable>
+    </section>
+  );
+}
+
+// ---------------------------------------------------------------- MQT / LPU
+
+type Filter = "all" | "linked" | "unlinked";
+
+function BomItems({ ficha, projectId, canLink }: { ficha: Ficha; projectId: string; canLink: boolean }) {
+  const articles = ficha.bom_items.filter((i) => i.kind === "article");
+  const unlinkedCount = articles.filter((i) => i.link_status === "unlinked").length;
+  const [filter, setFilter] = useState<Filter>(unlinkedCount ? "unlinked" : "all");
+  const link = useLinkBomItem(projectId);
+  if (!articles.length) return null;
+  const shown = articles.filter((i) =>
+    filter === "all" ? true : filter === "linked" ? i.link_status !== "unlinked" : i.link_status === "unlinked",
+  );
+  const variant = articles[0]?.variant === "lpu" ? "LPU" : "MQT";
+  const counts: [Filter, string, number][] = [
+    ["unlinked", "Por associar", unlinkedCount],
+    ["linked", "Associados", articles.length - unlinkedCount],
+    ["all", "Todos", articles.length],
+  ];
+  return (
+    <section aria-labelledby="bom-title">
+      <div className={s.circuitsHead}>
+        <h2 id="bom-title" className={s.h2}>
+          Artigos do {variant}
+        </h2>
+        <div className={s.filters} role="group" aria-label="Filtrar artigos">
+          {counts.map(([f, label, n]) => (
+            <button key={f} type="button" aria-pressed={filter === f} onClick={() => setFilter(f)}>
+              {label} ({n})
+            </button>
+          ))}
+        </div>
+      </div>
+      <p className={s.muted}>
+        Nesta fase os artigos só se associam por regras (quadros, portinhola, carregadores VE, módulos FV e
+        luminárias pelo código). Os restantes associam-se aqui, à mão; cada associação fica registada.
+      </p>
+      <DataTable caption={`Tabela dos artigos do ${variant}`}>
+        <thead>
+          <tr>
+            <th scope="col">Código</th>
+            <th scope="col">Designação</th>
+            <th scope="col">Un.</th>
+            <th scope="col">Quant.</th>
+            <th scope="col">Associação</th>
+          </tr>
+        </thead>
+        <tbody>
+          {shown.map((i) => (
+            <BomRow key={i.id} item={i} keys={ficha.bom_link_keys} canLink={canLink} onLink={(key) => link.mutate({ itemId: i.id, key })} />
+          ))}
+        </tbody>
+      </DataTable>
+      {link.error ? <ErrorNote>{link.error.message}</ErrorNote> : null}
+    </section>
+  );
+}
+
+function BomRow({ item, keys, canLink, onLink }: { item: BomItem; keys: LinkKey[]; canLink: boolean; onLink: (key: string | null) => void }) {
+  const status =
+    item.link_status === "rule" ? (
+      <Pill tone="ok">{`${item.link_label} · por regra`}</Pill>
+    ) : item.link_status === "manual" ? (
+      <Pill tone="info">{`${item.link_label} · à mão`}</Pill>
+    ) : (
+      <Pill tone="mute">Por associar</Pill>
+    );
+  const label = `Associação do artigo ${item.code ?? ""} ${item.designation?.slice(0, 40) ?? ""}`.trim();
+  return (
+    <tr>
+      <th scope="row" className={s.rowHead}>
+        <abbr title={detail(item.source_file, item.source_ref)}>{item.code ?? "—"}</abbr>
+      </th>
+      <td className={s.designation}>{item.designation}</td>
+      <td>{item.unit ?? "—"}</td>
+      <td className={s.num}>{formatValue(item.quantity)}</td>
+      <td>
+        <div className={s.linkCell}>
+          {status}
+          {canLink ? (
+            <select
+              aria-label={label}
+              className={s.select}
+              value={item.link_key ?? ""}
+              onChange={(e) => onLink(e.target.value || null)}
+            >
+              <option value="">Sem associação</option>
+              {keys.map((k) => (
+                <option key={k.key} value={k.key}>
+                  {k.group} · {k.label}
+                </option>
+              ))}
+            </select>
+          ) : null}
+        </div>
+      </td>
+    </tr>
+  );
+}
+
+// ---------------------------------------------------------------- screen
 
 export function FichaScreen() {
   const projectId = useActiveProject();
@@ -253,6 +547,7 @@ export function FichaScreen() {
   const { data: me } = useMe();
   const confirm = useConfirmRevision(projectId ?? "");
   const isTecnico = me?.roles.some((r) => r.id === "tecnico") ?? false;
+  const canLink = me?.roles.some((r) => r.id === "tecnico" || r.id === "redator") ?? false;
 
   if (!projectId) {
     return (
@@ -262,7 +557,7 @@ export function FichaScreen() {
     );
   }
   const revision = ficha?.revision;
-  const conflicts = ficha?.groups.flatMap((g) => g.values).filter((v) => v.conflict) ?? [];
+  const conflicts = ficha ? openConflicts(ficha) : [];
   const confirmReason = !revision
     ? "Ainda não há ficha-base."
     : revision.status !== "draft"
@@ -290,7 +585,7 @@ export function FichaScreen() {
               Carregar ficheiros
             </ButtonLink>
           }
-          next="Cada valor vai mostrar a origem (ficheiro, folha e célula ou linha). Quando as fontes divergirem, o valor fica em aberto até uma pessoa o confirmar."
+          next="Cada valor vai mostrar a origem (ficheiro, folha e célula, linha ou página). Quando as fontes divergirem, o valor fica em aberto até uma pessoa o confirmar."
         >
           Carregue a ficha eletrotécnica e a Tabela de Cálculo para criar a ficha-base.
         </EmptyState>
@@ -298,11 +593,17 @@ export function FichaScreen() {
       {ficha && revision ? (
         <div className={s.main}>
           <div className={s.content}>
-            {conflicts.map((v) => (
-              <ConflictBox key={v.id} projectId={projectId} value={v} canResolve={isTecnico} />
+            {conflicts.length ? (
+              <h2 className={s.h2}>{`Conflitos por resolver (${conflicts.length})`}</h2>
+            ) : null}
+            {conflicts.map((c) => (
+              <ConflictBox key={c.id} projectId={projectId} conflict={c} canResolve={isTecnico} />
             ))}
             <Groups ficha={ficha} />
-            <Circuits circuits={ficha.circuits} note={ficha.cal01_note} />
+            <Drawings ficha={ficha} />
+            <Circuits ficha={ficha} />
+            <UnlinkedSheets ficha={ficha} projectId={projectId} canLink={canLink} />
+            <BomItems ficha={ficha} projectId={projectId} canLink={canLink} />
           </div>
           <aside className={s.side}>
             <Card title="Estado">

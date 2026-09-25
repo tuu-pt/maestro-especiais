@@ -3,6 +3,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ApiError, postJson, request } from "./client";
 import type {
   AuditEntry,
+  BomItem,
+  CircuitSheet,
   DevUser,
   Ficha,
   FichaValue,
@@ -118,6 +120,24 @@ export function useConfirmRevision(projectId: string) {
   const refresh = useRefreshProject();
   return useMutation({
     mutationFn: (revisionId: string) => postJson<Revision>(`/ficha/revisions/${revisionId}/confirm`),
+    onSuccess: () => refresh(projectId),
+  });
+}
+
+export function useLinkSheet(projectId: string) {
+  const refresh = useRefreshProject();
+  return useMutation({
+    mutationFn: (args: { sheetId: string; circuitIds: string[] }) =>
+      postJson<CircuitSheet>(`/circuit-sheets/${args.sheetId}/link`, { circuit_ids: args.circuitIds }),
+    onSuccess: () => refresh(projectId),
+  });
+}
+
+export function useLinkBomItem(projectId: string) {
+  const refresh = useRefreshProject();
+  return useMutation({
+    mutationFn: (args: { itemId: string; key: string | null }) =>
+      postJson<BomItem>(`/bom-items/${args.itemId}/link`, { key: args.key }),
     onSuccess: () => refresh(projectId),
   });
 }

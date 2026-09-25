@@ -111,6 +111,11 @@
   background: var(--ok-bg);
   color: var(--ok);
 }
+.origin_calc_sheet {
+  background: var(--ok-bg);
+  color: var(--ok);
+  border: 1px dashed var(--ok);
+}
 .origin_mqt,
 .origin_drawing {
   background: var(--surface-2);

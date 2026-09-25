@@ -44,12 +44,33 @@ const ficha = {
     },
     { name: "Sistemas", values: [] },
     { name: "Equipamentos", values: [] },
-    { name: "Peças desenhadas", values: [] },
+    {
+      name: "Peças desenhadas",
+      values: [
+        v("pd.indice", "Índice das folhas", [{ codigo: "EL001", titulo: "ÍNDICE", data: "06/26", revisao: null }, { codigo: "EL002", titulo: "PISO 1 - DISTRIBUIÇÃO DE ENERGIA", data: "06/26", revisao: null }], { source_type: "drawing", source_ref: "PDF · pág. 1 · índice" }),
+        v("pd.n_paginas_pdf", "Páginas do PDF", 1, { source_type: "drawing", source_ref: "PDF · número de páginas" }),
+      ],
+    },
   ],
   circuits: [
-    { id: "c1", row_index: 3, section: "ENTRADA DE ENERGIA", origin: "Portinhola", destination: "Q.E.G.", kva: "200", ib_a: "50", in_a: "63", idn_ma: null, iz_a: "347.17", i2_a: "504", iz145_a: "503.4", cable_raw: "XZ1(frt,zh) 4x16", length_m: "25", vd_total_pct: "0.8", breaking_capacity_ka: "6", installation: "ENT", phases: 3, source_ref: "Tabela!linha 3", cal01: { ib_in_iz: "ok", i2_iz145: "fail" } },
+    { id: "c1", row_index: 3, section: "ENTRADA DE ENERGIA", origin: "Portinhola", destination: "Q.E.G.", kva: "200", ib_a: "50", in_a: "63", idn_ma: null, iz_a: "347.17", i2_a: "504", iz145_a: "503.4", cable_raw: "XZ1(frt,zh) 4x16", length_m: "25", vd_total_pct: "0.8", breaking_capacity_ka: "6", installation: "ENT", phases: 3, source_ref: "Tabela!linha 3", section_mm2: "185", vd_section_pct: "0.49", cal01: { ib_in_iz: "ok", i2_iz145: "fail" },
+      conflicts: [{ id: "kc1", field: "in_a", label: "In", candidates: [
+        { value: 315, source_type: "calc", source_ref: "Tabela!linha 3", source_file: "Tabela de Calculo.xlsx", file_date: null },
+        { value: 250, source_type: "calc_sheet", source_ref: "09-Folha ARM-QEG · proteccao!E9", source_file: "09-Folha ARM-QEG.xls", file_date: null },
+      ] }] },
+    { id: "c2", row_index: 14, section: "EDIFÍCIO", origin: "Q.P.EXTERIOR", destination: "CVE 1", kva: "7.4", ib_a: "32.17", in_a: "40", idn_ma: "30", iz_a: "77.3", i2_a: "58", iz145_a: "112.09", cable_raw: "RV-K 3G10mm2", length_m: "30", vd_total_pct: "1.2", breaking_capacity_ka: "6", installation: "ENT", phases: 1, source_ref: "Tabela!linha 30", section_mm2: "10", vd_section_pct: "0.7", cal01: { ib_in_iz: "ok", i2_iz145: "ok" }, conflicts: [] },
   ],
-  open_conflicts: 1,
+  circuit_sheets: [
+    { id: "s1", origin_hint: "ARM", destination_hint: "QEG", source_file: "09-Folha ARM-QEG.xls", template: "TUU_09", values: { in_a: { value: 250, ref: "proteccao!E9" } }, circuit_ids: ["c1"], link_status: "rule" },
+    { id: "s2", origin_hint: "QPEXT", destination_hint: "CVE", source_file: "09-Folha QPEXT-CVE.xls", template: "TUU_09", values: {}, circuit_ids: [], link_status: "unlinked" },
+  ],
+  bom_items: [
+    { id: "b1", variant: "lpu", source_ref: "LPU!linha 41", source_file: "LPU.xlsx", code: "1.8.1.1", level: 4, kind: "article", designation: "Q.E.G.", unit: "Un", quantity: "1", link_key: "ele.quadros", link_label: "Quadros", link_status: "rule", link_rule: "board" },
+    { id: "b2", variant: "lpu", source_ref: "LPU!linha 26", source_file: "LPU.xlsx", code: "1.2.1.1", level: 4, kind: "article", designation: "Fornecimento e montagem de cabo XAV 4(1x185)mm² em caminho de cabos, incluindo acessórios", unit: "ml", quantity: "25", link_key: null, link_label: null, link_status: "unlinked", link_rule: null },
+  ],
+  bom_link_keys: [{ key: "ele.cabos", label: "Cabos", group: "Distribuição" }, { key: "ele.quadros", label: "Quadros", group: "Distribuição" }],
+  drawings_check: { index_sheets: 2, pages: 1, missing_in_pdf: ["EL002"], not_in_index: [], matches: false },
+  open_conflicts: 2,
   can_confirm: false,
   cal01_note: "Queda de tensão e poder de corte: a verificação fica disponível quando houver MDJ com os limites do projeto.",
 };

@@ -184,3 +184,70 @@
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+.conflictCell {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  text-decoration: underline wavy var(--warn);
+  text-underline-offset: 3px;
+}
+.warnNote {
+  margin: 0;
+  padding: 8px 12px;
+  border-radius: 6px;
+  background: var(--warn-bg);
+  color: var(--warn);
+  font-size: 13px;
+}
+.filters {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.filters button {
+  font: inherit;
+  font-size: 12px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  border: 1px solid var(--line-2);
+  background: var(--surface);
+  color: var(--ink-2);
+  cursor: pointer;
+}
+.filters button[aria-pressed="true"] {
+  background: var(--ink);
+  color: var(--paper);
+  border-color: var(--ink);
+}
+.designation {
+  min-width: 16em;
+  max-width: 36em;
+}
+.linkCell {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.select {
+  font: inherit;
+  font-size: 12px;
+  max-width: 16em;
+  padding: 3px 6px;
+  border: 1px solid var(--line-2);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--ink);
+}
+.sheets {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 12px;
+}
+.sheets li {
+  display: grid;
+  gap: 4px;
+  font-size: 13px;
+}

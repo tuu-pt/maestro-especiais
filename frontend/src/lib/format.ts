@@ -6,6 +6,7 @@ import type { SourceType } from "../api/types";
 export const ORIGIN_LABELS: Record<SourceType, string> = {
   ficha_eletrotecnica: "FICHA ELE",
   calc: "CÁLCULO",
+  calc_sheet: "09-FOLHA",
   mqt: "MQT",
   drawing: "DES",
   manual: "MANUAL",

@@ -57,7 +57,7 @@ export type FileEvent = {
   at: string;
 };
 
-export type SourceType = "ficha_eletrotecnica" | "calc" | "mqt" | "drawing" | "manual";
+export type SourceType = "ficha_eletrotecnica" | "calc" | "calc_sheet" | "mqt" | "drawing" | "manual";
 
 export type Candidate = {
   value: unknown;
@@ -98,13 +98,58 @@ export type Circuit = {
   i2_a: string | null;
   iz145_a: string | null;
   cable_raw: string | null;
+  section_mm2: string | null;
   length_m: string | null;
+  vd_section_pct: string | null;
   vd_total_pct: string | null;
   breaking_capacity_ka: string | null;
   installation: string | null;
   phases: number | null;
   source_ref: string | null;
   cal01: { ib_in_iz: Cal01Outcome; i2_iz145: Cal01Outcome };
+  conflicts: CircuitConflict[];
+};
+
+export type CircuitConflict = { id: string; field: string; label: string; candidates: Candidate[] };
+
+export type LinkStatus = "rule" | "manual" | "unlinked";
+
+export type CircuitSheet = {
+  id: string;
+  origin_hint: string | null;
+  destination_hint: string | null;
+  source_file: string | null;
+  template: string;
+  values: Record<string, { value: number; ref: string }>;
+  circuit_ids: string[];
+  link_status: LinkStatus;
+};
+
+export type BomItem = {
+  id: string;
+  variant: "mqt" | "lpu";
+  source_ref: string;
+  source_file: string | null;
+  code: string | null;
+  level: number;
+  kind: "chapter" | "subchapter" | "article" | "description" | "note" | "total";
+  designation: string | null;
+  unit: string | null;
+  quantity: string | null;
+  link_key: string | null;
+  link_label: string | null;
+  link_status: LinkStatus;
+  link_rule: string | null;
+};
+
+export type LinkKey = { key: string; label: string; group: string };
+
+export type DrawingsCheck = {
+  index_sheets: number;
+  pages: number;
+  missing_in_pdf: string[];
+  not_in_index: string[];
+  matches: boolean;
 };
 
 export type Revision = {
@@ -121,6 +166,10 @@ export type Ficha = {
   revisions: Revision[];
   groups: { name: string; values: FichaValue[] }[];
   circuits: Circuit[];
+  circuit_sheets: CircuitSheet[];
+  bom_items: BomItem[];
+  bom_link_keys: LinkKey[];
+  drawings_check: DrawingsCheck | null;
   open_conflicts: number;
   can_confirm: boolean;
   cal01_note: string;

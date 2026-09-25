@@ -71,7 +71,7 @@ def reference_documents(fixtures: Path, code: str) -> Iterator[tuple[str, str, b
     for path in unique_files(root):
         if path.suffix.lower() == ".docx":
             kind = docx_kind(docx.Document(str(path)))
-            if kind:
+            if kind in ("MDJ", "CTE"):  # forms are not split into blocks
                 yield kind, path.relative_to(root).as_posix(), path.read_bytes()
 
 

@@ -8,6 +8,7 @@ import hashlib
 import re
 from collections.abc import Iterator
 from dataclasses import dataclass
+from itertools import islice
 from pathlib import Path
 
 import docx
@@ -26,19 +27,23 @@ SOURCE_OF_KIND = {"calc_summary": "Tabela", "calc_circuit": "09-Folha", "mqt": "
 @dataclass(frozen=True)
 class SourceText:
     project: str
-    source: str  # Tabela, 09-Folha, MQT, LPU, MDJ, CTE
+    source: str  # Tabela, 09-Folha, MQT, LPU, MDJ, CTE, Formulário
     file: str  # path inside the project folder
     locator: str  # cell, line or paragraph
     text: str
 
 
 def docx_kind(document: DocxDocument) -> str | None:
-    """MDJ or CTE, from the title on the cover (the first paragraphs)."""
+    """MDJ, CTE or a form (identificação, termo), from the title (the first paragraphs)."""
     head = fold(" ".join(p.text for p in document.paragraphs[:40]))
     if "memoria descritiva" in head:
         return "MDJ"
     if "condicoes tecnicas" in head or "caderno de encargos" in head:
         return "CTE"
+    # the forms have their title in a table
+    head += " " + fold(" ".join(text for _, text in islice(docx_texts(document), 60)))
+    if "termo de responsabilidade" in head or "identificacao do projeto" in head:
+        return "Formulário"
     return None
 
 

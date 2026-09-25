@@ -7,11 +7,17 @@ import uuid
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import DateTime, ForeignKey, String, Text, UniqueConstraint
+from sqlalchemy import DateTime, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db import Entity
-from app.models.enums import REVIEW_STATUSES, one_of
+from app.models.enums import (
+    REGULATION_KINDS,
+    REGULATION_REVIEW,
+    REGULATION_STATUSES,
+    REVIEW_STATUSES,
+    one_of,
+)
 
 
 class Reviewable:
@@ -110,3 +116,38 @@ class TypologyTerm(Reviewable, Entity):
     evidence: Mapped[list[Any]] = mapped_column(default=list)
 
     typology: Mapped[Typology] = relationship(back_populates="terms")
+
+
+class RegulationDoc(Entity):
+    """A diploma, guide or standard of the corpus (SPEC 7.5): a reference, never its full text.
+
+    `status` is the legal status the curator confirms; `citable` stays false until then (only
+    citable documents are cited, P6). Standards under copyright keep only title and scope.
+    """
+
+    __tablename__ = "regulation_doc"
+    __table_args__ = (
+        one_of("status", REGULATION_STATUSES, "ck_regulation_doc_status", nullable=True),
+        one_of("review_status", REGULATION_REVIEW, "ck_regulation_doc_review_status"),
+        one_of("kind", REGULATION_KINDS, "ck_regulation_doc_kind"),
+    )
+
+    code: Mapped[str] = mapped_column(String(60), unique=True)
+    title: Mapped[str] = mapped_column(String(200))
+    kind: Mapped[str] = mapped_column(String(15))
+    edition: Mapped[str | None] = mapped_column(String(80))
+    issuer: Mapped[str | None] = mapped_column(String(80))
+    scope: Mapped[str] = mapped_column(String(300))  # âmbito, one sentence
+    specialties: Mapped[list[Any]] = mapped_column(default=list)
+    status: Mapped[str | None] = mapped_column(String(15))
+    citable: Mapped[bool] = mapped_column(default=False)
+    copyrighted: Mapped[bool] = mapped_column(default=False)
+    license_note: Mapped[str | None] = mapped_column(Text)
+    last_checked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    review_status: Mapped[str] = mapped_column(String(10), default="proposed")
+    reviewed_by: Mapped[str | None] = mapped_column(String(64))  # the curator (curator_id)
+    reviewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    review_note: Mapped[str | None] = mapped_column(Text)
+    # where the reference projects cite it: [{project, source, file, locator, text}]
+    found_in: Mapped[list[Any]] = mapped_column(default=list)
+    found_count: Mapped[int] = mapped_column(Integer, default=0)

@@ -30,6 +30,7 @@ KIND_LABELS_PT = {
     "archive_docx": "documento",
     "other": "ficheiro",
 }
+STATUS_PT = {"in_force": "em vigor", "revoked": "revogado", "reference_only": "só referência"}
 EDIT_LABELS_PT = {"title": "título", "mode": "modo", "activation_rule": "regra de ativação"}
 KNOWLEDGE_LABELS_PT = {
     "cable-designations": "a designação de cabo",
@@ -87,6 +88,14 @@ def describe(action: str, payload: dict[str, Any]) -> str:
             verb = "Aprovou" if action == "knowledge.approved" else "Rejeitou"
             what = KNOWLEDGE_LABELS_PT.get(str(payload.get("kind")), "o elemento")
             return f"{verb} {what} «{payload.get('label', '')}»"
+        case "knowledge.regulation_confirmed":
+            legal = STATUS_PT.get(str(payload.get("status")), "")
+            return f"Confirmou «{payload.get('label', '')}» ({legal})"
+        case "knowledge.regulation_rejected":
+            return f"Rejeitou «{payload.get('label', '')}» do corpus"
+        case "knowledge.regulation_citable":
+            verb = "Marcou" if payload.get("citable") else "Desmarcou"
+            return f"{verb} «{payload.get('label', '')}» como citável"
         case "library.block_approved" | "library.block_rejected":
             verb = "Aprovou" if action.endswith("approved") else "Rejeitou"
             return f"{verb} o bloco «{payload.get('title', '')}» ({payload.get('doc_type', '')})"

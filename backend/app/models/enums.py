@@ -29,6 +29,9 @@ REVIEW_STATUSES = ("proposed", "approved", "rejected")  # what a curator reviews
 LIBRARY_DOC_TYPES = ("MDJ", "CTE")
 SECTION_KINDS = ("cover", "index", "block", "signature")
 BLOCK_MODES = ("fixed", "parametric", "adaptive")
+REGULATION_STATUSES = ("in_force", "revoked", "reference_only")  # legal status (SPEC 7.5)
+REGULATION_REVIEW = ("proposed", "confirmed", "rejected")
+REGULATION_KINDS = ("diploma", "guia", "especificacao", "norma")
 BOM_VARIANTS = ("mqt", "lpu")
 BOM_KINDS = ("chapter", "subchapter", "article", "description", "note", "total")
 

@@ -35,6 +35,7 @@ export const defaultHandlers = [
   http.get(api("/knowledge/cables"), () => HttpResponse.json({ designations: [], equivalences: [] })),
   http.get(api("/knowledge/typologies"), () => HttpResponse.json([])),
   http.get(api("/library/blocks"), () => HttpResponse.json([])),
+  http.get(api("/knowledge/regulations"), () => HttpResponse.json([])),
   http.get(api("/health"), () =>
     HttpResponse.json({ status: "ok", services: { database: { status: "ok" } } }),
   ),

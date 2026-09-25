@@ -32,6 +32,7 @@ export async function mockApi(page: Page, extra: Extra = {}): Promise<void> {
       "/knowledge/cables": { designations: [], equivalences: [] },
       "/knowledge/typologies": [],
       "/library/blocks": [],
+      "/knowledge/regulations": [],
       "/health": { status: "ok", services: { database: { status: "ok" }, redis: { status: "ok" } } },
     };
     const body = path in extra ? extra[path] : base[path];

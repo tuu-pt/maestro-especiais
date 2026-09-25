@@ -21,6 +21,7 @@ from sqlalchemy.orm import Session
 from app.ingest import ficha_eletrotecnica
 from app.ingest.detect import detect, fold
 from app.knowledge import cables
+from app.knowledge.regulations import seed_regulations
 from app.knowledge.sources import SourceText, project_texts
 from app.models import (
     CableDesignation,
@@ -202,6 +203,7 @@ def seed_knowledge(
     }
     result = seed_cables(db, (t for ts in texts.values() for t in ts))
     result["lexicon_terms"] = seed_lexicon(db, fixtures, texts)
+    result["regulations"] = seed_regulations(db, [t for ts in texts.values() for t in ts])
     return result
 
 

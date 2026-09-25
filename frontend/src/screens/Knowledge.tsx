@@ -17,6 +17,7 @@ import { Button, Buttons, Card, Chip, DataTable, EmptyState, ErrorNote, Pill, ty
 import { formatDateTime } from "../lib/format";
 import { BlocksPanel } from "./Blocks";
 import { Loading } from "./common";
+import { CorpusPanel } from "./Corpus";
 import s from "./Knowledge.module.css";
 import { Screen } from "./Screen";
 
@@ -96,14 +97,7 @@ export function KnowledgeScreen() {
         {current === "cabos" ? <CablesPanel /> : null}
         {current === "lexico" ? <LexiconPanel /> : null}
         {current === "blocos" ? <BlocksPanel /> : null}
-        {current === "corpus" ? (
-          <EmptyState
-            title="Ainda não há documentos no corpus"
-            next="Diplomas e normas com o estado (em vigor, revogado, só referência). Só se cita o que um curador marcar como citável; das normas com direitos de autor guarda-se só o título e o âmbito."
-          >
-            O corpus começa pela lista do Anexo D da especificação, com tudo por confirmar.
-          </EmptyState>
-        ) : null}
+        {current === "corpus" ? <CorpusPanel /> : null}
         {current === "arquivo" ? (
           <EmptyState
             title="O arquivo ainda está vazio"

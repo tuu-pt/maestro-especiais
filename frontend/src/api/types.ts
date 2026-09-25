@@ -289,3 +289,28 @@ export type BlockPreview = {
 };
 
 export type BlockEdit = { title?: string; mode?: BlockMode; activation_rule?: string; note: string };
+
+// ---------------------------------------------------------------- regulation corpus (screen G)
+
+export type RegulationStatus = "in_force" | "revoked" | "reference_only";
+
+export type Regulation = {
+  id: string;
+  code: string;
+  title: string;
+  kind: "diploma" | "guia" | "especificacao" | "norma";
+  edition: string | null;
+  issuer: string | null;
+  scope: string;
+  status: RegulationStatus | null;
+  citable: boolean;
+  copyrighted: boolean;
+  license_note: string | null;
+  last_checked_at: string | null;
+  review_status: "proposed" | "confirmed" | "rejected";
+  reviewed_by: string | null;
+  reviewed_at: string | null;
+  review_note: string | null;
+  found_in: { project: string; source: string; file: string; locator: string; text: string }[];
+  found_count: number;
+};

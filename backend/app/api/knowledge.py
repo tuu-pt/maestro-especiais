@@ -1,4 +1,4 @@
-"""Knowledge base (SPEC 7.5, screen G): cable dictionary and typology lexicon.
+"""Knowledge base (SPEC 7.5, screen G): cable dictionary, typology lexicon and regulation corpus.
 
 Everyone reads it; only a curator approves or rejects, and every decision is audited.
 """
@@ -15,7 +15,13 @@ from sqlalchemy.orm import Session, selectinload
 from app.audit import record
 from app.auth import CurrentUser, User, require_role
 from app.db import get_session
-from app.models import CableDesignation, CableEquivalence, Typology, TypologyTerm
+from app.models import (
+    CableDesignation,
+    CableEquivalence,
+    RegulationDoc,
+    Typology,
+    TypologyTerm,
+)
 
 router = APIRouter(prefix="/knowledge", tags=["base de conhecimento"])
 
@@ -157,6 +163,99 @@ def _sync_aliases(row: CableEquivalence) -> None:
         if row.status == "approved":
             aliases.append(other.canonical)
         mine.aliases = sorted(aliases)
+
+
+class RegulationOut(BaseModel):
+    id: uuid.UUID
+    code: str
+    title: str
+    kind: str
+    edition: str | None
+    issuer: str | None
+    scope: str
+    status: str | None
+    citable: bool
+    copyrighted: bool
+    license_note: str | None
+    last_checked_at: datetime | None
+    review_status: str
+    reviewed_by: str | None
+    reviewed_at: datetime | None
+    review_note: str | None
+    found_in: list[dict[str, Any]]
+    found_count: int
+
+
+class RegulationReviewIn(BaseModel):
+    decision: Literal["confirmed", "rejected"]
+    status: Literal["in_force", "revoked", "reference_only"] | None = None
+    edition: str | None = Field(default=None, max_length=80)
+    note: str | None = Field(default=None, max_length=2000)
+
+
+class CitableIn(BaseModel):
+    citable: bool
+    note: str | None = Field(default=None, max_length=2000)
+
+
+def _regulation(db: Session, doc_id: uuid.UUID) -> RegulationDoc:
+    doc = db.get(RegulationDoc, doc_id)
+    if doc is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Documento do corpus não encontrado.")
+    return doc
+
+
+@router.get("/regulations")
+def regulations(db: DB, _: CurrentUser) -> list[RegulationOut]:
+    rows = db.scalars(select(RegulationDoc).order_by(RegulationDoc.kind, RegulationDoc.title))
+    return [RegulationOut.model_validate(r, from_attributes=True) for r in rows]
+
+
+@router.post("/regulations/{doc_id}/review")
+def review_regulation(
+    doc_id: uuid.UUID, body: RegulationReviewIn, db: DB, user: Curador
+) -> RegulationOut:
+    """Confirm (with the legal status and the edition checked) or reject a reference."""
+    doc = _regulation(db, doc_id)
+    if body.decision == "confirmed" and body.status is None:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            "Para confirmar, indique o estado do documento (em vigor, revogado ou só referência).",
+        )
+    before = doc.review_status
+    now = datetime.now(UTC)
+    doc.review_status = body.decision
+    doc.reviewed_by, doc.reviewed_at, doc.last_checked_at = user.id, now, now
+    doc.review_note = (body.note or "").strip() or None
+    if body.decision == "confirmed":
+        doc.status = body.status
+        doc.edition = (body.edition or "").strip() or doc.edition
+    if doc.status != "in_force" or body.decision == "rejected":
+        doc.citable = False  # only a confirmed document in force can be cited
+    record(
+        db, user, f"knowledge.regulation_{body.decision}", "regulation_doc", doc.id,
+        {"label": doc.title, "status": doc.status, "from": before}, project_id=None,
+    )  # fmt: skip
+    db.commit()
+    return RegulationOut.model_validate(doc, from_attributes=True)
+
+
+@router.post("/regulations/{doc_id}/citable")
+def set_citable(doc_id: uuid.UUID, body: CitableIn, db: DB, user: Curador) -> RegulationOut:
+    doc = _regulation(db, doc_id)
+    if body.citable and (doc.review_status != "confirmed" or doc.status != "in_force"):
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            "Só um documento confirmado pelo curador e em vigor pode ser citado.",
+        )
+    doc.citable = body.citable
+    record(
+        db, user, "knowledge.regulation_citable", "regulation_doc", doc.id,
+        {"label": doc.title, "citable": body.citable, "note": (body.note or "").strip() or None},
+        project_id=None,
+    )  # fmt: skip
+    db.commit()
+    return RegulationOut.model_validate(doc, from_attributes=True)
 
 
 @router.post("/{kind}/{item_id}/review")

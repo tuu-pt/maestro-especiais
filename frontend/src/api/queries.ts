@@ -17,6 +17,8 @@ import type {
   Project,
   ProjectFile,
   ProjectIn,
+  Regulation,
+  RegulationStatus,
   Reviewed,
   Revision,
   Typology,
@@ -35,6 +37,7 @@ export const keys = {
   activity: ["activity"] as const,
   cables: ["knowledge", "cables"] as const,
   typologies: ["knowledge", "typologies"] as const,
+  regulations: ["knowledge", "regulations"] as const,
   blocks: ["library", "blocks"] as const,
   block: (id: string) => ["library", "blocks", id] as const,
   blockPreview: (id: string, projectId: string) => ["library", "blocks", id, "preview", projectId] as const,
@@ -218,5 +221,35 @@ export function useBlockAction(id: string) {
       void client.invalidateQueries({ queryKey: ["library"] });
       void client.invalidateQueries({ queryKey: keys.activity });
     },
+  });
+}
+
+export const useRegulations = () =>
+  useQuery({ queryKey: keys.regulations, queryFn: () => request<Regulation[]>("/knowledge/regulations") });
+
+function useRefreshKnowledge() {
+  const client = useQueryClient();
+  return () => {
+    void client.invalidateQueries({ queryKey: ["knowledge"] });
+    void client.invalidateQueries({ queryKey: keys.activity });
+  };
+}
+
+/** Confirm (with the legal status) or reject a reference of the corpus (curator only). */
+export function useReviewRegulation(id: string) {
+  const refresh = useRefreshKnowledge();
+  return useMutation({
+    mutationFn: (body: { decision: "confirmed" | "rejected"; status?: RegulationStatus; edition?: string; note: string }) =>
+      postJson<Regulation>(`/knowledge/regulations/${id}/review`, body),
+    onSuccess: refresh,
+  });
+}
+
+export function useCitable(id: string) {
+  const refresh = useRefreshKnowledge();
+  return useMutation({
+    mutationFn: (body: { citable: boolean; note: string }) =>
+      postJson<Regulation>(`/knowledge/regulations/${id}/citable`, body),
+    onSuccess: refresh,
   });
 }

@@ -96,8 +96,44 @@ const TYPOLOGIES = [
   },
 ];
 
+const REGULATIONS = [
+  {
+    id: "g1",
+    code: "rtiebt",
+    title: "RTIEBT: Portaria n.º 949-A/2006, na redação atual",
+    kind: "diploma",
+    edition: null,
+    issuer: "Governo",
+    scope: "Regras Técnicas das Instalações Elétricas de Baixa Tensão.",
+    status: null,
+    citable: false,
+    copyrighted: false,
+    license_note: null,
+    last_checked_at: null,
+    review_status: "proposed",
+    reviewed_by: null,
+    reviewed_at: null,
+    review_note: null,
+    found_in: [
+      {
+        project: "R1",
+        source: "MDJ",
+        file: "MBERAL/2-PE/Editavel/MBERAL_MDJ_PE_ELE_V0.docx",
+        locator: "parágrafo 44",
+        text: "…deverão obedecer ao estipulado nas secções 521 e 801.5 da RTIEBT.",
+      },
+    ],
+    found_count: 12,
+  },
+];
+
 async function open(page: Page, tab?: string) {
-  await mockApi(page, { "/me": CURATOR, "/knowledge/cables": CABLES, "/knowledge/typologies": TYPOLOGIES });
+  await mockApi(page, {
+    "/me": CURATOR,
+    "/knowledge/cables": CABLES,
+    "/knowledge/typologies": TYPOLOGIES,
+    "/knowledge/regulations": REGULATIONS,
+  });
   await page.goto(tab ? `/conhecimento?separador=${tab}` : "/conhecimento");
   await expect(page.getByRole("heading", { level: 1, name: "Base de conhecimento" })).toBeVisible();
 }
@@ -114,14 +150,16 @@ test("a curator sees the evidence and can approve or reject", async ({ page }) =
   ).toBeVisible();
 });
 
+const TEXT: Record<string, string> = { cabos: "XZ1(frt,zh)", lexico: "apartamento", corpus: "RTIEBT" };
+
 for (const scheme of ["light", "dark"] as const) {
   test.describe(`${scheme} theme`, () => {
     test.use({ colorScheme: scheme });
 
-    for (const tab of ["cabos", "lexico"]) {
+    for (const tab of ["cabos", "lexico", "corpus"]) {
       test(`${tab}: no serious accessibility issues`, async ({ page }, info) => {
         await open(page, tab);
-        await expect(page.getByRole("tabpanel")).toContainText(tab === "cabos" ? "XZ1(frt,zh)" : "apartamento");
+        await expect(page.getByRole("tabpanel")).toContainText(TEXT[tab]!);
         await expectNoSeriousA11yIssues(page);
         await screenshot(page, info, `conhecimento-${tab}-${scheme === "light" ? "claro" : "escuro"}`);
       });
@@ -132,10 +170,10 @@ for (const scheme of ["light", "dark"] as const) {
 test.describe("phone width (400 px)", () => {
   test.use({ viewport: { width: 400, height: 860 } });
 
-  for (const tab of ["cabos", "lexico"]) {
+  for (const tab of ["cabos", "lexico", "corpus"]) {
     test(`${tab}: no horizontal scroll`, async ({ page }, info) => {
       await open(page, tab);
-      await expect(page.getByRole("tabpanel")).toContainText(tab === "cabos" ? "XZ1(frt,zh)" : "apartamento");
+      await expect(page.getByRole("tabpanel")).toContainText(TEXT[tab]!);
       expect(await horizontalOverflow(page)).toBeLessThanOrEqual(0);
       await screenshot(page, info, `conhecimento-${tab}-telemovel`);
     });

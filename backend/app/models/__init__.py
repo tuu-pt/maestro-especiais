@@ -13,6 +13,7 @@ from app.models.knowledge import (
     CableDesignation,
     CableEquivalence,
     CableOccurrence,
+    RegulationDoc,
     Typology,
     TypologyTerm,
 )
@@ -40,6 +41,7 @@ __all__ = [
     "FichaValue",
     "Project",
     "ProjectFile",
+    "RegulationDoc",
     "SourceDocument",
     "SourceSection",
     "TemplateBlock",

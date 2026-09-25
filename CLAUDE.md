@@ -153,7 +153,6 @@ Decisões da Fase 0:
   - potência de cada troço da Tabela = "TOTAL INSTALADO" (em R1/R2 igual a "Norma [kVA]");
   - secção do troço lida da designação do cabo (Circuit.section_mm2);
   - em R2 a LPU lista 16 quadros e a Tabela 14 (Q.SEGURANÇA, Q.DESENF, "Q.UPS" vs "Q.UPS 10kVA"): conflito real a rever;
-  - fixtures: em R1 a freguesia foi substituída por um pseudónimo de morada (mapa antigo do anonimizador).
 - Percursos com R2: `make up` e depois `RUN_R2_JOURNEY=1 npm run e2e` (criam projetos na BD de desenvolvimento;
   repor com `docker compose down -v`). Depois de mudar dependências do backend: `docker compose build backend worker`.
 - Notas de ambiente:
@@ -170,6 +169,9 @@ Decisões da Fase 0:
   - imagens nos formulários são apagadas, as restantes geram aviso; as miniaturas da primeira página são removidas;
   - páginas PDF com muito vetor e pouco texto (fontes SHX) geram aviso de revisão visual;
   - dados que o script não encontra sozinho (nomes soltos, falsos positivos): data/private/anonymize_overrides.yaml (ver README).
+  - os valores da tabela de pseudónimos de execuções anteriores também respeitam o `allow:` dos overrides; foi assim que
+    a freguesia de R1 (tomada por morada pelo mapa antigo) voltou a ficar real em 25 set 2026. Os PDF regravados só
+    mudam o `/ID` do trailer: esses não se versionam.
 - Próximo: Fase 3 (biblioteca de blocos a partir dos MDJ/CTE de R1 e R2, aprovação pelo curador, corpus
   regulamentar, dicionário de cabos, léxico de tipologias). Antes: D5 (termos da Gemini API) e D7 (curador);
   D6 (Entra ID) continua por decidir com a TI.

@@ -28,6 +28,7 @@ LINK_STATUSES = ("rule", "manual", "unlinked")
 REVIEW_STATUSES = ("proposed", "approved", "rejected")  # what a curator reviews
 LIBRARY_DOC_TYPES = ("MDJ", "CTE")
 SECTION_KINDS = ("cover", "index", "block", "signature")
+BLOCK_MODES = ("fixed", "parametric", "adaptive")
 BOM_VARIANTS = ("mqt", "lpu")
 BOM_KINDS = ("chapter", "subchapter", "article", "description", "note", "total")
 

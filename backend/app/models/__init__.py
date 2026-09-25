@@ -16,10 +16,18 @@ from app.models.knowledge import (
     Typology,
     TypologyTerm,
 )
-from app.models.library import SourceDocument, SourceSection
+from app.models.library import (
+    ArchiveChunk,
+    ArchiveDoc,
+    SourceDocument,
+    SourceSection,
+    TemplateBlock,
+)
 from app.models.project import Project, ProjectFile
 
 __all__ = [
+    "ArchiveChunk",
+    "ArchiveDoc",
     "AuditEvent",
     "BomItem",
     "CableDesignation",
@@ -34,6 +42,7 @@ __all__ = [
     "ProjectFile",
     "SourceDocument",
     "SourceSection",
+    "TemplateBlock",
     "Typology",
     "TypologyTerm",
 ]

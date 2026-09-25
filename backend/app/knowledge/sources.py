@@ -58,7 +58,7 @@ def docx_texts(document: DocxDocument) -> Iterator[tuple[str, str]]:
                         yield f"tabela no elemento {n}, linha {r}, célula {c}", text
 
 
-def _files(root: Path) -> Iterator[Path]:
+def unique_files(root: Path) -> Iterator[Path]:
     seen: set[str] = set()
     for path in sorted(root.rglob("*")):
         if not path.is_file() or path.suffix.lower() not in READ or path.name.startswith("~$"):
@@ -71,7 +71,7 @@ def _files(root: Path) -> Iterator[Path]:
 
 def project_texts(fixtures: Path, code: str) -> Iterator[SourceText]:
     root = fixtures / code
-    for path in _files(root):
+    for path in unique_files(root):
         rel = path.relative_to(root).as_posix()
         data = path.read_bytes()
         if path.suffix.lower() == ".docx":

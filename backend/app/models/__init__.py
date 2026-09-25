@@ -16,6 +16,7 @@ from app.models.knowledge import (
     Typology,
     TypologyTerm,
 )
+from app.models.library import SourceDocument, SourceSection
 from app.models.project import Project, ProjectFile
 
 __all__ = [
@@ -31,6 +32,8 @@ __all__ = [
     "FichaValue",
     "Project",
     "ProjectFile",
+    "SourceDocument",
+    "SourceSection",
     "Typology",
     "TypologyTerm",
 ]

@@ -4,6 +4,8 @@ Idempotent: running it again replaces the occurrences and the evidence, and neve
 curator has decided (status, review note, aliases). Everything new is "proposed".
 
     python -m app.knowledge.seed            (FIXTURES_ROOT, default ../data/fixtures)
+
+It also stores the reference MDJ/CTE split into sections (app.library.sources).
 """
 
 import os
@@ -206,10 +208,18 @@ def seed_knowledge(
 def main() -> None:
     from app.config import get_settings
     from app.db import session_factory
+    from app.library.sources import seed_sources
+    from app.storage import ensure_bucket, get_store
 
-    make = session_factory(get_settings().database_url)
+    settings = get_settings()
+    store = get_store(settings)
+    if settings.s3_create_bucket:
+        ensure_bucket(store.client, settings.s3_bucket)
+    make = session_factory(settings.database_url)
+    root = default_root()
     with make() as db:
-        summary = seed_knowledge(db, default_root())
+        summary = seed_knowledge(db, root)
+        summary |= seed_sources(db, store, root, REFERENCE_PROJECTS)
         db.commit()
     print("Base de conhecimento semeada:", summary)
 

@@ -11,7 +11,8 @@ from sqlalchemy.orm import Session
 
 from app.knowledge import cables, seed
 from app.knowledge.seed import seed_knowledge
-from app.models import CableDesignation, CableEquivalence, Typology
+from app.models import CableDesignation, CableEquivalence, SourceDocument, Typology
+from app.storage import ObjectStore
 
 FIXTURES = Path(__file__).resolve().parents[2] / "data" / "fixtures"
 
@@ -248,7 +249,10 @@ def test_review_of_something_unknown(api: Api) -> None:
 
 
 def test_the_command_seeds_the_fixtures_and_commits(
-    db: Session, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+    db: Session,
+    store: ObjectStore,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
 ) -> None:
     """make seed-library runs `python -m app.knowledge.seed` in the backend container."""
     if not (FIXTURES / "R1").is_dir():
@@ -260,8 +264,10 @@ def test_the_command_seeds_the_fixtures_and_commits(
         return lambda: nullcontext(db)
 
     monkeypatch.setattr("app.db.session_factory", factory)
+    monkeypatch.setattr("app.storage.get_store", lambda settings: store)
 
     seed.main()
 
     assert "Base de conhecimento semeada" in capsys.readouterr().out
     assert db.scalars(select(CableDesignation).where(CableDesignation.canonical == "H07V-U")).one()
+    assert db.scalars(select(SourceDocument)).all()  # and the MDJ/CTE split into sections

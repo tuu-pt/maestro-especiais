@@ -52,7 +52,13 @@ def test_standards_under_copyright_keep_only_title_and_scope(
 def test_each_reference_says_where_r1_and_r2_cite_it(db: Session, seeded: dict[str, int]) -> None:
     rtiebt = doc(db, "rtiebt")
     assert rtiebt.found_count > 10
-    assert {(f["project"], f["source"]) for f in rtiebt.found_in} >= {("R1", "MDJ")}
+    pairs = {(f["project"], f["source"]) for f in rtiebt.found_in}
+    assert pairs == {
+        ("R1", "MDJ"),
+        ("R1", "CTE"),
+        ("R2", "MDJ"),
+        ("R2", "CTE"),
+    }  # the sample covers all
     assert "RTIEBT" in rtiebt.found_in[0]["text"]
     assert {f["project"] for f in doc(db, "dl-96-2017").found_in} == {"R1"}  # in the forms of R1
     assert doc(db, "dl-96-2017").found_in[0]["source"] == "Formulário"

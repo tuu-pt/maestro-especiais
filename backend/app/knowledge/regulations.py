@@ -91,6 +91,15 @@ def _found(ref: Reference, texts: Iterable[SourceText]) -> list[dict[str, Any]]:
     return found
 
 
+def _sample(found: list[dict[str, Any]], size: int = 8) -> list[dict[str, Any]]:
+    """First each project and source once, then the rest in order, up to size."""
+    firsts: dict[tuple[str, str], dict[str, Any]] = {}
+    for f in found:
+        firsts.setdefault((f["project"], f["source"]), f)
+    rest = [f for f in found if f not in firsts.values()]
+    return (list(firsts.values()) + rest)[:size]
+
+
 def seed_regulations(db: Session, texts: list[SourceText]) -> int:
     existing = {r.code: r for r in db.scalars(select(RegulationDoc))}
     for ref in CORPUS:
@@ -99,7 +108,7 @@ def seed_regulations(db: Session, texts: list[SourceText]) -> int:
             row = RegulationDoc(code=ref.code, citable=False, review_status="proposed")
             db.add(row)
         found = _found(ref, texts)
-        row.found_in = found[:8]
+        row.found_in = _sample(found)
         row.found_count = len(found)
         if row.review_status != "proposed":
             continue  # the curator decided: only the evidence is refreshed

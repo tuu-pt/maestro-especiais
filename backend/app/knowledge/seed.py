@@ -23,6 +23,7 @@ from app.ingest.detect import detect, fold
 from app.knowledge import cables
 from app.knowledge.regulations import seed_regulations
 from app.knowledge.sources import SourceText, project_texts
+from app.library import privacy
 from app.models import (
     CableDesignation,
     CableEquivalence,
@@ -181,7 +182,7 @@ def seed_lexicon(db: Session, fixtures: Path, texts_by_project: dict[str, list[S
                 spaced = " ".join(t.text.split())  # same offsets as its folded form
                 m = pattern.search(fold(spaced))
                 if m:
-                    snippet = _snippet(spaced, m.start(), m.end())
+                    snippet = privacy.mask(_snippet(spaced, m.start(), m.end()))
                     found.append({"project": code, "source": t.source, "file": t.file,
                                   "locator": t.locator, "text": snippet})  # fmt: skip
             existing = next((x for x in row.terms if x.term == term), None)

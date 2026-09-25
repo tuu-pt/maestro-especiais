@@ -1,4 +1,6 @@
-FROM python:3.12-slim
+# The base can be changed for compatibility checks (CI builds it on Debian 12, as the TUU VPS).
+ARG BASE_IMAGE=python:3.12-slim
+FROM ${BASE_IMAGE}
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \

@@ -36,6 +36,20 @@ Especificação completa: docs/SPEC.md · Mock-up: docs/mockup/maestro-especiais
 - Regras de validação em backend/app/validation/rules/, uma por ficheiro, cada uma com um caso do Anexo C.
 - Object storage só pela API S3 genérica (boto3): trocar de servidor S3 é só configuração.
 
+Alojamento na VPS da TUU (compatibilidade, decidido em 25 set 2026):
+- As apps da TUU correm numa VPS com Postgres 18.6 (`postgres:18-alpine`), Node 22, Next.js 16.3.4, Debian 12,
+  Docker 29.8.0 e Nginx 1.22.1. Por agora o Maestro Especiais fica como está (Postgres 16 + pgvector, Node 24,
+  React + Vite, imagens Debian 13), mas **qualquer decisão tem de poder passar para essas versões**:
+  - não usar funcionalidades exclusivas de Postgres 16/Node 24/Debian 13 sem avisar; na VPS é preciso pgvector
+    (`pgvector/pgvector:…-pg18-bookworm` ou a extensão instalada: a imagem `postgres:18-alpine` não o traz);
+  - no Postgres 18 o volume de dados monta em `/var/lib/postgresql` (não em `/var/lib/postgresql/data`);
+  - o frontend continua um build estático (Vite) servido pelo Nginx; Next.js não é necessário para isso;
+  - atrás do Nginx: `proxy_buffering off` no SSE (`/api/projects/*/events`) e `client_max_body_size` ≥ 200M;
+  - configuração só por variáveis de ambiente; S3 genérico.
+- A CI tem um job `compat` que o prova em cada push: backend em Postgres 18 + pgvector, frontend em Node 22 e a
+  imagem do backend em Debian 12 (`BASE_IMAGE` no Dockerfile).
+- A D4 (alojamento cloud na UE) é da direção: alojar na VPS muda-a e tem de ser confirmado (onde está a VPS).
+
 Decisões da Fase 1 (confirmam-se com R1/R2 anonimizados):
 - Dados pessoais visíveis para todos os papéis, mascarados por omissão ("•••") na API e na interface; revelar é explícito e fica na auditoria.
 - CAL-01 só com IB ≤ In ≤ Iz e I2 ≤ 1,45·Iz; queda de tensão e poder de corte esperam pela MDJ (a interface diz porquê).

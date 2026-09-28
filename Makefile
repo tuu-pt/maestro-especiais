@@ -8,7 +8,7 @@ PYTHON ?= python
 NPM := npm --prefix frontend
 PROJECTS ?= R1 R2
 
-.PHONY: help setup env env-update up down logs lint format test test-integration e2e seed-library curator-review diff-report anexo-c-report form-templates anonymize pii-check
+.PHONY: help setup env env-update up down logs lint format test test-docker test-integration e2e seed-library curator-review diff-report anexo-c-report form-templates anonymize pii-check
 
 help:
 	@echo "setup            .venv, dependencias Python, npm ci e Chromium do Playwright"
@@ -17,6 +17,7 @@ help:
 	@echo "up / down        arranca ou para a stack do docker compose"
 	@echo "lint             ruff, mypy, eslint e tsc"
 	@echo "test             pytest (backend + tools) e vitest; precisa da stack ligada (make up)"
+	@echo "test-docker      pytest num contentor Linux (quando o .venv nao carrega o libpq); ARGS=... para o pytest"
 	@echo "test-integration testes contra a stack ligada (make up)"
 	@echo "e2e              Playwright"
 	@echo "seed-library     propostas da base de conhecimento a partir de data/fixtures (R1, R2)"
@@ -64,6 +65,9 @@ format:
 test:
 	$(VENV_PY) -m pytest
 	$(NPM) run test
+
+test-docker:
+	docker run --rm --network maestro-especiais_default -v "$(CURDIR):/repo" -v maestro-pip-cache:/root/.cache/pip python:3.12-slim sh /repo/tools/docker_pytest.sh $(ARGS)
 
 test-integration:
 	$(VENV_PY) -m pytest -m integration backend/tests

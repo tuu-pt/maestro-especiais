@@ -159,6 +159,7 @@ def run_validation(db: Session, store: ObjectStore | None, settings: Settings,
 
     publish(project.id, event(run, "A correr as regras"))
     ctx = Context.load(db, project, revision, {p.ref: p for p in pieces}, data)
+    ctx.memo["profile"] = sources.profile  # backend only: COE-04 compares with it
     rules = all_rules()
     findings, failed = _check(rules, ctx)
     issues = _persist(db, run, rules, findings)

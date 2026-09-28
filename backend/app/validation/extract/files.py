@@ -183,7 +183,7 @@ def read_bom(sources: Sources, piece: Piece) -> PieceData:
         if line.kind == "article" and line.designation:
             for d in cables.find(line.designation):
                 facts.append(Fact(CABLE, d.family, piece.ref, {"cell": line.source_ref},
-                                  shown=d.raw, note=line.code))  # fmt: skip
+                                  shown=d.raw, note=line.designation[:160]))  # fmt: skip
     return PieceData(facts=facts, warnings=reading.warnings)
 
 

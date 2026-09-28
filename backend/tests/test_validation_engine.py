@@ -230,8 +230,8 @@ def test_num_01_flags_only_the_text_of_the_agent() -> None:
         "Canalizações",
         "block",
         0,
-        "Tomadas a 16 A a 250 V.",
-        "Tomadas a 16 A a 250 V.",
+        "Tomadas a 16 A a 250 V, a 30 cm do pavimento.",
+        "Tomadas a 16 A a 250 V, a 30 cm do pavimento.",
         generated=True,
     )
     person = Paragraph("doc:1", "canalizacoes", "Canalizações", "block", 1,
@@ -241,5 +241,14 @@ def test_num_01_flags_only_the_text_of_the_agent() -> None:
 
     found = num_01.RULE.check(ctx)
 
-    assert {f.location["paragraph"] for f in found} == {0}
+    assert [f.location["paragraph"] for f in found] == [0]  # only the 30 cm
     assert all(f.rule_id == "NUM-01" for f in found)
+
+
+@pytest.mark.parametrize(
+    ("text", "stray"),
+    [("Tomadas 16A-250V.", 0), ("Tomadas a 16 A a 250 V.", 0), ("Tomadas 16 A - 250 V.", 0),
+     ("Tomadas a 16 A.", 1), ("Circuito de 250 V a 16 A.", 2)],
+)  # fmt: skip
+def test_num_01_whitelist_accepts_a_socket_rating_written_either_way(text: str, stray: int) -> None:
+    assert len(num_01.stray_numbers(text)) == stray

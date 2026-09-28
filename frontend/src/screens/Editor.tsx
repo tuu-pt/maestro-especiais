@@ -486,7 +486,7 @@ function SidePanel({
       <section>
         <h4 className={s.h4}>Fontes desta secção</h4>
         {x.citations.length ? (
-          <ul className={s.plain}>
+          <ul className={`${s.plain} ${s.sources}`}>
             {[...new Set(x.citations.map((c) => c.target))].map((t) => (
               <li key={t}>
                 <Chip>{t.startsWith("arc:") ? `Arquivo TUU · ${t.slice(4)}` : t}</Chip>

@@ -85,6 +85,14 @@ export const supplySection = (): DocSection => ({
   status_note: "Por gerar: texto adaptativo.",
   has_adaptive: true,
   proposals: 1,
+  // a real source id is long: the side panel must wrap it at phone width (Phase 4 journey)
+  citations: [
+    {
+      anchor: "g0",
+      kind: "archive",
+      target: "arc:R1:ele.mdj.instalacoes_eletricas_a_considerar.tomadas_de_usos_gerais",
+    },
+  ],
   content: {
     type: "doc",
     content: [

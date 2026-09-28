@@ -213,8 +213,10 @@ Decisões da Fase 0:
 - Verificado (28 set 2026): pytest 566 (backend e anonimizador), Vitest 55, Playwright 74, `make lint` e
   `make pii-check` limpos (também sobre os modelos dos formulários); avaliação com o Gemini real (RUN_LLM_EVAL=1, R2):
   5/5 sem NUM-01, REF-01 nem dados pessoais; MDJ e CTE de R1 redigidos pelo worker (60 pedidos, 0 bloqueios).
-  **Por fechar:** o percurso RUN_R1_EDITOR_JOURNEY passa a montagem, os estados e os modos, mas o Gemini respondeu 503
-  a todos os pedidos desde as 13:22 de 28 set 2026 (indisponibilidade do fornecedor): voltar a correr quando recuperar.
+  Percurso RUN_R1_EDITOR_JOURNEY verde (28 set 2026), com o Gemini em 503 «high demand» (nível gratuito, confirmado noutro
+  projeto Google): os dois pedidos foram respondidos pela alternativa Groq `openai/gpt-oss-120b`. O percurso apanhou um
+  defeito de layout (chip de fonte comprido sem quebra: scroll horizontal a 400 px), corrigido e coberto no editor.spec.
+  Por afinar: a NUM-01 assinala «16 A a 250 V» (a lista branca só tem «16A-250V»).
 - [A CONFIRMAR] pela equipa:
   - Fase 4: as decisões acima, em especial os modelos dos formulários e do .docx (derivados de R1), a morada da capa de R1
     diferente da ficha eletrotécnica (docs/fase4-diff-R1.md), Flash-Lite vs D10, e as 95 propostas de blocos por aprovar;

@@ -56,6 +56,18 @@ def _section(db: Session, section_id: uuid.UUID) -> Section:
     return section
 
 
+READ_ONLY = (
+    "Peça existente, carregada para auditoria: só leitura. Corrija o original e carregue-o de novo."
+)
+
+
+def _writable(db: Session, section_id: uuid.UUID) -> Section:
+    section = _section(db, section_id)
+    if section.document.origin == "existing":
+        raise HTTPException(status.HTTP_409_CONFLICT, READ_ONLY)
+    return section
+
+
 def _now(user: User, reason: str) -> dict[str, Any]:
     return {"by": user.id, "at": datetime.now(UTC).isoformat(timespec="seconds"),
             "reason": reason.strip()}  # fmt: skip
@@ -68,7 +80,7 @@ def _audit(db: Session, user: User, action: str, section: Section, **payload: An
 
 @router.post("/sections/{section_id}/unlock")
 def unlock(section_id: uuid.UUID, body: ReasonIn, db: DB, user: Writer) -> dict[str, Any]:
-    section = _section(db, section_id)
+    section = _writable(db, section_id)
     if not section.locked:
         raise HTTPException(status.HTTP_409_CONFLICT, "Esta secção não está protegida.")
     section.unlocked = _now(user, body.reason)
@@ -79,7 +91,7 @@ def unlock(section_id: uuid.UUID, body: ReasonIn, db: DB, user: Writer) -> dict[
 
 @router.post("/sections/{section_id}/activation")
 def activation(section_id: uuid.UUID, body: ActivationIn, db: DB, user: Writer) -> dict[str, Any]:
-    section = _section(db, section_id)
+    section = _writable(db, section_id)
     if section.active == body.active:
         raise HTTPException(status.HTTP_409_CONFLICT, "A secção já está nesse estado.")
     section.activation_override = {**_now(user, body.reason), "active": body.active,
@@ -133,7 +145,7 @@ def _value_marks(content: dict[str, Any]) -> dict[str, tuple[str, dict[str, Any]
 @router.put("/sections/{section_id}/content")
 def edit(section_id: uuid.UUID, body: ContentIn, db: DB, user: Writer,
          validation: Revalidation) -> dict[str, Any]:  # fmt: skip
-    section = _section(db, section_id)
+    section = _writable(db, section_id)
     before = _current(section)
     if (
         section.locked

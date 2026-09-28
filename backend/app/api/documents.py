@@ -69,6 +69,8 @@ class DocumentOut(BaseModel):
     id: uuid.UUID
     project_id: uuid.UUID
     type: str
+    origin: str  # assembled | existing (read-only, Phase 5)
+    source_file_id: uuid.UUID | None = None
     status: str
     ficha_revision: str
     created_at: datetime
@@ -109,7 +111,8 @@ def _out(db: Session, d: Document, with_sections: bool = True) -> DocumentOut:
                            for c in version.citations],
             ))  # fmt: skip
     return DocumentOut(
-        id=d.id, project_id=d.project_id, type=d.type, status=d.status,
+        id=d.id, project_id=d.project_id, type=d.type, origin=d.origin,
+        source_file_id=d.source_file_id, status=d.status,
         ficha_revision=revision.label if revision else "", created_at=d.created_at,
         counts=counts, sections=sections,
     )  # fmt: skip

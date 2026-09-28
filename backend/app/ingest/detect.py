@@ -17,6 +17,11 @@ READABLE_KINDS = (
     "mqt",
     "lpu",
     "drawing_pdf",
+    # Phase 5: written pieces made by hand, to audit (validated, not merged into the ficha)
+    "mdj_docx",
+    "cte_docx",
+    "identificacao_docx",
+    "termo_docx",
 )
 
 FE_VERSION_CELL = "R45"
@@ -126,4 +131,20 @@ def detect(filename: str, data: bytes) -> Detection:
         )
     if suffix == "dwg":
         return Detection("drawing_dwg")
+    if suffix == "docx":
+        return _detect_docx(data)
     return Detection("other")
+
+
+def _detect_docx(data: bytes) -> Detection:
+    import docx  # python-docx only when a Word document arrives
+
+    from app.ingest.written import FILE_KINDS, piece_kind
+
+    try:
+        kind = piece_kind(docx.Document(io.BytesIO(data)))
+    except (zipfile.BadZipFile, KeyError, ValueError):
+        return Detection("other", note="Documento Word ilegível ou corrompido.")
+    if kind is None:
+        return Detection("other", note="Documento Word sem título de peça conhecida: guardado.")
+    return Detection(FILE_KINDS[kind])

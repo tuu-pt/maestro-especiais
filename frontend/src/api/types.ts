@@ -388,6 +388,9 @@ export type ProjectDocument = {
   id: string;
   project_id: string;
   type: "MDJ" | "CTE";
+  /** assembled by the tool, or made by hand and uploaded to be audited (read-only) */
+  origin: "assembled" | "existing";
+  source_file_id: string | null;
   status: string;
   ficha_revision: string;
   created_at: string;

@@ -50,6 +50,21 @@ describe("assisted editor (screen D)", () => {
     expect(screen.getByText("Ficha-base confirmada por um técnico responsável")).toBeInTheDocument();
   });
 
+  it("shows a piece made by hand read-only, next to the assembled one", async () => {
+    const existing = { ...mdj(), id: "d2", origin: "existing", source_file_id: "f9" };
+    withProject([mdj(), existing]);
+    server.use(http.get(api("/documents/d2"), () => HttpResponse.json(existing)));
+    renderAt("/projetos/p1/documentos?doc=MDJ&origem=existente");
+
+    expect(await screen.findByText(/Peça existente, carregada para auditoria: só leitura/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Existente (auditoria, só leitura)" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    expect(screen.queryByRole("button", { name: /Gerar texto adaptativo/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Editar" })).not.toBeInTheDocument();
+  });
+
   it("offers to assemble the MDJ", async () => {
     withProject([]);
     let assembled: unknown = null;

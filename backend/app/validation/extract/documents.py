@@ -7,22 +7,40 @@ resolved here, in the backend, and are masked in every evidence.
 
 from typing import Any
 
+from sqlalchemy.orm import Session
+
 from app.assembly.values import ValueSource
 from app.drafting.draft import node_text
-from app.models import Document, Section, SectionVersion
-from app.validation.extract import Sources, document_hash, extractor
+from app.ingest.written import section_lines
+from app.library import docx_blocks
+from app.models import Document, ProjectFile, Section, SectionVersion
+from app.validation.extract import EXTRACTOR_VERSION, Sources, digest, document_hash, extractor
 from app.validation.pieces import Fact, Paragraph, Piece, PieceData, SectionInfo
 
 PREFIX = {"MDJ": "ele.mdj.", "CTE": "ele.cte."}
 
 
-def piece(document: Document) -> Piece | None:
+def piece(db: Session, document: Document) -> Piece | None:
     if document.type not in PREFIX:
-        return None  # the forms are read from their files (Phase 5, task 2)
+        return None  # the forms are read from their files
+    if document.origin == "existing":
+        file = db.get(ProjectFile, document.source_file_id) if document.source_file_id else None
+        if file is None:
+            return None
+        return Piece(
+            ref=f"doc:{document.id}", kind=document.type, origin="existing",
+            content_hash=digest(EXTRACTOR_VERSION, file.checksum), date=file_date(file),
+            document_id=str(document.id), file_id=str(file.id),
+        )  # fmt: skip
     return Piece(
         ref=f"doc:{document.id}", kind=document.type, origin="assembled",
         content_hash=document_hash(document), document_id=str(document.id),
     )  # fmt: skip
+
+
+def file_date(file: ProjectFile) -> str:
+    """The date of the file if it says one, otherwise the day it was uploaded."""
+    return (file.file_date or file.created_at.date()).isoformat()
 
 
 def current(section: Section) -> SectionVersion | None:
@@ -114,4 +132,28 @@ def read_assembled(sources: Sources, piece: Piece) -> PieceData:
                 anchor=(node.get("attrs") or {}).get("anchor"), section_id=str(s.id),
             ))  # fmt: skip
             data.facts += _value_facts(node, piece.ref, where, version, values)
+    return data
+
+
+@extractor("existing")
+def read_existing(sources: Sources, piece: Piece) -> PieceData:
+    """A piece made by hand: the original file, split as in Phase 3 (values in the clear)."""
+    data = PieceData()
+    file = sources.db.get(ProjectFile, piece.file_id)
+    if file is None or sources.store is None:
+        data.warnings.append("Ficheiro original indisponível: a peça não foi lida.")
+        return data
+    try:
+        parts = docx_blocks.split(sources.store.get(file.storage_key))
+    except docx_blocks.DocxError:
+        data.warnings.append("Documento Word ilegível: a peça não foi lida.")
+        return data
+    data.warnings += parts.warnings
+    for s in parts.sections:
+        data.sections.append(SectionInfo(piece.ref, s.key, s.title, s.kind, s.level))
+        for i, line in enumerate(section_lines(s.elements)):
+            data.paragraphs.append(Paragraph(
+                piece=piece.ref, section_key=s.key, section_title=s.title, section_kind=s.kind,
+                index=i, text=line, anchor=f"p{i}",
+            ))  # fmt: skip
     return data

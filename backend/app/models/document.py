@@ -18,6 +18,7 @@ from app.db import Entity
 from app.models.enums import (
     ACTOR_TYPES,
     BLOCK_MODES,
+    DOCUMENT_ORIGINS,
     DOCUMENT_STATUSES,
     DOCUMENT_TYPES,
     SECTION_KINDS,
@@ -32,6 +33,7 @@ class Document(Entity):
     __table_args__ = (
         one_of("type", DOCUMENT_TYPES, "ck_document_type"),
         one_of("status", DOCUMENT_STATUSES, "ck_document_status"),
+        one_of("origin", DOCUMENT_ORIGINS, "ck_document_origin"),
     )
 
     project_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("project.id", ondelete="CASCADE"))
@@ -46,6 +48,11 @@ class Document(Entity):
     )
     status: Mapped[str] = mapped_column(String(15), default="draft")
     responsible_user_id: Mapped[str | None] = mapped_column(String(64))
+    # assembled by the tool, or made by hand and uploaded to be audited (Phase 5; read-only)
+    origin: Mapped[str] = mapped_column(String(10), default="assembled", server_default="assembled")
+    source_file_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("project_file.id", ondelete="SET NULL")
+    )
 
     sections: Mapped[list["Section"]] = relationship(
         back_populates="document", cascade="all, delete-orphan", order_by="Section.order"

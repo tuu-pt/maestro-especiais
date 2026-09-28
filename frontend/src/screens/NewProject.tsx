@@ -250,7 +250,8 @@ export function ProjectFilesScreen() {
           >
             <p>
               Arraste para aqui os ficheiros do projeto: ficha eletrotécnica (.xlsm), Tabela de Cálculo e
-              MQT/LPU (.xlsx), 09-Folhas de Cálculo (.xls) e peças desenhadas (.pdf)
+              MQT/LPU (.xlsx), 09-Folhas de Cálculo (.xls) e peças desenhadas (.pdf). Para auditar um projeto já
+              feito, junte também a MDJ, o CTE, a identificação e o termo (.docx).
             </p>
             <label className={s.pick}>
               Escolher ficheiros
@@ -355,13 +356,14 @@ export function ProjectFilesScreen() {
 }
 
 
-/** The five kinds that are read (SPEC 8.2), with what arrived of each. */
+/** The kinds that are read (SPEC 8.2; written pieces to audit, Phase 5), with what arrived of each. */
 const READ_KINDS: [kinds: string[], label: string][] = [
   [["ficha_eletrotecnica"], "Ficha eletrotécnica"],
   [["calc_summary"], "Tabela de Cálculo"],
   [["calc_circuit"], "09-Folhas de Cálculo"],
   [["mqt", "lpu"], "MQT / LPU"],
   [["drawing_pdf"], "Peças desenhadas (PDF)"],
+  [["mdj_docx", "cte_docx", "identificacao_docx", "termo_docx"], "Peças escritas existentes (auditoria)"],
 ];
 
 function ReadSummary({ files }: { files: ProjectFile[] }) {

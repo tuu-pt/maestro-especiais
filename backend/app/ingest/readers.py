@@ -9,6 +9,7 @@ from app.ingest import (
     drawings,
     ficha_eletrotecnica,
     tabela_calculo,
+    written,
 )
 from app.ingest.pipeline import register
 from app.models import ProjectFile
@@ -57,3 +58,16 @@ def drawings_pdf(db: Session, file: ProjectFile, data: bytes) -> str:
     summary = consolidate.apply(db, file, result)
     listed = f"índice com {len(reading.index)} folhas" if reading.index else "sem índice"
     return f"{reading.pages} páginas · {listed} · {summary}"
+
+
+@register("mdj_docx")
+@register("cte_docx")
+def written_piece(db: Session, file: ProjectFile, data: bytes) -> str:
+    return written.add_existing(db, file, data)
+
+
+@register("identificacao_docx")
+@register("termo_docx")
+def form(db: Session, file: ProjectFile, data: bytes) -> str:
+    name = "Identificação" if file.kind == "identificacao_docx" else "Termo de responsabilidade"
+    return f"{name} existente: é lido na validação (não entra na ficha-base)"

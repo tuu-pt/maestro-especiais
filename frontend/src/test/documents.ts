@@ -143,6 +143,8 @@ export const mdj = (sections: DocSection[] = [supplySection(), fixedSection(), p
   id: "d1",
   project_id: "p1",
   type: "MDJ",
+  origin: "assembled",
+  source_file_id: null,
   status: "draft",
   ficha_revision: "A",
   created_at: "2026-09-28T10:00:00Z",

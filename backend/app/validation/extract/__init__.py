@@ -62,7 +62,7 @@ def collect(db: Session, project: Project, revision: FichaRevision) -> list[Piec
     """Every piece of the project the validation compares, assembled or not."""
     from app.validation.extract import documents, files  # registers the extractors
 
-    pieces = [documents.piece(d) for d in db.scalars(
+    pieces = [documents.piece(db, d) for d in db.scalars(
         select(Document).where(Document.project_id == project.id).order_by(Document.created_at)
     )]  # fmt: skip
     pieces += files.pieces(db, project, revision)

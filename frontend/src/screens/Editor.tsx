@@ -56,8 +56,9 @@ export function EditorScreen() {
   );
 }
 
-function useCanWrite(): boolean {
+function useCanWrite(doc?: ProjectDocument): boolean {
   const { data: me } = useMe();
+  if (doc?.origin === "existing") return false; // a piece made by hand is only audited here
   return me?.roles.some((r) => r.id === "redator" || r.id === "tecnico") ?? false;
 }
 
@@ -69,7 +70,11 @@ function ProjectEditor({ projectId }: { projectId: string }) {
   const assemble = useAssemble(projectId);
   const confirmed = ficha?.revisions.some((r) => r.status === "confirmed") ?? false;
   const type = params.get("doc") === "CTE" ? "CTE" : "MDJ";
-  const document = documents.find((d) => d.type === type);
+  const ofType = documents.filter((d) => d.type === type);
+  const existing = ofType.find((d) => d.origin === "existing");
+  const assembled = ofType.find((d) => d.origin === "assembled");
+  const origin = params.get("origem") === "existente" && existing ? "existing" : assembled ? "assembled" : "existing";
+  const document = origin === "existing" ? existing : assembled;
 
   if (isPending) return <Loading />;
   if (!confirmed) {
@@ -104,6 +109,24 @@ function ProjectEditor({ projectId }: { projectId: string }) {
           </button>
         ))}
       </div>
+      {existing ? (
+        <div className={s.docTabs} role="group" aria-label="Origem do documento">
+          <button
+            type="button"
+            aria-pressed={origin === "assembled"}
+            onClick={() => setParams({ doc: type }, { replace: true })}
+          >
+            Montado pela ferramenta
+          </button>
+          <button
+            type="button"
+            aria-pressed={origin === "existing"}
+            onClick={() => setParams({ doc: type, origem: "existente" }, { replace: true })}
+          >
+            Existente (auditoria, só leitura)
+          </button>
+        </div>
+      ) : null}
       {document ? (
         <DocumentEditor documentId={document.id} projectId={projectId} />
       ) : (
@@ -185,7 +208,7 @@ function DocumentEditor({ documentId, projectId }: { documentId: string; project
   const [queue, setQueue] = useState<Record<string, SectionEvent>>({});
   const refresh = useRefreshDocument(documentId, projectId);
   const generate = useGenerateDocument(documentId, projectId);
-  const canWrite = useCanWrite();
+  const canWrite = useCanWrite(doc);
 
   useProjectEvents(projectId, (event) => {
     if (event.type !== "section" || event.document_id !== documentId) return;
@@ -197,7 +220,11 @@ function DocumentEditor({ documentId, projectId }: { documentId: string; project
   if (error) return <ErrorNote>{error.message}</ErrorNote>;
   const sections = doc.sections ?? [];
   const selected = sections.find((x) => x.id === params.get("seccao")) ?? sections.find((x) => x.active);
-  const select = (id: string) => setParams({ doc: doc.type, seccao: id }, { replace: true });
+  const select = (id: string) =>
+    setParams(
+      { doc: doc.type, ...(doc.origin === "existing" ? { origem: "existente" } : {}), seccao: id },
+      { replace: true },
+    );
   const toDraft = sections.filter((x) => x.active && hasPending(x.content)).length;
 
   return (
@@ -265,6 +292,12 @@ function Summary({ doc }: { doc: ProjectDocument }) {
   const c = doc.counts;
   return (
     <p className={s.muted}>
+      {doc.origin === "existing" ? (
+        <>
+          <strong>Peça existente, carregada para auditoria: só leitura.</strong> Os dados pessoais aparecem
+          mascarados; a validação compara-os no servidor.{" "}
+        </>
+      ) : null}
       {doc.type} · ficha-base rev. {doc.ficha_revision} · {c.sections ?? 0} secções: {c.reviewed ?? 0} revistas,{" "}
       {c.generated ?? 0} por rever, {c.todo ?? 0} por fazer, {c.inactive ?? 0} desativadas · {c.not_approved ?? 0} com
       bloco não aprovado
@@ -312,7 +345,7 @@ function SectionPane({
   event?: SectionEvent;
 }) {
   const actions = useSectionActions(x, doc.id, projectId);
-  const canWrite = useCanWrite();
+  const canWrite = useCanWrite(doc);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState<SectionContent | null>(null);
   const [confirmValues, setConfirmValues] = useState(false);
@@ -466,7 +499,7 @@ function SidePanel({
 }) {
   const { data: versions = [] } = useVersions(x.id);
   const actions = useSectionActions(x, doc.id, projectId);
-  const canWrite = useCanWrite();
+  const canWrite = useCanWrite(doc);
   const [request, setRequest] = useState("");
   const requestId = useId();
   const proposal = [...versions].reverse().find((v) => v.status === "proposed");

@@ -84,14 +84,15 @@ Depois de mudar o `.env`: `docker compose up -d backend worker` (o `restart` nã
   propostas em diff, editor (ecrã D), perfil do técnico cifrado, formulários FE/Identificação/Termo,
   `docs/fase4-diff-R1.md` sem defeitos, percurso Playwright de R1 verde.
 - Verificado: pytest 566, Vitest 55, Playwright 74, lint e `pii-check` limpos; CI verde até `4e31808`.
+- **5 implementada** (28 set 2026): validação com 16 regras, peças existentes (modo auditoria), ecrã E com
+  matriz de coerência, envio para revisão bloqueado com críticos; `docs/fase5-anexo-c.md` com 14/14 casos.
+  Depois de atualizar: `docker compose up -d backend worker` (migrações 0013/0014 e fila `validation`).
 
 ## 7. O que falta
 
-**Próximo trabalho (Claude): Fase 5 · Validação** — regras da secção 9 da SPEC, uma por ficheiro
-em `backend/app/validation/rules/`, cada uma com o seu caso do Anexo C (C1–C14) e a leitura
-provável. Pode começar já: COE-06, TIP-01, REF-02 e CNT-01 usam as propostas da Fase 3
-([A CONFIRMAR] até o curador rever); a CAL-01 pode passar a incluir queda de tensão e poder de corte
-(a MDJ já existe); EQP-* são da Fase 7. Afinar também a lista branca da NUM-01 («16 A a 250 V»).
+**Próximo trabalho (Claude): Fase 6 · Revisão e exportação** — ver «Próximo» no `CLAUDE.md`. Rever antes
+os [A CONFIRMAR] da Fase 5 e os «outros alertas reais» de `docs/fase5-anexo-c.md`. Afinar também a lista
+branca da NUM-01 («16 A a 250 V»).
 
 **Decisões pendentes:** D4 (alojamento: cloud UE ou VPS da TUU), D5 (termos da Gemini API e agora
 da Groq), D6 (Entra ID), D7 (curador), D8 (esqueletos com os técnicos), D10 (Flash-Lite e a

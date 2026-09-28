@@ -129,6 +129,40 @@ Decisões da Fase 4 (28 set 2026; as quatro primeiras aprovadas pelo utilizador,
   estabelecimento» = `ele.tipo_utilizacao` (Identificação) e `ele.classificacao` (Termo).
 - Relatório de diferenças: `make diff-report` → docs/fase4-diff-R1.md (classes adaptativo / valor / estrutura / defeito).
 
+Decisões da Fase 5 (28 set 2026; as do plano aprovado pelo utilizador, o resto [A CONFIRMAR]):
+- Regras determinísticas, sem LLM, uma por ficheiro em backend/app/validation/rules/ (16: REF-01..03, NUM-01, COE-01..06,
+  TIP-01, DES-01, CAL-01, CCP-01, CNT-01, TXT-01; EQP-* na Fase 7). CAL-01, NUM-01 e REF-01 da Fase 4 passaram a regras
+  (a redação e a ficha importam-nas). Leitura provável determinística (app/validation/likely.py): nunca por maioria.
+- Motor (0013): ValidationRun, ValidationIssue (com `fingerprint`: ignorado continua ignorado, o que deixa de aparecer
+  fica `fixed`) e PieceFacts (cache por `content_hash`: a revalidação só lê as peças alteradas). Fila RQ `validation`
+  (o worker ouve `ingest llm validation`), progresso por SSE; uma edição no editor pede uma revalidação `changed`.
+- Peças existentes (0014): MDJ/CTE/Identificação/Termo feitos à mão detetados pelo título; MDJ e CTE viram Document
+  `origin = existing`, só leitura, secções da divisão da Fase 3 com os dados pessoais mascarados; a validação lê o
+  ficheiro original no backend. Um novo carregamento substitui o anterior.
+- Extração de factos (app/validation/extract/): cada extrator só lê as secções do seu tema; números por extenso e uma
+  única multiplicação escrita («N pedestais com capacidade de M carregadores em cada» → C8 = 6, e a ambiguidade
+  «capacidade» fica na nota); o que não se lê com confiança é «não comparável» (informação).
+- [A CONFIRMAR] NUM-01 só no texto do agente; REF-01 no texto humano é aviso com pedido ao curador; REF-02 «por
+  confirmar pelo curador» é uma informação por peça (nada é citável enquanto D7 estiver pendente).
+- [A CONFIRMAR] COE-01: referência = ficha-base, ou a fonte da ficha (Tabela, depois MQT/LPU) quando não tem valor;
+  crítico se diverge a MDJ ou o CTE, aviso se só o MQT/LPU; luminárias por comparar (trabalho futuro).
+- [A CONFIRMAR] COE-04: forma mais curta = igual (nome curto na capa, obra abreviada na carimbadura); dois ou mais
+  campos diferentes ou vazios → «reaproveitada de outro projeto» (C7); técnico comparado entre peças, leitura
+  «Confirmar com o perfil do técnico» (C3).
+- [A CONFIRMAR] COE-06: referência = Tabela; MDJ+CTE juntas, MQT/LPU à parte (o MQT de R1 também tem H07V-K); rígido
+  vs flexível crítico; sem equivalência aprovada, aviso e pedido ao curador; condutores de terra (1G…, secções de
+  terras) fora da comparação.
+- [A CONFIRMAR] CNT-01 também exige que a MDJ indique a potência a alimentar (C6); COE-03/CNT-01 casam blocos pela chave
+  (slug dos títulos): uma peça com títulos diferentes da biblioteca aparece com blocos em falta.
+- [A CONFIRMAR] TIP-01: tabela de usos DGEG → palavras da obra (app/validation/rules/tip_01.py); nomes de outros projetos
+  do arquivo, exceto a identificação da ficha-base do próprio projeto.
+- [A CONFIRMAR] CAL-01: limites de queda de tensão e poder de corte lidos da MDJ; troços da Tabela comparados com o
+  limite de «outros usos»; sem limites na MDJ → «não comparável».
+- Envio para revisão: `POST /projects/{id}/review-request`, recusado com críticos abertos, sem validação ou com uma
+  validação em curso; ignorar exige ≥ 10 caracteres e fica na auditoria.
+- Testes: o Playwright passa os ficheiros de R2 como conteúdo (não como caminhos): alguns Chromium
+  descartam caminhos com «ç» sem erro.
+
 ## Comandos
 - make setup                 # .venv + dependências Python + npm ci + Chromium do Playwright
 - make env                   # gera .env local com segredos aleatórios de desenvolvimento
@@ -143,6 +177,7 @@ Decisões da Fase 4 (28 set 2026; as quatro primeiras aprovadas pelo utilizador,
 - make env-update            # acrescenta ao .env as variáveis novas do .env.example (não mexe nas existentes)
 - make form-templates        # modelos vazios dos formulários a partir de R1 (data/fixtures)
 - make diff-report           # docs/fase4-diff-R1.md (R1 montado na stack, com os adaptativos gerados)
+- make anexo-c-report        # docs/fase5-anexo-c.md (casos do Anexo C na validação; só o Postgres do compose)
 - Sem make (Windows): `winget install ezwinports.make`
 
 ## Dados
@@ -190,8 +225,17 @@ Decisões da Fase 0:
     o histórico do Git fica como está. Também passam por placeholder no que for enviado ao LLM.
 
 ## Estado atual
-- Fase: 4 **implementada** (28 set 2026). Fases 0, 1 e 2 concluídas; a 3 está implementada e à espera do curador (D7):
-  fecha quando os blocos estiverem aprovados. Até lá, as secções montadas dizem «bloco não aprovado».
+- Fase: 5 **implementada** (28 set 2026). Fases 0, 1 e 2 concluídas; a 3 está implementada e à espera do curador (D7):
+  fecha quando os blocos estiverem aprovados. Até lá, as secções montadas dizem «bloco não aprovado». A 4 está
+  implementada.
+- Feito na Fase 5:
+  - motor de validação em worker com revalidação das peças alteradas (0013), peças existentes em modo auditoria (0014),
+    extração de factos de todas as peças sem LLM, 16 regras da secção 9;
+  - ecrã E: resumo, alertas com filtros, evidência mascarada, leitura provável e ações (abrir no editor/ficha, pedir
+    ao curador, ignorar com justificação, reabrir), matriz de coerência 10.E; envio para revisão bloqueado com críticos;
+    painel com críticos abertos e novos; ecrã H com as condições reais;
+  - docs/fase5-anexo-c.md (`make anexo-c-report`): **14/14 casos** do Anexo C com a leitura provável esperada em R1 e R2
+    carregados como auditoria; controlos sem alertas; lista dos outros alertas reais para a equipa rever.
 - Feito na Fase 3:
   - dicionário de cabos (designações tal como aparecem e onde, equivalências propostas com evidência) e léxico de
     tipologias (termos incompatíveis com a evidência, C2), migração 0005;
@@ -211,14 +255,18 @@ Decisões da Fase 0:
   - formulários (0012): perfil do técnico cifrado, FE, Identificação e Termo; `GET /projects/{id}/forms[/{kind}]`;
   - docs/fase4-diff-R1.md: MDJ 225/268 entradas iguais, CTE 172/242, **zero defeitos**; C1 repetida pelo agente e C2
     não repetida (a deteção é da Fase 5); C3 resolvida pelo perfil.
-- Verificado (28 set 2026): pytest 566 (backend e anonimizador), Vitest 55, Playwright 74, `make lint` e
-  `make pii-check` limpos (também sobre os modelos dos formulários); avaliação com o Gemini real (RUN_LLM_EVAL=1, R2):
-  5/5 sem NUM-01, REF-01 nem dados pessoais; MDJ e CTE de R1 redigidos pelo worker (60 pedidos, 0 bloqueios).
-  Percurso RUN_R1_EDITOR_JOURNEY verde (28 set 2026), com o Gemini em 503 «high demand» (nível gratuito, confirmado noutro
-  projeto Google): os dois pedidos foram respondidos pela alternativa Groq `openai/gpt-oss-120b`. O percurso apanhou um
-  defeito de layout (chip de fonte comprido sem quebra: scroll horizontal a 400 px), corrigido e coberto no editor.spec.
+- Verificado (28 set 2026, Fase 5): pytest (suite completa) verde, Vitest 65, Playwright 79 (+ percursos opcionais), `make lint` e
+  `make pii-check` limpos; `make anexo-c-report` 14/14; percurso RUN_AUDIT_JOURNEY verde contra a stack (R2 completo com a
+  MDJ e o CTE existentes, validação no worker, aviso ignorado, envio bloqueado), capturas em claro, escuro e telemóvel.
+- Verificado na Fase 4 (28 set 2026): pytest 566, Vitest 55, Playwright 74; avaliação com o Gemini real (RUN_LLM_EVAL=1,
+  R2): 5/5 sem NUM-01, REF-01 nem dados pessoais; MDJ e CTE de R1 redigidos pelo worker (60 pedidos, 0 bloqueios).
+  Percurso RUN_R1_EDITOR_JOURNEY verde, com o Gemini em 503 «high demand» respondido pela alternativa Groq.
   Por afinar: a NUM-01 assinala «16 A a 250 V» (a lista branca só tem «16A-250V»).
 - [A CONFIRMAR] pela equipa:
+  - Fase 5: as decisões acima e os «outros alertas reais» de docs/fase5-anexo-c.md, em especial: R2 com poder de corte
+    de 3 kA na Tabela contra o mínimo de 6 kA da MDJ (12 troços); o título da obra nas peças desenhadas de R2
+    («Requalificação e modernização…») diferente da LPU; o CTE de R2 com 16 quadros contra 14 da Tabela; R1 com a rua da
+    capa diferente da ficha (já conhecido) e o MQT com H07V-K; a leitura de C8 (6 = capacidade dos pedestais?);
   - Fase 4: as decisões acima, em especial os modelos dos formulários e do .docx (derivados de R1), a morada da capa de R1
     diferente da ficha eletrotécnica (docs/fase4-diff-R1.md), Flash-Lite vs D10, e as 95 propostas de blocos por aprovar;
   - Fase 3: as decisões de método acima e cada proposta em docs/revisao-curador.md;
@@ -234,7 +282,10 @@ Decisões da Fase 0:
 - Percursos com R2: `make up` e depois `RUN_R2_JOURNEY=1 npm run e2e` (criam projetos na BD de desenvolvimento;
   repor com `docker compose down -v`). Percurso da Fase 4: `make up`, `make seed-library` e
   `RUN_R1_EDITOR_JOURNEY=1 npm run e2e` (cria um projeto R1-E2E-… e chama o Gemini duas vezes; um 503 persistente do
-  Gemini faz o percurso falhar com a mensagem «o LLM falhou»). Depois de mudar dependências do backend: `docker compose build backend worker`.
+  Gemini faz o percurso falhar com a mensagem «o LLM falhou»). Percurso da Fase 5: `make up`, `make seed-library` e
+  `RUN_AUDIT_JOURNEY=1 npm run e2e` (cria um projeto E2E-AUD-… com o R2 completo). Depois de mudar dependências do
+  backend: `docker compose build backend worker`. Depois de atualizar para a Fase 5: `docker compose up -d backend worker`
+  (as migrações 0013/0014 correm no arranque do backend e o worker passa a ouvir a fila `validation`).
 - Notas de ambiente:
   - `make test` exige o Docker a correr (Postgres do compose);
   - o worker usa o código montado (PYTHONPATH=/srv/backend); o backend também (uvicorn);
@@ -252,7 +303,10 @@ Decisões da Fase 0:
   - os valores da tabela de pseudónimos de execuções anteriores também respeitam o `allow:` dos overrides; foi assim que
     a freguesia de R1 (tomada por morada pelo mapa antigo) voltou a ficar real em 25 set 2026;
   - os PDF são gravados com o `/ID` da origem (`no_new_id`): uma nova execução só muda os PDF cujo conteúdo muda.
-- Próximo: Fase 5 (regras da secção 9 e matriz de coerência; todos os casos do Anexo C com a leitura provável).
-  Pode começar já: COE-06, TIP-01, REF-02 e CNT-01 usam as propostas da Fase 3 [A CONFIRMAR] até o curador rever;
-  a CAL-01 pode passar a incluir queda de tensão e poder de corte (a MDJ já existe); EQP-* ficam para a Fase 7.
+- Próximo: Fase 6 (revisão e exportação): diff proposta/edição, cartão de aprovação (secções revistas + sem críticos
+  + ficha-base confirmada; o bloqueio da Fase 5 já existe), exportação do conjunto com os nomes TUU e os formulários sem
+  data nem assinatura. Falta para a Fase 6: modelos .docx TUU vazios (hoje o pacote de R1), exportação oficial só com
+  blocos aprovados (depende de D7), estado `approved` dos documentos, e decidir se as peças existentes (auditoria) se
+  exportam ou só se validam. Trabalho futuro da Fase 5: luminárias na COE-01, citações com locator nas peças humanas,
+  COE-02 por data de desenho (carimbadura), extração assistida por LLM para o que fica «não comparável».
   Continuam pendentes D7 (curador), D8 (esqueletos), D5 (dados reais no LLM) e D6 (Entra ID).

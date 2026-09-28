@@ -77,7 +77,7 @@ def facts_of(code: str) -> dict[str, dict[str, list[Fact]]]:
     files: dict[str, Any] = {}
 
     def stale(path: Path) -> bool:  # old versions and signed copies come last
-        return any(w in str(path).lower() for w in ("/old/", "signed", "(1)"))
+        return any(w in path.as_posix().lower() for w in ("/old/", "signed", "(1)"))
 
     for path in sorted((FIXTURES / code).rglob("*"), key=lambda p: (stale(p), str(p))):
         if not path.is_file() or path.suffix.lower() not in (".xlsx", ".xlsm", ".pdf", ".docx"):

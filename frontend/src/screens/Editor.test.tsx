@@ -1,10 +1,10 @@
 import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { setDevUser } from "../api/client";
-import { confirmedFicha, mdj, proposal, supplySection } from "../test/documents";
+import { confirmedFicha, forms, mdj, proposal, supplySection } from "../test/documents";
 import { emptyFicha, project } from "../test/fixtures";
 import { renderAt } from "../test/render";
 import { api, server } from "../test/server";
@@ -15,6 +15,7 @@ function withProject(documents: unknown[] = [mdj()], ficha = confirmedFicha()) {
     http.get(api("/projects/p1/ficha"), () => HttpResponse.json(ficha)),
     http.get(api("/projects/p1/documents"), () => HttpResponse.json(documents)),
     http.get(api("/documents/d1"), () => HttpResponse.json(mdj())),
+    http.get(api("/projects/p1/forms"), () => HttpResponse.json(forms())),
     http.get(
       api("/projects/p1/events"),
       () => new HttpResponse("", { headers: { "Content-Type": "text/event-stream" } }),
@@ -174,6 +175,26 @@ describe("assisted editor (screen D)", () => {
     await userEvent.click(within(dialog).getByRole("button", { name: "Confirmar a alteração dos valores" }));
 
     await expect.poll(() => bodies.map((b) => b.confirm_values)).toEqual([false, true]);
+  });
+
+  it("offers the pre-filled forms and downloads them as the current user", async () => {
+    withProject();
+    let who: string | null = null;
+    server.use(
+      http.get(api("/projects/p1/forms/termo"), ({ request }) => {
+        who = request.headers.get("X-Dev-User");
+        return new HttpResponse("docx");
+      }),
+    );
+    vi.stubGlobal("URL", Object.assign(URL, { createObjectURL: () => "blob:termo", revokeObjectURL: () => {} }));
+    renderAt("/projetos/p1/documentos?doc=MDJ&seccao=s-supply");
+
+    const panel = await screen.findByRole("region", { name: "Formulários pré-preenchidos" });
+    expect(within(panel).getByText(/Saem sem data nem assinatura/)).toBeInTheDocument();
+    expect(within(panel).getByText("Por preencher: Data e assinatura do técnico responsável")).toBeInTheDocument();
+    await userEvent.click(within(panel).getByRole("button", { name: "Termo de Responsabilidade" }));
+
+    await expect.poll(() => who).toBe("redator");
   });
 
   it("gives no editing to a curator", async () => {

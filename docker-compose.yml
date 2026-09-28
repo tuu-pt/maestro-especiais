@@ -74,6 +74,7 @@ services:
       LLM_MODEL_EXTRACTION: ${LLM_MODEL_EXTRACTION:-}
       LLM_RPM: ${LLM_RPM:-10}
       LLM_RPD: ${LLM_RPD:-200}
+      PROFILE_ENCRYPTION_KEY: ${PROFILE_ENCRYPTION_KEY:-}
     volumes:
       - ./backend/app:/srv/backend/app:ro
       - ./backend/migrations:/srv/backend/migrations:ro
@@ -117,6 +118,7 @@ services:
       LLM_MODEL_EXTRACTION: ${LLM_MODEL_EXTRACTION:-}
       LLM_RPM: ${LLM_RPM:-10}
       LLM_RPD: ${LLM_RPD:-200}
+      PROFILE_ENCRYPTION_KEY: ${PROFILE_ENCRYPTION_KEY:-}
     volumes:
       - ./backend/app:/srv/backend/app:ro
     depends_on:

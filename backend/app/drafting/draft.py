@@ -39,6 +39,7 @@ from app.models import (
     SectionVersion,
     TemplateBlock,
 )
+from app.profiles import revision_profile
 
 PLACEHOLDER = re.compile(r"\{\{v:([a-z0-9_.]+)\}\}")
 KEY = re.compile(r"[a-z]+\.[a-z0-9_.]+")
@@ -210,12 +211,13 @@ def draft_section(
     project = db.get(Project, document.project_id)
     revision = db.get(FichaRevision, document.ficha_revision_id)
     assert project is not None and revision is not None
-    values = ValueSource.load(db, revision)
+    profile = revision_profile(db, client.settings, revision)
+    values = ValueSource.load(db, revision, profile)
     body, allowed = build_request(db, section, block, project, values, request)
     prompt = prompts.REWRITE if request else prompts.ADAPTIVE
     output, call = client.generate(
         db, project=project, purpose="drafting", prompt_version=prompt,
-        system=prompts.load(prompt), schema=DraftOutput, section_id=section.id,
+        system=prompts.load(prompt), schema=DraftOutput, section_id=section.id, profile=profile,
         messages=[Message("user", json.dumps(body, ensure_ascii=False, default=str))],
     )  # fmt: skip
     paragraphs, issues, missing = postprocess(output, allowed, values)

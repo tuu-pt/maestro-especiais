@@ -8,11 +8,12 @@ PYTHON ?= python
 NPM := npm --prefix frontend
 PROJECTS ?= R1 R2
 
-.PHONY: help setup env up down logs lint format test test-integration e2e seed-library curator-review anonymize pii-check
+.PHONY: help setup env env-update up down logs lint format test test-integration e2e seed-library curator-review form-templates anonymize pii-check
 
 help:
 	@echo "setup            .venv, dependencias Python, npm ci e Chromium do Playwright"
 	@echo "env              cria o .env local com segredos aleatorios"
+	@echo "env-update       acrescenta ao .env as variaveis novas do .env.example (sem mexer nas existentes)"
 	@echo "up / down        arranca ou para a stack do docker compose"
 	@echo "lint             ruff, mypy, eslint e tsc"
 	@echo "test             pytest (backend + tools) e vitest; precisa da stack ligada (make up)"
@@ -20,6 +21,7 @@ help:
 	@echo "e2e              Playwright"
 	@echo "seed-library     propostas da base de conhecimento a partir de data/fixtures (R1, R2)"
 	@echo "curator-review   escreve docs/revisao-curador.md a partir das propostas (depois de seed-library)"
+	@echo "form-templates   modelos vazios dos formularios a partir de R1 (data/fixtures)"
 	@echo "anonymize        data/private/<PROJECTS> -> data/fixtures/<PROJECTS> (so localmente)"
 	@echo "pii-check        procura padroes de dados pessoais em data/fixtures"
 
@@ -32,6 +34,9 @@ setup:
 
 env:
 	$(PYTHON) tools/make_dev_env.py
+
+env-update:
+	$(PYTHON) tools/make_dev_env.py --add-missing
 
 up:
 	docker compose up -d --build --wait
@@ -70,8 +75,12 @@ seed-library:
 curator-review:
 	docker compose exec -T backend python -m app.library.review_report > docs/revisao-curador.md
 
+form-templates:
+	$(VENV_PY) -m app.forms.derive
+
 anonymize:
 	$(VENV_PY) tools/anonymize.py $(PROJECTS)
 
 pii-check:
 	$(VENV_PY) tools/anonymize.py --check data/fixtures
+	$(VENV_PY) tools/anonymize.py --check backend/app/forms/templates

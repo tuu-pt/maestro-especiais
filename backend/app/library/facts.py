@@ -35,6 +35,10 @@ DOC_KEYS = {
     "tec.codigo_verificacao": "Código de verificação das competências",
     "tec.email": "Email do técnico",
     "tec.telefone": "Telefone do técnico",
+    "tec.nif": "NIF do técnico",
+    "tec.dgeg": "N.º DGEG do técnico",
+    "tec.morada": "Morada do técnico",
+    "tec.cp": "Código postal do técnico",
 }
 MIN_TEXT = 4  # shorter strings are too common to be told apart from ordinary text
 

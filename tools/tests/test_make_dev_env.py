@@ -71,3 +71,18 @@ def test_secrets_are_url_safe(tmp_path: Path) -> None:
 
     for key in ("POSTGRES_PASSWORD", "REDIS_PASSWORD", "S3_ACCESS_KEY", "S3_SECRET_KEY"):
         assert set(values[key]) <= allowed
+
+
+def test_add_missing_appends_only_new_variables(tmp_path: Path) -> None:
+    env = tmp_path / ".env"
+    env.write_text("POSTGRES_USER=keep\nGEMINI_API_KEY=secret-kept\n", encoding="utf-8")
+    example = tmp_path / ".env.example"
+    example.write_text(EXAMPLE + "PROFILE_ENCRYPTION_KEY=\n", encoding="utf-8")
+
+    make_dev_env.main(["--example", str(example), "--output", str(env), "--add-missing"])
+
+    values = _parse(env.read_text(encoding="utf-8"))
+    assert values["POSTGRES_USER"] == "keep" and values["GEMINI_API_KEY"] == "secret-kept"
+    assert len(values["PROFILE_ENCRYPTION_KEY"]) == 44  # a Fernet key
+    assert values["POSTGRES_PASSWORD"]
+    assert env.read_text(encoding="utf-8").count("POSTGRES_USER=") == 1

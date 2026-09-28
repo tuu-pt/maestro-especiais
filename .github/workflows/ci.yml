@@ -170,3 +170,4 @@ jobs:
           cache-dependency-path: tools/requirements.txt
       - run: pip install -r tools/requirements.txt
       - run: python tools/anonymize.py --check data/fixtures
+      - run: python tools/anonymize.py --check backend/app/forms/templates

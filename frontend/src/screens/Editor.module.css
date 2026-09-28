@@ -107,10 +107,6 @@
   align-items: center;
   margin-bottom: 10px;
 }
-.download {
-  font-size: 13px;
-  color: var(--ink-2);
-}
 .pane {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 300px);
@@ -304,4 +300,19 @@
 }
 .diff del {
   background: var(--crit-bg);
+}
+.forms {
+  display: grid;
+  gap: 6px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
+  min-width: 0;
+}
+.formItem {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
 }

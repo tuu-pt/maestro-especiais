@@ -4,13 +4,14 @@ import { diffWords } from "diff";
 import { useId, useState } from "react";
 import { useSearchParams } from "react-router";
 
-import { ApiError } from "../api/client";
+import { ApiError, download } from "../api/client";
 import { useProjectEvents } from "../api/events";
 import {
   useAssemble,
   useDocument,
   useDocuments,
   useFicha,
+  useForms,
   useGenerateDocument,
   useMe,
   useProject,
@@ -123,7 +124,58 @@ function ProjectEditor({ projectId }: { projectId: string }) {
           {canWrite ? null : "Só um redator ou um técnico responsável pode montar documentos."}
         </EmptyState>
       )}
+      {canWrite ? <FormsPanel projectId={projectId} /> : null}
     </div>
+  );
+}
+
+function DownloadButton({ path, filename, children }: { path: string; filename: string; children: string }) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  return (
+    <>
+      <Button
+        small
+        disabled={busy}
+        onClick={() => {
+          setBusy(true);
+          setError(null);
+          download(path, filename)
+            .catch((e: unknown) => setError(e instanceof Error ? e.message : "Erro ao descarregar."))
+            .finally(() => setBusy(false));
+        }}
+      >
+        {children}
+      </Button>
+      {error ? <ErrorNote>{error}</ErrorNote> : null}
+    </>
+  );
+}
+
+/** The DGEG forms, filled from the ficha-base and the technician's profile (SPEC 8.5). */
+function FormsPanel({ projectId }: { projectId: string }) {
+  const { data: forms = [], error } = useForms(projectId, true);
+  return (
+    <section className={s.forms} aria-labelledby="forms-title">
+      <h3 id="forms-title" className={s.h4}>
+        Formulários pré-preenchidos
+      </h3>
+      <p className={s.muted}>
+        Preenchidos com a ficha-base confirmada e o perfil do técnico responsável. Saem sem data nem assinatura: o
+        técnico data e assina.
+      </p>
+      {error ? <ErrorNote>{error.message}</ErrorNote> : null}
+      <ul className={s.plain}>
+        {forms.map((f) => (
+          <li key={f.kind} className={s.formItem}>
+            <DownloadButton path={`/projects/${projectId}/forms/${f.kind}`} filename={f.filename}>
+              {f.title}
+            </DownloadButton>
+            <span className={s.muted}>Por preencher: {f.by_hand.join("; ")}</span>
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }
 
@@ -188,9 +240,9 @@ function DocumentEditor({ documentId, projectId }: { documentId: string; project
               Gerar texto adaptativo ({toDraft} {toDraft === 1 ? "secção" : "secções"})
             </Button>
           ) : null}
-          <a className={s.download} href={`/api/documents/${doc.id}/draft.docx`}>
+          <DownloadButton path={`/documents/${doc.id}/draft.docx`} filename={`${doc.type}_rascunho.docx`}>
             Rascunho .docx
-          </a>
+          </DownloadButton>
           {generate.error ? <ErrorNote>{generate.error.message}</ErrorNote> : null}
         </div>
         {selected ? (

@@ -63,6 +63,25 @@ export async function request<T>(path: string, init: RequestInit = {}): Promise<
   return (await response.json()) as T;
 }
 
+/** Download a file from /api (a plain link would not say who is calling). */
+export async function download(path: string, filename: string): Promise<void> {
+  let response: Response;
+  try {
+    response = await fetch(`/api${path}`, { headers: authHeaders() });
+  } catch {
+    throw new ApiError(0, "Sem ligação ao servidor.");
+  }
+  if (!response.ok) throw new ApiError(response.status, await errorMessage(response));
+  const url = URL.createObjectURL(await response.blob());
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.append(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+
 export function postJson<T>(path: string, body?: unknown): Promise<T> {
   return request<T>(path, {
     method: "POST",

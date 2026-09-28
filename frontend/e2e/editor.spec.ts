@@ -2,7 +2,7 @@
 
 import { expect, type Page, test } from "@playwright/test";
 
-import { confirmedFicha, mdj, proposal, supplySection } from "../src/test/documents";
+import { confirmedFicha, forms, mdj, proposal, supplySection } from "../src/test/documents";
 import { project } from "../src/test/fixtures";
 import { expectNoSeriousA11yIssues, horizontalOverflow, mockApi, screenshot } from "./support";
 
@@ -13,6 +13,7 @@ async function open(page: Page, seccao = "s-supply") {
     "/projects/p1/ficha": confirmedFicha(),
     "/projects/p1/documents": [mdj()],
     "/documents/d1": mdj(),
+    "/projects/p1/forms": forms(),
     "/sections/s-supply/versions": [
       {
         ...proposal(),

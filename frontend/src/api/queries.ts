@@ -18,6 +18,7 @@ import type {
   Project,
   ProjectFile,
   ProjectDocument,
+  ProjectForm,
   ProjectIn,
   Regulation,
   RegulationStatus,
@@ -262,6 +263,13 @@ export function useCitable(id: string) {
 }
 
 // ---------------------------------------------------------------- documents and the editor
+
+export const useForms = (projectId: string, enabled: boolean) =>
+  useQuery({
+    queryKey: ["projects", projectId, "forms"],
+    queryFn: () => request<ProjectForm[]>(`/projects/${projectId}/forms`),
+    enabled,
+  });
 
 export const useDocuments = (projectId: string | undefined) =>
   useQuery({

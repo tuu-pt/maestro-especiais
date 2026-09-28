@@ -26,6 +26,7 @@ from app.models.library import (
     TemplateBlock,
 )
 from app.models.llm import BlockedTerm, LlmCall
+from app.models.profile import TechnicianProfile
 from app.models.project import Project, ProjectFile
 
 __all__ = [
@@ -52,6 +53,7 @@ __all__ = [
     "SectionVersion",
     "SourceDocument",
     "SourceSection",
+    "TechnicianProfile",
     "TemplateBlock",
     "Typology",
     "TypologyTerm",

@@ -30,7 +30,7 @@ from app.models import BomItem, Circuit, FichaRevision, FichaValue
 BOM_FIELDS = ("designation", "unit", "quantity", "code")
 EMPTY_BY_DESIGN = {"doc.data"}  # P8: left for the technician
 PERSONAL_DOC_KEYS = {"tec.nome", "tec.cc", "tec.oet", "tec.codigo_verificacao", "tec.email",
-                     "tec.telefone"}  # fmt: skip
+                     "tec.telefone", "tec.nif", "tec.dgeg", "tec.morada", "tec.cp"}  # fmt: skip
 
 
 def circuit_slug(c: Circuit) -> str:

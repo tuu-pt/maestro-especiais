@@ -132,6 +132,14 @@ def describe(action: str, payload: dict[str, Any]) -> str:
             return "Pedido ao LLM recusado: D5 pendente"
         case "project.llm_allowed":
             return "Permitiu o uso do LLM" if payload.get("allowed") else "Retirou o uso do LLM"
+        case "form.downloaded":
+            titles = {"ficha_eletrotecnica": "a ficha eletrotécnica",
+                      "identificacao": "a Identificação do Projeto",
+                      "termo": "o Termo de Responsabilidade"}  # fmt: skip
+            title = titles.get(payload.get("kind", ""), "um formulário")
+            return f"Descarregou {title} pré-preenchido"
+        case "profile.updated":
+            return "Atualizou o perfil de técnico"
         case "document.draft_downloaded":
             return f"Descarregou o rascunho do {payload.get('type', '')}"
         case "ficha.confirmed":

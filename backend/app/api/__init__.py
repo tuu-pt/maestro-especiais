@@ -9,6 +9,7 @@ from app.api import (
     editor,
     events,
     ficha,
+    forms,
     knowledge,
     library,
     me,
@@ -26,3 +27,4 @@ api_router.include_router(library.router)
 api_router.include_router(documents.router)
 api_router.include_router(drafting.router)
 api_router.include_router(editor.router)
+api_router.include_router(forms.router)

@@ -1,6 +1,6 @@
 /** A small assembled MDJ for the editor tests (shapes of the API, no real project data). */
 
-import type { DocSection, Ficha, ProjectDocument, SectionVersion } from "../api/types";
+import type { DocSection, Ficha, ProjectDocument, ProjectForm, SectionVersion } from "../api/types";
 import { emptyFicha } from "./fixtures";
 
 export const confirmedFicha = (): Ficha => ({
@@ -171,3 +171,18 @@ export const proposal = (): SectionVersion => ({
     ],
   },
 });
+
+export const forms = (): ProjectForm[] => [
+  {
+    kind: "ficha_eletrotecnica",
+    title: "Ficha eletrotécnica",
+    filename: "R1_FichaEletrotecnica.xlsm",
+    by_hand: ["Telefone do requerente (C6)", "Data (pelo técnico) (M40)"],
+  },
+  {
+    kind: "termo",
+    title: "Termo de Responsabilidade",
+    filename: "R1_TermoResponsabilidade.docx",
+    by_hand: ["Data e assinatura do técnico responsável"],
+  },
+];

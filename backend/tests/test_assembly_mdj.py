@@ -114,15 +114,22 @@ def test_a_skeleton_block_with_no_text_is_todo(mdj: dict[str, Any]) -> None:
     assert lighting["status_note"].startswith("Sem texto: nenhum projeto de referência")
 
 
-def test_missing_values_leave_the_section_todo(mdj: dict[str, Any]) -> None:
+def test_the_signature_comes_from_the_profile_of_the_technician(mdj: dict[str, Any]) -> None:
+    # R1 was confirmed by dev:tecnico: with DEV_AUTH, the fake development profile
     signature = section(mdj, "ele.mdj.assinatura")
+    text = " ".join(texts(signature))
+
+    assert signature["status"] == "generated" and not signature["missing_keys"]
+    assert "Localidade (desenvolvimento)" in text  # doc.local is not personal
+    assert "Técnico de Desenvolvimento" not in text and "•••" in text  # masked in the API
+    assert "[data: pelo técnico]" in text  # P8, never missing
+
+
+def test_missing_values_leave_the_section_todo(mdj: dict[str, Any]) -> None:
     cover = section(mdj, "ele.mdj.capa")
 
-    assert signature["status"] == "todo"
-    assert signature["status_note"].startswith("Falta dado: ")
-    assert "Nome do técnico" in signature["status_note"]  # the profile comes in task 6
-    assert "tec.nome" in signature["missing_keys"]
-    assert "[data: pelo técnico]" in " ".join(texts(signature))  # P8, never missing
+    assert cover["status"] == "todo"
+    assert cover["status_note"].startswith("Falta dado: ")
     # the cover: requerente masked, obra missing in the ficha eletrotécnica of R1
     assert "REQUERENTE: •••" in texts(cover)
     assert "id.obra.designacao" in cover["missing_keys"]

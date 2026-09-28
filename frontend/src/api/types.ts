@@ -376,6 +376,14 @@ export type DocSection = {
   citations: { anchor: string; kind: string; target: string }[];
 };
 
+/** A pre-filled form (SPEC 8.5): what the technician still fills is listed. */
+export type ProjectForm = {
+  kind: "ficha_eletrotecnica" | "identificacao" | "termo";
+  title: string;
+  filename: string;
+  by_hand: string[];
+};
+
 export type ProjectDocument = {
   id: string;
   project_id: string;

@@ -10,19 +10,22 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.api.projects import get_project
-from app.assembly.assemble import AssemblyError, assemble, export_readiness
+from app.assembly.assemble import AssemblyError, assemble, confirmed_revision, export_readiness
 from app.assembly.docx import draft_docx
 from app.assembly.values import ValueSource
 from app.audit import record
 from app.auth import CurrentUser, User, require_role
+from app.config import Settings, get_settings
 from app.db import get_session
 from app.models import Document, FichaRevision, Project
+from app.profiles import revision_profile
 from app.storage import ObjectStore, get_store
 
 router = APIRouter(tags=["documentos"])
 
 DB = Annotated[Session, Depends(get_session)]
 Store = Annotated[ObjectStore, Depends(get_store)]
+Config = Annotated[Settings, Depends(get_settings)]
 Writer = Annotated[User, Depends(require_role("redator", "tecnico"))]
 DOCX = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
 
@@ -120,10 +123,14 @@ def get_document(db: Session, document_id: uuid.UUID) -> Document:
 
 
 @router.post("/projects/{project_id}/documents", status_code=status.HTTP_201_CREATED)
-def assemble_document(project_id: uuid.UUID, body: AssembleIn, db: DB, user: Writer) -> DocumentOut:
+def assemble_document(
+    project_id: uuid.UUID, body: AssembleIn, db: DB, user: Writer, settings: Config
+) -> DocumentOut:
     project: Project = get_project(db, project_id)
     try:
-        document = assemble(db, project, body.type, user.id)
+        revision = confirmed_revision(db, project.id)
+        profile = revision_profile(db, settings, revision) if revision else {}
+        document = assemble(db, project, body.type, user.id, profile)
     except AssemblyError as exc:
         raise HTTPException(status.HTTP_409_CONFLICT, str(exc)) from exc
     record(
@@ -157,12 +164,13 @@ def export_check(document_id: uuid.UUID, db: DB, _: CurrentUser) -> dict[str, An
 
 
 @router.get("/documents/{document_id}/draft.docx")
-def draft(document_id: uuid.UUID, db: DB, store: Store, user: Writer) -> Response:
+def draft(document_id: uuid.UUID, db: DB, store: Store, user: Writer, settings: Config) -> Response:
     document = get_document(db, document_id)
     revision = db.get(FichaRevision, document.ficha_revision_id)
     assert revision is not None
     try:
-        data = draft_docx(db, store, document, ValueSource.load(db, revision))
+        values = ValueSource.load(db, revision, revision_profile(db, settings, revision))
+        data = draft_docx(db, store, document, values)
     except ValueError as exc:
         raise HTTPException(status.HTTP_409_CONFLICT, str(exc)) from exc
     project = db.get(Project, document.project_id)

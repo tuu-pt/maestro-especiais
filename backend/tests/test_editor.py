@@ -120,13 +120,13 @@ def test_editing_a_value_asks_for_a_confirmation_and_marks_coe01(
 def test_review(api: Api, mdj: dict[str, Any]) -> None:
     fixed = section(api, mdj, "quedas_de_tensao")
     pending = section(api, mdj, "ele.mdj.introducao")
-    signature = section(api, mdj, "ele.mdj.assinatura")
+    cover = section(api, mdj, "ele.mdj.capa")  # id.obra.designacao missing in R1
 
     ok = api.as_("tecnico").post(f"/api/sections/{fixed['id']}/review", json={})
     assert ok.json()["status"] == "reviewed"
     not_written = api.as_("tecnico").post(f"/api/sections/{pending['id']}/review", json={})
     assert not_written.status_code == 409 and "texto adaptativo" in not_written.json()["detail"]
-    missing = api.as_("tecnico").post(f"/api/sections/{signature['id']}/review", json={})
+    missing = api.as_("tecnico").post(f"/api/sections/{cover['id']}/review", json={})
     assert missing.status_code == 409 and "Falta dado" in missing.json()["detail"]
     assert "Marcou «Quedas de Tensão» como revista" in audit(api, mdj)
 

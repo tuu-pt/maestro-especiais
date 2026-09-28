@@ -21,6 +21,7 @@ from app.llm.guard import PrivacyBlocked, PrivacyGuard, terms_for
 from app.llm.provider import LlmProvider, Message, ProviderError
 from app.llm.ratelimit import QuotaExhausted, RateLimiter
 from app.models import LlmCall, Project
+from app.profiles import personal_terms
 
 T = TypeVar("T", bound=BaseModel)
 Purpose = Literal["drafting", "extraction"]
@@ -76,7 +77,8 @@ class LlmClient:
                     "D5 pendente: este projeto não pode usar o LLM.",
                 )
                 raise LlmNotAllowed(call.error)
-            guard = PrivacyGuard(terms_for(db, project.id, profile))
+            terms = terms_for(db, project.id, profile) + personal_terms(db, self.settings)
+            guard = PrivacyGuard(terms)
             parts = {
                 "system": system,
                 **{f"mensagem {i}": m.text for i, m in enumerate(messages, 1)},

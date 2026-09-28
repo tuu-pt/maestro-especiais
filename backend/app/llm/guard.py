@@ -2,7 +2,7 @@
 
 What it looks for, in every part of the request (placeholders {{v:…}} are ignored):
 - the personal values of the project's ficha-base (personal_data = true);
-- the technician's profile;
+- the personal fields of the technician's profile and of every saved profile;
 - the blocked names (BlockedTerm: TUU team and technicians, e.g. the names left in the
   fixtures by decision of 24 set 2026);
 - the patterns of app.library.privacy: emails, NIF, CC, phones, postal codes, DGEG/OET numbers,
@@ -18,6 +18,7 @@ from dataclasses import dataclass
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.assembly.values import PERSONAL_DOC_KEYS
 from app.ingest.consolidate import latest_revision
 from app.ingest.detect import fold
 from app.library import privacy
@@ -77,7 +78,7 @@ def terms_for(db: Session, project_id: uuid.UUID | None,
     terms: list[tuple[str, str]] = [
         ("blocked_name", t.value) for t in db.scalars(select(BlockedTerm))
     ]
-    terms += [("profile", v) for v in (profile or {}).values() if v]
+    terms += [("profile", v) for k, v in (profile or {}).items() if v and k in PERSONAL_DOC_KEYS]
     if project_id is not None:
         revision = latest_revision(db, project_id)
         if revision is not None:

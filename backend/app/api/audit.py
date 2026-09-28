@@ -117,6 +117,17 @@ def describe(action: str, payload: dict[str, Any]) -> str:
             return f"Aceitou a versão {payload.get('version', '')} de «{payload.get('title', '')}»"
         case "section.version_rejected":
             return f"Rejeitou a versão {payload.get('version', '')} de «{payload.get('title', '')}»"
+        case "section.unlocked":
+            reason = payload.get("reason", "")
+            return f"Desbloqueou o bloco fixo «{payload.get('title', '')}»: {reason}"
+        case "section.activated" | "section.deactivated":
+            verb = "Ativou" if action == "section.activated" else "Desativou"
+            return f"{verb} «{payload.get('title', '')}»: {payload.get('reason', '')}"
+        case "section.reviewed":
+            return f"Marcou «{payload.get('title', '')}» como revista"
+        case "section.edited":
+            extra = " (valores da ficha alterados)" if payload.get("values_changed") else ""
+            return f"Editou «{payload.get('title', '')}»{extra}"
         case "llm.refused":
             return "Pedido ao LLM recusado: D5 pendente"
         case "project.llm_allowed":

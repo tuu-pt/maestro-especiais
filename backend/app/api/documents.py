@@ -50,6 +50,16 @@ class SectionOut(BaseModel):
     equipment_slots: list[dict[str, Any]]
     current_version: int
     content: dict[str, Any]
+    has_adaptive: bool
+    proposals: int
+    unlocked: dict[str, Any] | None
+    activation_override: dict[str, Any] | None
+    reviewed_by: str | None
+    reviewed_at: datetime | None
+    missing_data: list[Any]
+    assumptions: list[Any]
+    issues: list[Any]
+    citations: list[dict[str, Any]]
 
 
 class DocumentOut(BaseModel):
@@ -84,6 +94,16 @@ def _out(db: Session, d: Document, with_sections: bool = True) -> DocumentOut:
                 active_reason=s.active_reason, status=s.status, status_note=s.status_note,
                 missing_keys=s.missing_keys, locked=s.locked, equipment_slots=s.equipment_slots,
                 current_version=s.current_version, content=version.content,
+                has_adaptive=s.mode == "adaptive" or any(
+                    n.get("type") == "pending" or (n.get("attrs") or {}).get("generated")
+                    for n in version.content.get("content") or []),
+                proposals=sum(1 for v in s.versions if v.status == "proposed"),
+                unlocked=s.unlocked, activation_override=s.activation_override,
+                reviewed_by=s.reviewed_by, reviewed_at=s.reviewed_at,
+                missing_data=version.missing_data, assumptions=version.assumptions,
+                issues=version.issues,
+                citations=[{"anchor": c.anchor, "kind": c.kind, "target": c.target_id}
+                           for c in version.citations],
             ))  # fmt: skip
     return DocumentOut(
         id=d.id, project_id=d.project_id, type=d.type, status=d.status,

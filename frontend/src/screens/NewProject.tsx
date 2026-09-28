@@ -6,7 +6,7 @@ import { Link, useNavigate, useParams } from "react-router";
 
 import { useProjectEvents } from "../api/events";
 import { keys, uploadFile, useCreateProject, useFicha, useFiles, useProject, useRefreshProject } from "../api/queries";
-import type { FileEvent, ProjectFile, ProjectIn } from "../api/types";
+import type { ProjectFile, ProjectIn } from "../api/types";
 import { Button, ButtonLink, Buttons, Card, ErrorNote, Pill, type Tone } from "../components/ui";
 import { fileSize, kindLabel } from "../lib/format";
 import { Checklist, Loading } from "./common";
@@ -187,7 +187,8 @@ export function ProjectFilesScreen() {
   const [errors, setErrors] = useState<string[]>([]);
   const [dragging, setDragging] = useState(false);
 
-  useProjectEvents(projectId, (event: FileEvent) => {
+  useProjectEvents(projectId, (event) => {
+    if (event.type === "section") return; // drafting progress: the editor follows it
     client.setQueryData<ProjectFile[]>(keys.files(projectId), (old) =>
       old?.map((f) =>
         f.id === event.file_id

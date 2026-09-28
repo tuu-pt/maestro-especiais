@@ -48,6 +48,7 @@ export type ProjectFile = {
 export type UploadResult = { file: ProjectFile; duplicate: boolean; job_id: string | null };
 
 export type FileEvent = {
+  type?: "file";
   file_id: string;
   kind: string;
   status: IngestStatus;
@@ -314,4 +315,89 @@ export type Regulation = {
   review_note: string | null;
   found_in: { project: string; source: string; file: string; locator: string; text: string }[];
   found_count: number;
+};
+
+// ---------------------------------------------------------------- documents and the editor (screen D)
+
+export type SectionEvent = {
+  type: "section";
+  document_id: string;
+  section_id: string;
+  title: string;
+  status: "queued" | "generating" | "generated" | "failed" | "paused";
+  message: string | null;
+  wait_s: number | null;
+};
+
+export type ProjectEvent = FileEvent | SectionEvent;
+
+export type Mark = { type: "value" | "generated" | "citation"; attrs?: Record<string, unknown> };
+
+export type TextNode = { type: "text"; text: string; marks?: Mark[] };
+
+export type ContentNode = {
+  type: "paragraph" | "locked" | "pending";
+  attrs?: Record<string, unknown>;
+  content?: (TextNode | ContentNode)[];
+};
+
+export type SectionContent = { type: "doc"; content: ContentNode[] };
+
+export type Issue = { rule: string; paragraph?: string; source?: string; snippet?: string; message: string };
+
+export type DocSection = {
+  id: string;
+  order: number;
+  title: string;
+  level: number;
+  kind: "cover" | "index" | "block" | "signature";
+  mode: BlockMode;
+  block_key: string;
+  block_status: ReviewStatus;
+  block_approved: boolean;
+  active: boolean;
+  active_reason: string | null;
+  status: "todo" | "generated" | "reviewed" | "alert";
+  status_note: string | null;
+  missing_keys: string[];
+  locked: boolean;
+  equipment_slots: Record<string, unknown>[];
+  current_version: number;
+  content: SectionContent;
+  has_adaptive: boolean;
+  proposals: number;
+  unlocked: { by: string; at: string; reason: string } | null;
+  activation_override: { by: string; at: string; reason: string; active: boolean; rule_result: boolean } | null;
+  reviewed_by: string | null;
+  reviewed_at: string | null;
+  missing_data: string[];
+  assumptions: string[];
+  issues: Issue[];
+  citations: { anchor: string; kind: string; target: string }[];
+};
+
+export type ProjectDocument = {
+  id: string;
+  project_id: string;
+  type: "MDJ" | "CTE";
+  status: string;
+  ficha_revision: string;
+  created_at: string;
+  counts: Record<string, number>;
+  sections: DocSection[] | null;
+};
+
+export type SectionVersion = {
+  id: string;
+  number: number;
+  status: "current" | "proposed" | "rejected" | "superseded";
+  author_type: "system" | "agent" | "user";
+  request: string | null;
+  missing_data: string[];
+  assumptions: string[];
+  issues: Issue[];
+  created_at: string;
+  created_by: string | null;
+  content: SectionContent;
+  citations: { anchor: string; kind: string; target: string }[];
 };

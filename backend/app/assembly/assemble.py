@@ -32,6 +32,7 @@ from app.models import (
 
 PLACEHOLDER = re.compile(r"\{\{v:([a-z0-9_.]+)\}\}")
 MASK = "•••"
+EMPTY_BLOCK = "Sem texto: nenhum projeto de referência tem este bloco (esqueleto 8.3)."
 TEMPLATE_PROJECT = "R1"  # the package the draft .docx is built on [A CONFIRMAR: TUU template]
 
 
@@ -148,6 +149,8 @@ def assemble(
         built = build_content(block, values)
         if not active:
             status, note = "todo", None
+        elif not block.body_template:
+            status, note = "todo", EMPTY_BLOCK
         elif built.missing:
             status = "todo"
             note = "Falta dado: " + ", ".join(label(k) for k in built.missing) + "."

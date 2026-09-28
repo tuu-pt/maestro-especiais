@@ -6,6 +6,7 @@ from app.api import (
     audit,
     documents,
     drafting,
+    editor,
     events,
     ficha,
     knowledge,
@@ -24,3 +25,4 @@ api_router.include_router(knowledge.router)
 api_router.include_router(library.router)
 api_router.include_router(documents.router)
 api_router.include_router(drafting.router)
+api_router.include_router(editor.router)

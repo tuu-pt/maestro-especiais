@@ -108,6 +108,12 @@ def test_fixed_blocks_are_locked_with_the_library_ooxml(mdj: dict[str, Any], db:
     assert ip_ik["locked"] and ip_ik["status"] == "generated"
 
 
+def test_a_skeleton_block_with_no_text_is_todo(mdj: dict[str, Any]) -> None:
+    lighting = section(mdj, "instalacoes_eletricas_a_considerar.iluminacao_de_seguranca")
+    assert lighting["active"] and lighting["status"] == "todo"
+    assert lighting["status_note"].startswith("Sem texto: nenhum projeto de referência")
+
+
 def test_missing_values_leave_the_section_todo(mdj: dict[str, Any]) -> None:
     signature = section(mdj, "ele.mdj.assinatura")
     cover = section(mdj, "ele.mdj.capa")

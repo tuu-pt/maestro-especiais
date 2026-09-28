@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 
 import { authHeaders } from "./client";
-import type { FileEvent } from "./types";
+import type { ProjectEvent } from "./types";
 
 /**
  * Parse a text/event-stream body. EventSource cannot send the X-Dev-User header, so the
@@ -9,7 +9,7 @@ import type { FileEvent } from "./types";
  */
 export async function readEvents(
   body: ReadableStream<Uint8Array>,
-  onEvent: (event: FileEvent) => void,
+  onEvent: (event: ProjectEvent) => void,
 ): Promise<void> {
   const reader = body.getReader();
   const decoder = new TextDecoder();
@@ -29,7 +29,7 @@ export async function readEvents(
         .join("\n");
       if (data) {
         try {
-          onEvent(JSON.parse(data) as FileEvent);
+          onEvent(JSON.parse(data) as ProjectEvent);
         } catch {
           // keep-alive or malformed message: ignore it
         }
@@ -39,10 +39,10 @@ export async function readEvents(
   }
 }
 
-/** Follow the ingestion progress of a project while the component is mounted. */
+/** Follow the progress of a project (ingestion, drafting) while the component is mounted. */
 export function useProjectEvents(
   projectId: string | undefined,
-  onEvent: (event: FileEvent) => void,
+  onEvent: (event: ProjectEvent) => void,
 ): void {
   const handler = useRef(onEvent);
   useEffect(() => {

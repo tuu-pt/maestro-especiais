@@ -1,4 +1,4 @@
-/** Screens D, E and F: empty until later phases, with their real preconditions. */
+/** Screens E and F: empty until later phases, with their real preconditions. */
 
 import { useActiveProject } from "../app/activeProject";
 import { useFicha, useFiles, useProject } from "../api/queries";
@@ -11,39 +11,6 @@ function useReadiness(projectId: string | undefined) {
   const { data: files = [] } = useFiles(projectId);
   const confirmed = ficha?.revisions.some((r) => r.status === "confirmed") ?? false;
   return { confirmed, files };
-}
-
-export function EditorScreen() {
-  const projectId = useActiveProject();
-  const { data: project } = useProject(projectId);
-  const { confirmed } = useReadiness(projectId);
-  return (
-    <Screen
-      crumb={project ? `${project.code} · Documentos` : "Documentos"}
-      title="Editor assistido"
-      description="O MDJ e o CTE são montados secção a secção a partir da ficha-base confirmada, com a origem de cada frase."
-    >
-      {!projectId ? (
-        <NoProject screen="os documentos" />
-      ) : (
-        <EmptyState
-          title="Ainda não há documentos"
-          action={
-            <Checklist
-              items={[
-                { done: confirmed, text: "Ficha-base confirmada por um técnico responsável" },
-                { done: false, text: "Biblioteca de blocos aprovada pelo curador (Fase 3)" },
-                { done: false, text: "Montagem e redação dos blocos (Fase 4)" },
-              ]}
-            />
-          }
-          next="Aqui vai aparecer cada secção com o seu estado (por fazer, gerada, revista), o modo do bloco (fixo, paramétrico ou adaptativo) e as fontes usadas."
-        >
-          Os documentos só podem ser montados depois de a ficha-base estar confirmada.
-        </EmptyState>
-      )}
-    </Screen>
-  );
 }
 
 export function ValidationScreen() {

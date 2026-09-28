@@ -41,6 +41,7 @@ from app.models import (
 )
 
 PLACEHOLDER = re.compile(r"\{\{v:([a-z0-9_.]+)\}\}")
+KEY = re.compile(r"[a-z]+\.[a-z0-9_.]+")
 NUM_01 = "Número fora de marcador: confirmar ou trocar por um valor da ficha."
 CONTEXT_PREFIXES = ("ele.", "sys.")  # never id.*: identification is only written by placeholder
 
@@ -133,7 +134,9 @@ def postprocess(
 ) -> tuple[list[DraftParagraph], list[dict[str, Any]], list[str]]:
     issues: list[dict[str, Any]] = []
     paragraphs = []
-    missing = [m for m in output.missing_data if m]
+    # a key the model says is missing but that has a value in the ficha-base is not missing
+    missing = [m for m in dict.fromkeys(output.missing_data) if m and not (
+        KEY.fullmatch(m) and not values.resolve(m).missing)]  # fmt: skip
     for p in output.paragraphs:
         kept = [s for s in p.sources if s in allowed]
         issues += [{"rule": "REF-01", "paragraph": p.id, "source": s,

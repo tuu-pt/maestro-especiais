@@ -247,7 +247,7 @@ def test_ref01_num01_and_missing_data(
                         "sources": [],
                     },
                 ],
-                "missing_data": ["ele.n_pisos"],
+                "missing_data": ["ele.n_pisos", "ele.potencia_alimentar_kva", "número de pisos"],
                 "assumptions": ["Moradia de 3 pisos (texto de R1)."],
             }
         )
@@ -259,7 +259,8 @@ def test_ref01_num01_and_missing_data(
     rules = [(i["rule"], i["paragraph"]) for i in proposal["issues"]]
     assert ("REF-01", "p1") in rules and ("NUM-01", "p1") in rules
     assert ("NUM-01", "p2") not in rules  # "secção 801.5" is in the whitelist
-    assert proposal["missing_data"] == ["ele.n_pisos", "id.local.nip"]
+    # the power has a value: not missing; free text stays
+    assert proposal["missing_data"] == ["ele.n_pisos", "número de pisos", "id.local.nip"]
     assert proposal["assumptions"] == ["Moradia de 3 pisos (texto de R1)."]
     assert {c["target"] for c in proposal["citations"]} == {"arc:R1:ele.mdj.introducao"}
     text = json.dumps(proposal["content"], ensure_ascii=False)

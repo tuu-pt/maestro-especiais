@@ -9,6 +9,7 @@ import type {
   BlockSummary,
   BomItem,
   Cables,
+  DocSection,
   CircuitSheet,
   DevUser,
   Ficha,
@@ -16,11 +17,14 @@ import type {
   KnowledgeKind,
   Project,
   ProjectFile,
+  ProjectDocument,
   ProjectIn,
   Regulation,
   RegulationStatus,
   Reviewed,
   Revision,
+  SectionContent,
+  SectionVersion,
   Typology,
   UploadResult,
   User,
@@ -42,6 +46,9 @@ export const keys = {
   block: (id: string) => ["library", "blocks", id] as const,
   blockPreview: (id: string, projectId: string) => ["library", "blocks", id, "preview", projectId] as const,
   blockHistory: (id: string) => ["library", "blocks", id, "history"] as const,
+  documents: (projectId: string) => ["projects", projectId, "documents"] as const,
+  document: (id: string) => ["documents", id] as const,
+  versions: (sectionId: string) => ["sections", sectionId, "versions"] as const,
 };
 
 export const useMe = () => useQuery({ queryKey: keys.me, queryFn: () => request<User>("/me") });
@@ -250,6 +257,93 @@ export function useCitable(id: string) {
   return useMutation({
     mutationFn: (body: { citable: boolean; note: string }) =>
       postJson<Regulation>(`/knowledge/regulations/${id}/citable`, body),
+    onSuccess: refresh,
+  });
+}
+
+// ---------------------------------------------------------------- documents and the editor
+
+export const useDocuments = (projectId: string | undefined) =>
+  useQuery({
+    queryKey: keys.documents(projectId ?? ""),
+    queryFn: () => request<ProjectDocument[]>(`/projects/${projectId}/documents`),
+    enabled: Boolean(projectId),
+  });
+
+export const useDocument = (id: string | undefined) =>
+  useQuery({
+    queryKey: keys.document(id ?? ""),
+    queryFn: () => request<ProjectDocument>(`/documents/${id}`),
+    enabled: Boolean(id),
+  });
+
+export const useVersions = (sectionId: string | undefined) =>
+  useQuery({
+    queryKey: keys.versions(sectionId ?? ""),
+    queryFn: () => request<SectionVersion[]>(`/sections/${sectionId}/versions`),
+    enabled: Boolean(sectionId),
+  });
+
+export function useRefreshDocument(documentId: string | undefined, projectId: string | undefined) {
+  const client = useQueryClient();
+  return () => {
+    if (documentId) void client.invalidateQueries({ queryKey: keys.document(documentId) });
+    if (projectId) void client.invalidateQueries({ queryKey: keys.documents(projectId) });
+    void client.invalidateQueries({ queryKey: ["sections"] });
+    if (projectId) void client.invalidateQueries({ queryKey: keys.audit(projectId) });
+  };
+}
+
+export function useAssemble(projectId: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (type: "MDJ" | "CTE") => postJson<ProjectDocument>(`/projects/${projectId}/documents`, { type }),
+    onSuccess: () => {
+      void client.invalidateQueries({ queryKey: keys.documents(projectId) });
+      void client.invalidateQueries({ queryKey: keys.audit(projectId) });
+    },
+  });
+}
+
+function put<T>(path: string, body: unknown): Promise<T> {
+  return request<T>(path, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+}
+
+/** Every action of the editor on one section; each one refreshes the document. */
+export function useSectionActions(section: DocSection | undefined, documentId: string, projectId: string) {
+  const refresh = useRefreshDocument(documentId, projectId);
+  const id = section?.id ?? "";
+  const options = { onSuccess: refresh };
+  return {
+    generate: useMutation({ mutationFn: () => postJson(`/sections/${id}/generate`), ...options }),
+    ask: useMutation({ mutationFn: (text: string) => postJson(`/sections/${id}/requests`, { text }), ...options }),
+    unlock: useMutation({ mutationFn: (reason: string) => postJson(`/sections/${id}/unlock`, { reason }), ...options }),
+    activation: useMutation({
+      mutationFn: (args: { active: boolean; reason: string }) => postJson(`/sections/${id}/activation`, args),
+      ...options,
+    }),
+    review: useMutation({ mutationFn: () => postJson(`/sections/${id}/review`, {}), ...options }),
+    edit: useMutation({
+      mutationFn: (args: { content: SectionContent; confirm_values: boolean }) =>
+        put(`/sections/${id}/content`, args),
+      ...options,
+    }),
+    decide: useMutation({
+      mutationFn: (args: { versionId: string; decision: "accept" | "reject" }) =>
+        postJson(`/versions/${args.versionId}/${args.decision}`, {}),
+      ...options,
+    }),
+  };
+}
+
+export function useGenerateDocument(documentId: string, projectId: string) {
+  const refresh = useRefreshDocument(documentId, projectId);
+  return useMutation({
+    mutationFn: () => postJson<{ queued: number }>(`/documents/${documentId}/generate`),
     onSuccess: refresh,
   });
 }

@@ -3,6 +3,7 @@
 Agente de IA da TUU para montar, redigir e validar o processo de projeto de instalações elétricas
 (MDJ, CTE, MQT/LPU, ficha eletrotécnica, identificação e termo).
 Especificação completa: docs/SPEC.md · Mock-up: docs/mockup/maestro-especiais.html
+Continuar noutra conta ou máquina (o que não vem com o repositório, .env, arranque): docs/CONTINUAR.md
 
 ## Regras invioláveis
 - O agente não decide: propõe e sinaliza. Correções, conflitos e aprovações exigem ação humana registada.

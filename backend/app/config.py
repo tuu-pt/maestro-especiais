@@ -20,6 +20,17 @@ class Settings(BaseSettings):
     # Development only: simulated users chosen with the X-Dev-User header. OIDC replaces it (D6).
     dev_auth: bool = False
     max_upload_bytes: int = 200 * 1024 * 1024
+    # LLM (SPEC 6.1): model names only here, from the environment; fake for tests and offline
+    llm_provider: str = "gemini"  # gemini | fake
+    gemini_api_key: str = ""
+    llm_model_drafting: str = ""
+    llm_model_extraction: str = ""
+    llm_model_embedding: str = ""
+    llm_rpm: int = 10  # requests per minute (free quota)
+    llm_rpd: int = 200  # requests per day
+    llm_max_retries: int = 4  # on 429/503
+    llm_backoff_s: float = 2.0  # first wait, doubled at each retry
+    llm_timeout_s: float = 60.0
 
 
 @lru_cache

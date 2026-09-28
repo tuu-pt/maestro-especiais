@@ -25,12 +25,14 @@ from app.models.library import (
     SourceSection,
     TemplateBlock,
 )
+from app.models.llm import BlockedTerm, LlmCall
 from app.models.project import Project, ProjectFile
 
 __all__ = [
     "ArchiveChunk",
     "ArchiveDoc",
     "AuditEvent",
+    "BlockedTerm",
     "BomItem",
     "CableDesignation",
     "CableEquivalence",
@@ -42,6 +44,7 @@ __all__ = [
     "FichaConflict",
     "FichaRevision",
     "FichaValue",
+    "LlmCall",
     "Project",
     "ProjectFile",
     "RegulationDoc",

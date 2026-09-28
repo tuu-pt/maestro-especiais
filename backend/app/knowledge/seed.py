@@ -213,6 +213,7 @@ def main() -> None:
     from app.db import session_factory
     from app.library.seed import seed_blocks
     from app.library.sources import seed_sources
+    from app.llm.blocked import seed_blocked_terms
     from app.storage import ensure_bucket, get_store
 
     settings = get_settings()
@@ -225,6 +226,7 @@ def main() -> None:
         summary = seed_knowledge(db, root)
         summary |= seed_sources(db, store, root, REFERENCE_PROJECTS)
         summary |= seed_blocks(db, root, REFERENCE_PROJECTS)
+        summary["blocked_terms"] = seed_blocked_terms(db, root, REFERENCE_PROJECTS)
         db.commit()
     print("Base de conhecimento semeada:", summary)
 

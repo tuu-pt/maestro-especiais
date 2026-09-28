@@ -36,6 +36,7 @@ DOCUMENT_TYPES = ("MDJ", "CTE", "FICHA_ELE", "IDENTIFICACAO", "TERMO")
 DOCUMENT_STATUSES = ("draft", "in_review", "approved")
 SECTION_STATUSES = ("todo", "generated", "reviewed", "alert")
 VERSION_STATUSES = ("current", "proposed", "rejected", "superseded")
+LLM_CALL_STATUSES = ("ok", "invalid", "failed", "blocked", "refused")
 BOM_VARIANTS = ("mqt", "lpu")
 BOM_KINDS = ("chapter", "subchapter", "article", "description", "note", "total")
 

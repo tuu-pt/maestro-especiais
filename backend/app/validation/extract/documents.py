@@ -14,7 +14,14 @@ from app.drafting.draft import node_text
 from app.ingest.written import section_lines
 from app.library import docx_blocks
 from app.models import Document, ProjectFile, Section, SectionVersion
-from app.validation.extract import EXTRACTOR_VERSION, Sources, digest, document_hash, extractor
+from app.validation.extract import (
+    EXTRACTOR_VERSION,
+    Sources,
+    digest,
+    document_hash,
+    extractor,
+)
+from app.validation.extract import text as text_facts
 from app.validation.pieces import Fact, Paragraph, Piece, PieceData, SectionInfo
 
 PREFIX = {"MDJ": "ele.mdj.", "CTE": "ele.cte."}
@@ -132,6 +139,7 @@ def read_assembled(sources: Sources, piece: Piece) -> PieceData:
                 anchor=(node.get("attrs") or {}).get("anchor"), section_id=str(s.id),
             ))  # fmt: skip
             data.facts += _value_facts(node, piece.ref, where, version, values)
+    data.facts += text_facts.read(data.paragraphs, piece.ref, with_identification=False)
     return data
 
 
@@ -156,4 +164,5 @@ def read_existing(sources: Sources, piece: Piece) -> PieceData:
                 piece=piece.ref, section_key=s.key, section_title=s.title, section_kind=s.kind,
                 index=i, text=line, anchor=f"p{i}",
             ))  # fmt: skip
+    data.facts = text_facts.read(data.paragraphs, piece.ref, with_identification=True)
     return data

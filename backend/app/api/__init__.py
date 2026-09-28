@@ -2,7 +2,17 @@
 
 from fastapi import APIRouter
 
-from app.api import audit, documents, events, ficha, knowledge, library, me, projects
+from app.api import (
+    audit,
+    documents,
+    drafting,
+    events,
+    ficha,
+    knowledge,
+    library,
+    me,
+    projects,
+)
 
 api_router = APIRouter(prefix="/api")
 api_router.include_router(me.router)
@@ -13,3 +23,4 @@ api_router.include_router(audit.router)
 api_router.include_router(knowledge.router)
 api_router.include_router(library.router)
 api_router.include_router(documents.router)
+api_router.include_router(drafting.router)

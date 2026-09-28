@@ -1,0 +1,17 @@
+# NUM-01 (SPEC 8.4): numbers the LLM may write outside {{v:…}}, because they are not values of the
+# project. Regular expressions, tried in order; a match is removed before looking for digits.
+# [A CONFIRMAR] with the technicians.
+patterns:
+  # decrees and ordinances: "Decreto-Lei n.º 96/2017", "Portaria n.º 949-A/2006"
+  - '\b(?:decreto-lei|portaria|despacho|lei|dl)\s*(?:n\.?º\s*)?\d+(?:-[A-Z])?/\d{4}'
+  - '\b\d+(?:-[A-Z])?/\d{4}\b'
+  # standards and their parts/editions: EN 60898, NP EN 50 102, EN 12464-1:2021, IEC 60364, HD 60364
+  - '\b(?:NP\s+)?(?:EN|IEC|HD|ISO|NP)\s*\d[\d ]*(?:[-.:]\d+)*'
+  # sections, articles, tables, annexes of regulations: "secção 801.5", "secções 521 e 801.5", "art.º 20.º"
+  - '\b(?:sec[çc](?:ão|ões|ao|oes)|art(?:igo|igos|\.º|\.)?|quadro|tabela|anexo|ponto|cap[íi]tulo|n\.º)\s*\d+(?:[.\-]\d+)*(?:\.?º)?(?:\s*(?:,|e|a)\s*\d+(?:[.\-]\d+)*(?:\.?º)?)*'
+  # letters followed by digits: IP65, IK08, AD4, BE2, H07V-U, RZ1-K, XZ1(frt,zh), L4.1, Cca-s1b,d1,a1
+  - '\b[A-Za-z]+\d+[A-Za-z0-9.,()\-]*'
+  # normalized characteristics: 16A-250V, 230/400 V, 400 V, 230 V
+  - '\b\d+\s*A\s*-\s*\d+\s*V\b'
+  - '\b230\s*/\s*400\s*V\b'
+  - '\b(?:230|400)\s*V\b'

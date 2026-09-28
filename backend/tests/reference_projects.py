@@ -38,8 +38,31 @@ def files_of(code: str, kinds: tuple[str, ...] = PHASE4_KINDS) -> list[Path]:
     return list(found.values())
 
 
-def load_confirmed(api: Api, code: str, *, llm_allowed: bool = False) -> str:
-    """Project id of the reference project, ficha-base confirmed."""
+def resolve_with_the_ficha(api: Api, project_id: str) -> int:
+    """Resolve every open value conflict with the candidate of the ficha eletrotécnica.
+
+    What a technician would decide for a test; the cases themselves (C6, C7) are tested elsewhere.
+    """
+    ficha = api.as_("redator").get(f"/api/projects/{project_id}/ficha").json()
+    resolved = 0
+    for group in ficha["groups"]:
+        for value in group["values"]:
+            conflict = value.get("conflict")
+            if not conflict:
+                continue
+            kinds = [c["source_type"] for c in conflict["candidates"]]
+            index = kinds.index("ficha_eletrotecnica") if "ficha_eletrotecnica" in kinds else 0
+            response = api.as_("tecnico").post(
+                f"/api/ficha/conflicts/{conflict['id']}/resolve",
+                json={"candidate": index, "note": "Resolvido para o teste: fica a ficha."},
+            )
+            assert response.status_code == 200, response.text
+            resolved += 1
+    return resolved
+
+
+def load_confirmed(api: Api, code: str, *, llm_allowed: bool = False, resolve: bool = False) -> str:
+    """Project id of the reference project, ficha-base confirmed (resolve: its conflicts first)."""
     if not have_fixtures():
         pytest.skip("data/fixtures/R1 e R2 são precisos")
     client = api.as_("redator")
@@ -49,8 +72,16 @@ def load_confirmed(api: Api, code: str, *, llm_allowed: bool = False) -> str:
             f"/api/projects/{project['id']}/files", files={"file": (path.name, path.read_bytes())}
         )
         assert response.status_code == 202, response.text
+    if resolve:
+        resolve_with_the_ficha(api, str(project["id"]))
     ficha = client.get(f"/api/projects/{project['id']}/ficha").json()
     assert ficha["open_conflicts"] == 0, f"{code}: conflitos por resolver na ficha-base"
     confirmed = api.as_("tecnico").post(f"/api/ficha/revisions/{ficha['revision']['id']}/confirm")
     assert confirmed.status_code == 200, confirmed.text
+    if llm_allowed:
+        allowed = api.as_("admin").patch(
+            f"/api/projects/{project['id']}/llm",
+            json={"allowed": True, "reason": "Projeto das fixtures."},
+        )
+        assert allowed.status_code == 200, allowed.text
     return str(project["id"])

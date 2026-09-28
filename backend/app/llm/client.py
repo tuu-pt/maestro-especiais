@@ -34,6 +34,10 @@ class LlmFailed(Exception):
     """The request did not give a valid answer (the message is ours, for people)."""
 
 
+class LlmPaused(LlmFailed):
+    """The daily quota is used up: generation stops and resumes from the last block done."""
+
+
 @dataclass
 class LlmClient:
     provider: LlmProvider
@@ -120,7 +124,7 @@ class LlmClient:
                 self.limiter.acquire(self.on_wait)
             except QuotaExhausted as exc:
                 call.status, call.error = "failed", str(exc)
-                raise LlmFailed(str(exc)) from None
+                raise LlmPaused(str(exc)) from None
             call.attempts += 1
             try:
                 raw = self.provider.generate(

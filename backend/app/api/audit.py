@@ -104,6 +104,23 @@ def describe(action: str, payload: dict[str, Any]) -> str:
             return f"Editou o bloco «{payload.get('title', '')}»: {what}"
         case "document.assembled":
             return f"Montou o {payload.get('type', '')} ({payload.get('sections', 0)} secções)"
+        case "document.generation_requested":
+            n = payload.get("sections", 0)
+            return f"Pediu a redação do {payload.get('type', '')} ({n} secções)"
+        case "section.generation_requested":
+            return f"Pediu a redação de «{payload.get('title', '')}»"
+        case "section.request":
+            return f"Pediu uma alteração ao agente em «{payload.get('title', '')}»"
+        case "section.draft_proposed":
+            return f"Propôs a versão {payload.get('version', '')} de «{payload.get('title', '')}»"
+        case "section.version_accepted":
+            return f"Aceitou a versão {payload.get('version', '')} de «{payload.get('title', '')}»"
+        case "section.version_rejected":
+            return f"Rejeitou a versão {payload.get('version', '')} de «{payload.get('title', '')}»"
+        case "llm.refused":
+            return "Pedido ao LLM recusado: D5 pendente"
+        case "project.llm_allowed":
+            return "Permitiu o uso do LLM" if payload.get("allowed") else "Retirou o uso do LLM"
         case "document.draft_downloaded":
             return f"Descarregou o rascunho do {payload.get('type', '')}"
         case "ficha.confirmed":

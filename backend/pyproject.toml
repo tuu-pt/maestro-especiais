@@ -46,5 +46,6 @@ include = ["app*"]
 
 [tool.setuptools.package-data]
 "app.ingest" = ["maps/*.yaml"]
+"app.llm" = ["whitelist.yaml", "prompts/*.md"]
 
 # pytest, ruff and mypy are configured at the repository root.

@@ -20,6 +20,7 @@ from app.models import (
     RegulationDoc,
     Typology,
 )
+from app.validation.masking import Masker, project_personal_values
 from app.validation.pieces import Fact, Paragraph, Piece, PieceData, SectionInfo
 
 
@@ -33,6 +34,7 @@ class Context:
     ficha: dict[str, FichaValue] = field(default_factory=dict)
     circuits: list[Circuit] = field(default_factory=list)
     bom: list[BomItem] = field(default_factory=list)
+    memo: dict[str, Any] = field(default_factory=dict)  # what the rules compute once per run
 
     @classmethod
     def load(cls, db: Session, project: Project, revision: FichaRevision,
@@ -82,6 +84,19 @@ class Context:
     def sections(self, piece: Piece) -> list[SectionInfo]:
         return self.data[piece.ref].sections if piece.ref in self.data else []
 
+    # ------------------------------------------------------------ masking (P9)
+
+    @cached_property
+    def masker(self) -> Masker:
+        values = [str(f.value) for d in self.data.values() for f in d.facts if f.personal]
+        if self.db is not None and self.project is not None:
+            values += project_personal_values(self.db, self.project.id)
+        return Masker(values)
+
+    def mask(self, text: str) -> str:
+        """Text for people: every known personal value and pattern replaced by •••."""
+        return self.masker(text)
+
     # ------------------------------------------------------------ knowledge (Phase 3)
 
     @cached_property
@@ -99,3 +114,16 @@ class Context:
     @cached_property
     def regulations(self) -> list[RegulationDoc]:
         return list(self.db.scalars(select(RegulationDoc).order_by(RegulationDoc.code)))
+
+    @cached_property
+    def other_projects_names(self) -> list[tuple[str, str, str]]:
+        """(project code, key, value) of the identification of the other projects (TIP-01)."""
+        keys = ("id.requerente.nome", "id.obra.designacao", "id.local.rua")
+        rows = self.db.execute(
+            select(Project.code, FichaValue.key, FichaValue.value)
+            .join(FichaRevision, FichaRevision.project_id == Project.id)
+            .join(FichaValue, FichaValue.revision_id == FichaRevision.id)
+            .where(Project.id != self.project.id, FichaRevision.status == "confirmed",
+                   FichaValue.key.in_(keys))
+        ).all()  # fmt: skip
+        return sorted({(c, k, str(v)) for c, k, v in rows if isinstance(v, str) and v.strip()})

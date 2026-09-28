@@ -2,8 +2,8 @@
 
 The drafting removes a source outside the set it gave the agent (Phase 4, `outside`); the
 validation checks every citation of the agent's text in the pieces against the archive and the
-corpus. Text written by people is REF-01 only as a warning (D-d, [A CONFIRMAR]): that part is
-added with the extraction of citations from the text (Phase 5, task 4a).
+corpus (critical). A diploma or standard written in the text that is not in the corpus is a
+warning, with a request to the curator (D-d, [A CONFIRMAR]): the corpus is still a list.
 """
 
 from collections.abc import Iterable
@@ -11,8 +11,10 @@ from collections.abc import Iterable
 from sqlalchemy import select
 
 from app.models import ArchiveChunk, Citation, Section, SectionVersion
+from app.validation import citations
+from app.validation.compare import excerpt, paragraph_location
 from app.validation.context import Context
-from app.validation.core import OPEN_EDITOR, Finding, Rule
+from app.validation.core import ASK_CURATOR, OPEN_EDITOR, Finding, Rule
 
 REMOVED = "Fonte fora do conjunto fornecido: removida."
 
@@ -59,6 +61,25 @@ def check(ctx: Context) -> list[Finding]:
                 likely_reading="Fonte inventada ou removida do corpus.",
                 suggested_fix="Retirar a citação ou citar um documento do corpus.",
                 actions=[OPEN_EDITOR],
+            ))  # fmt: skip
+    return out + in_text(ctx)
+
+
+def in_text(ctx: Context) -> list[Finding]:
+    out = []
+    for p in ctx.paragraphs("MDJ", "CTE"):
+        for c in citations.find(p.text):
+            if c.code is not None:
+                continue
+            piece = ctx.pieces[p.piece]
+            out.append(RULE.finding(
+                f"{piece.name} · {p.section_title}: «{c.text}» não está no corpus.",
+                key=f"text|{p.piece}|{p.section_key}|{p.index}|{c.text.lower()}",
+                severity="warning", location=paragraph_location(ctx, p),
+                evidence={"citation": c.text,
+                          "excerpt": excerpt(ctx, p.text, c.start, c.start + len(c.text))},
+                likely_reading="Documento por acrescentar ao corpus: pedir ao curador.",
+                actions=[ASK_CURATOR, OPEN_EDITOR],
             ))  # fmt: skip
     return out
 

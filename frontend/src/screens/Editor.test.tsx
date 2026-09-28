@@ -81,6 +81,21 @@ describe("assisted editor (screen D)", () => {
     await expect.poll(() => assembled).toEqual({ type: "MDJ" });
   });
 
+  it("offers to assemble the MDJ of an audited project, next to the existing one", async () => {
+    const existing = { ...mdj(), id: "d2", origin: "existing", source_file_id: "f9" };
+    withProject([existing]);
+    server.use(http.get(api("/documents/d2"), () => HttpResponse.json(existing)));
+    renderAt("/projetos/p1/documentos?doc=MDJ");
+
+    expect(await screen.findByText(/Peça existente, carregada para auditoria: só leitura/)).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Montado pela ferramenta" }));
+
+    expect(await screen.findByRole("button", { name: "Montar o MDJ" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Montado pela ferramenta" })).toHaveAttribute("aria-pressed", "true");
+    await userEvent.click(screen.getByRole("button", { name: "Existente (auditoria, só leitura)" }));
+    expect(await screen.findByText(/Peça existente, carregada para auditoria: só leitura/)).toBeInTheDocument();
+  });
+
   it("lists the sections with mode, state and whether the block is approved", async () => {
     withProject();
     renderAt("/projetos/p1/documentos");

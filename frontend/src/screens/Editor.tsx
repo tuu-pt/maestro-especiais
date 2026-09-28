@@ -73,7 +73,15 @@ function ProjectEditor({ projectId }: { projectId: string }) {
   const ofType = documents.filter((d) => d.type === type);
   const existing = ofType.find((d) => d.origin === "existing");
   const assembled = ofType.find((d) => d.origin === "assembled");
-  const origin = params.get("origem") === "existente" && existing ? "existing" : assembled ? "assembled" : "existing";
+  // Without a choice: the assembled piece when there is one, else the existing one. Choosing
+  // "montado" shows the assembled piece, or the way to assemble it when there is none yet.
+  const chosen = params.get("origem");
+  const origin =
+    chosen === "existente" && existing
+      ? "existing"
+      : chosen === "montado" || assembled || !existing
+        ? "assembled"
+        : "existing";
   const document = origin === "existing" ? existing : assembled;
 
   if (isPending) return <Loading />;
@@ -114,7 +122,7 @@ function ProjectEditor({ projectId }: { projectId: string }) {
           <button
             type="button"
             aria-pressed={origin === "assembled"}
-            onClick={() => setParams({ doc: type }, { replace: true })}
+            onClick={() => setParams({ doc: type, origem: "montado" }, { replace: true })}
           >
             Montado pela ferramenta
           </button>

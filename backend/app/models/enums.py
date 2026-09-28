@@ -39,6 +39,10 @@ VERSION_STATUSES = ("current", "proposed", "rejected", "superseded")
 LLM_CALL_STATUSES = ("ok", "invalid", "failed", "blocked", "refused")
 BOM_VARIANTS = ("mqt", "lpu")
 BOM_KINDS = ("chapter", "subchapter", "article", "description", "note", "total")
+ISSUE_SEVERITIES = ("critical", "warning", "info")
+ISSUE_STATUSES = ("open", "fixed", "ignored")
+RUN_STATUSES = ("queued", "running", "done", "failed")
+RUN_TRIGGERS = ("full", "changed")
 
 
 def one_of(

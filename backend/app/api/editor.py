@@ -21,11 +21,13 @@ from app.audit import record
 from app.auth import User, require_role
 from app.db import get_session
 from app.models import Section, SectionVersion, ValueRef
+from app.validation.jobs import ValidationQueue, get_validation_queue, revalidate
 
 router = APIRouter(tags=["editor"])
 
 DB = Annotated[Session, Depends(get_session)]
 Writer = Annotated[User, Depends(require_role("redator", "tecnico"))]
+Revalidation = Annotated[ValidationQueue, Depends(get_validation_queue)]
 PROTECTED = "Bloco fixo protegido: desbloqueie com justificação para o editar."
 
 
@@ -129,7 +131,8 @@ def _value_marks(content: dict[str, Any]) -> dict[str, tuple[str, dict[str, Any]
 
 
 @router.put("/sections/{section_id}/content")
-def edit(section_id: uuid.UUID, body: ContentIn, db: DB, user: Writer) -> dict[str, Any]:
+def edit(section_id: uuid.UUID, body: ContentIn, db: DB, user: Writer,
+         validation: Revalidation) -> dict[str, Any]:  # fmt: skip
     section = _section(db, section_id)
     before = _current(section)
     if (
@@ -180,4 +183,5 @@ def edit(section_id: uuid.UUID, body: ContentIn, db: DB, user: Writer) -> dict[s
     _audit(db, user, "section.edited", section, version=number, values_changed=len(changed),
            note=body.note)  # fmt: skip
     db.commit()
+    revalidate(db, validation, section.document.project_id, user.id)
     return {"version": number, "values_changed": len(changed)}

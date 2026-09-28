@@ -297,7 +297,7 @@ def read_ficha(project_id: uuid.UUID, db: DB, _: CurrentUser) -> FichaOut:
     revisions = db.scalars(
         select(FichaRevision)
         .where(FichaRevision.project_id == project.id)
-        .order_by(FichaRevision.created_at)
+        .order_by(FichaRevision.created_at, FichaRevision.label)
     ).all()
     current = latest_revision(db, project.id)
     order = {key: i for i, key in enumerate(KEYS)}  # the order of SPEC 7.2

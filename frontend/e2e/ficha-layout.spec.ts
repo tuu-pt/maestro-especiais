@@ -72,7 +72,7 @@ const ficha = {
   drawings_check: { index_sheets: 2, pages: 1, missing_in_pdf: ["EL002"], not_in_index: [], matches: false },
   open_conflicts: 2,
   can_confirm: false,
-  cal01_note: "Queda de tensão e poder de corte: a verificação fica disponível quando houver MDJ com os limites do projeto.",
+  cal01_note: "Queda de tensão e poder de corte: verificados na validação (ecrã E), com os limites que a MDJ indica.",
 };
 const project = { id: "p1", code: "R9", name: "Moradia", building_type: null, phase: "execucao", specialties: ["ELE"], public_procurement: false, status: "active", created_at: "2026-09-24T10:00:00Z", created_by: "dev:redator", file_count: 2, ficha_status: "draft", open_conflicts: 1 };
 

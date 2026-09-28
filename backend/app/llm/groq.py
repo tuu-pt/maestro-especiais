@@ -1,7 +1,8 @@
 """Groq through its OpenAI-compatible HTTP API (SPEC 6.1), for evaluation [A CONFIRMAR: D5, D10].
 
 No SDK: one POST to /chat/completions with httpx. The JSON schema goes in response_format
-(structured outputs); a model without it gets JSON mode with the schema in the system prompt.
+(structured outputs); a model without it, or whose answer fails it, gets JSON mode with the schema
+in the system prompt.
 Model names come only from the environment.
 """
 
@@ -53,8 +54,11 @@ class GroqProvider:
                                 "json_schema": {"name": "saida", "schema": json_schema}},
         }  # fmt: skip
         response = self._post(payload)
-        if response.status_code == 400 and "response_format" in response.text:
-            # this model has no structured outputs: JSON mode, with the schema in the system prompt
+        if response.status_code == 400 and any(
+            s in response.text for s in ("response_format", "json_validate_failed")
+        ):
+            # no structured outputs for this model, or its answer failed them (gpt-oss-120b, 28 set
+            # 2026): JSON mode, with the schema in the system prompt (Pydantic still validates it)
             schema = json.dumps(json_schema, ensure_ascii=False)
             payload["messages"][0] = {"role": "system", "content": f"{system}\n\nEsquema JSON "
                                       f"obrigatório da resposta:\n{schema}"}  # fmt: skip

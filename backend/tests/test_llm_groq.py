@@ -49,10 +49,14 @@ def test_sends_the_schema_and_maps_the_roles() -> None:
     assert payload["response_format"]["json_schema"]["schema"] == SCHEMA
 
 
-def test_a_model_without_structured_outputs_gets_json_mode() -> None:
+@pytest.mark.parametrize("error", [
+    {"message": "response_format not supported"},
+    {"message": "Failed to validate JSON.", "code": "json_validate_failed"},
+])  # fmt: skip
+def test_a_model_without_structured_outputs_gets_json_mode(error: dict[str, str]) -> None:
     def handler(request: httpx.Request, n: int) -> httpx.Response:
         if n == 1:
-            return httpx.Response(400, json={"error": {"message": "response_format not supported"}})
+            return httpx.Response(400, json={"error": error})
         return answer()
 
     p, sent = provider(handler)

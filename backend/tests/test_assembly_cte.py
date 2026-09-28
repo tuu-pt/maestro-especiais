@@ -76,3 +76,11 @@ def test_draft_of_the_cte_is_whole(api: Api, cte: dict[str, Any]) -> None:
     assert "CONDIÇÕES TÉCNICAS" in text.upper()
     assert "Servidor KNX" not in text  # inactive sections are left out
     assert len(document.inline_shapes) > 10  # the pictures of the tubes, boxes, sockets…
+
+
+def test_an_image_of_another_project_only_is_left_out(cte: dict[str, Any]) -> None:
+    # pictures of the boxes and of the motion detectors of R2 (and one of R1): equipment
+    notes = {s["title"]: s["status_note"] or "" for s in cte["sections"] if s["active"]}
+    for title in ("Caixas", "Detetores de Movimento"):
+        assert "Imagem de um só projeto de referência (" in notes[title], title
+        assert "R2" in notes[title] and "Fase 7" in notes[title]

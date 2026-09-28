@@ -46,6 +46,17 @@ class Built:
     refs: list[ValueRef] = field(default_factory=list)
     missing: list[str] = field(default_factory=list)
     pending: bool = False  # adaptive paragraphs still to write
+    omitted: list[str] = field(default_factory=list)  # images of one reference project only
+
+
+def omitted(entry: dict[str, Any]) -> bool:
+    """An image found in one reference project only: most likely its equipment (Phase 7).
+
+    It is not assembled into another project [A CONFIRMAR]: the section says so.
+    """
+    ooxml = entry.get("ooxml") or ""
+    image = "<w:drawing" in ooxml or "imagedata" in ooxml
+    return entry["mode"] != "adaptive" and image and len(entry.get("units") or {}) == 1
 
 
 def confirmed_revision(db: Session, project_id: uuid.UUID) -> FichaRevision | None:
@@ -101,6 +112,9 @@ def build_content(block: TemplateBlock, values: ValueSource) -> Built:
     nodes: list[dict[str, Any]] = built.content["content"]
     for i, e in enumerate(block.body_template):
         text = e.get("text") or ""
+        if omitted(e):
+            built.omitted.append(e.get("project") or "?")
+            continue
         if e["mode"] == "adaptive":
             built.pending = True
             nodes.append({"type": "pending", "attrs": {"entry": i, "note": e.get("note")}})
@@ -158,6 +172,11 @@ def assemble(
             status, note = "todo", "Por gerar: texto adaptativo."
         else:
             status, note = "generated", None
+        if built.omitted and active:
+            where = ", ".join(sorted(set(built.omitted)))
+            extra = (f"Imagem de um só projeto de referência ({where}) não incluída: provavelmente "
+                     "um equipamento desse projeto (escolha na Fase 7).")  # fmt: skip
+            note = f"{note} {extra}" if note else extra
         slots = [{**s, "phase": 7, "equipment": None} for s in block.equipment_slots]
         document.sections.append(Section(
             block_id=block.id, block_key=block.key, block_version=block.version,

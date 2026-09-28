@@ -8,7 +8,7 @@ PYTHON ?= python
 NPM := npm --prefix frontend
 PROJECTS ?= R1 R2
 
-.PHONY: help setup env env-update up down logs lint format test test-integration e2e seed-library curator-review form-templates anonymize pii-check
+.PHONY: help setup env env-update up down logs lint format test test-integration e2e seed-library curator-review diff-report form-templates anonymize pii-check
 
 help:
 	@echo "setup            .venv, dependencias Python, npm ci e Chromium do Playwright"
@@ -21,6 +21,7 @@ help:
 	@echo "e2e              Playwright"
 	@echo "seed-library     propostas da base de conhecimento a partir de data/fixtures (R1, R2)"
 	@echo "curator-review   escreve docs/revisao-curador.md a partir das propostas (depois de seed-library)"
+	@echo "diff-report      escreve docs/fase4-diff-R1.md (R1 montado na stack, adaptativos gerados)"
 	@echo "form-templates   modelos vazios dos formularios a partir de R1 (data/fixtures)"
 	@echo "anonymize        data/private/<PROJECTS> -> data/fixtures/<PROJECTS> (so localmente)"
 	@echo "pii-check        procura padroes de dados pessoais em data/fixtures"
@@ -74,6 +75,9 @@ seed-library:
 
 curator-review:
 	docker compose exec -T backend python -m app.library.review_report > docs/revisao-curador.md
+
+diff-report:
+	docker compose exec -T backend python -m app.assembly.diff_report R1 > docs/fase4-diff-R1.md
 
 form-templates:
 	$(VENV_PY) -m app.forms.derive

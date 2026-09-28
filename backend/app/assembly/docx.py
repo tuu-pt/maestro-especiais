@@ -21,7 +21,7 @@ from typing import Any
 from lxml import etree
 from sqlalchemy.orm import Session
 
-from app.assembly.assemble import PLACEHOLDER
+from app.assembly.assemble import PLACEHOLDER, omitted
 from app.assembly.values import ValueSource, label
 from app.library.docx_blocks import DOCUMENT, DOCUMENT_RELS, PKG_R, rebuild, w
 from app.library.facts import Fact, signature_facts, text_fact
@@ -204,6 +204,8 @@ def draft_docx(db: Session, store: ObjectStore, document: Document, values: Valu
         version = next(v for v in section.versions if v.number == section.current_version)
         nodes = version.content.get("content") or []
         for i, entry in enumerate(block.body_template):
+            if omitted(entry):
+                continue
             if entry["mode"] != "adaptive" and entry.get("ooxml"):
                 fragment = entry["ooxml"]
                 if entry["project"] != template.project_code:

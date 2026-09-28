@@ -155,11 +155,26 @@ Uma pessoa pode ter vários papéis. A aprovação de um documento tem de ser fe
 Toda a aplicação fala com o LLM através de uma interface própria em `backend/app/llm/`. Nenhum outro módulo importa SDKs de fornecedores.
 
 ```python
-class LlmProvider(Protocol):
-    def generate_json(self, *, purpose: str, system: str, messages: list[Message],
-                      schema: type[BaseModel], temperature: float = 0.2) -> BaseModel: ...
-    def embed(self, texts: list[str], *, task: Literal["document", "query"]) -> list[list[float]]: ...
+class LlmProvider(Protocol):          # o fornecedor: só transporte, sem regras
+    name: str
+    def generate(self, *, model: str, system: str, messages: list[Message],
+                 json_schema: dict[str, Any], temperature: float) -> RawResponse: ...
+    def embed(self, texts: list[str], *, model: str,
+              task: Literal["document", "query"]) -> list[list[float]]: ...
+
+class LlmClient:                      # o que a aplicação usa (Fase 4)
+    def generate(self, db, *, project, purpose, prompt_version, system, messages,
+                 schema: type[T], section_id=None, profile=None) -> tuple[T, LlmCall]: ...
 ```
+
+`LlmClient.generate` faz, por esta ordem: verificação da D5 (`Project.llm_allowed`; sem ela, HTTP 409
+«D5 pendente», na auditoria) → guarda de privacidade → ritmo (por minuto e por dia) → repetições
+em 429/5xx com espera exponencial → validação Pydantic (uma repetição com o erro) → registo
+`LlmCall` **sem conteúdo** (fornecedor, modelo, finalidade, versão do prompt, tokens, ms, estado e,
+se bloqueado, o tipo e o sítio da ocorrência, nunca o valor).
+A guarda junta os valores `personal_data` da ficha do projeto, os campos pessoais dos perfis dos
+técnicos, a lista `BlockedTerm` (nomes da equipa; em desenvolvimento semeada das fixtures) e os
+padrões de `app/library/privacy.py`. Qualquer ocorrência bloqueia o envio.
 
 - Implementação inicial: `GeminiProvider`. Deve ser possível acrescentar outro fornecedor sem alterar o resto do código.
 - Configuração por finalidade (variáveis de ambiente):
@@ -167,8 +182,10 @@ class LlmProvider(Protocol):
 ```env
 LLM_PROVIDER=gemini
 GEMINI_API_KEY=                       # chave de um projeto Google da TUU, nunca pessoal
-LLM_MODEL_DRAFTING=<versão estável mais recente do Gemini Flash>
+LLM_MODEL_DRAFTING=<versão estável mais recente do Gemini Flash>   # na Fase 4: Flash-Lite [A CONFIRMAR, D10]
 LLM_MODEL_EXTRACTION=<Gemini Flash; Flash-Lite se a quota apertar>
+LLM_RPM=10                            # pedidos por minuto (quota gratuita)
+LLM_RPD=200                           # pedidos por dia; esgotado → geração em pausa, retoma depois
 LLM_MODEL_EMBEDDING=<modelo de embeddings do Gemini>
 EMBEDDING_DIM=768                     # tem de coincidir com a coluna pgvector
 ```
@@ -176,7 +193,9 @@ EMBEDDING_DIM=768                     # tem de coincidir com a coluna pgvector
 - **Nomes de modelos nunca no código**: só na configuração. Confirmar os nomes atuais no Google AI Studio.
 - **Limites da quota gratuita**: controlo do ritmo de pedidos (por minuto e por dia, configurável), repetição com espera exponencial em 429/503 e indicação ao utilizador quando um pedido está em fila. A geração retoma a partir do último bloco concluído.
 - **Validação da saída**: resposta JSON sempre validada com Pydantic. Se falhar, repete uma vez com o erro no pedido; se voltar a falhar, o bloco fica em `todo` com a mensagem de erro.
-- **Avaliação**: `backend/tests/llm_eval/` com casos fixos (a partir das *fixtures* anonimizadas) e verificações automáticas (zero NUM-01, zero TIP-01, blocos obrigatórios presentes) para comparar modelos e prompts antes de os trocar.
+- **Fila**: a geração corre no worker (fila RQ `llm`), com o progresso por SSE no canal do projeto
+  (`queued`, `generating`, `generated`, `failed`, `paused`).
+- **Avaliação**: `backend/tests/llm_eval/` (`RUN_LLM_EVAL=1`) com casos fixos (a partir das *fixtures* anonimizadas) e verificações automáticas (zero NUM-01, zero TIP-01, blocos obrigatórios presentes) para comparar modelos e prompts antes de os trocar.
 - **Mudar a dimensão dos embeddings** obriga a reindexar (`make reindex`).
 
 ---
@@ -214,12 +233,15 @@ Nomes em inglês. Todas as tabelas têm `id` (UUID), `created_at`, `updated_at` 
 ### 7.3 Biblioteca de blocos e documentos
 
 - **TemplateBlock**: `key` (ex.: `ele.mdj.dimensionamento_eletrico.quedas_de_tensao`: slug do título de nível 1 e, se houver, do nível 2), `doc_type` (MDJ | CTE), `specialty`, `kind` (cover | index | block | signature), `level` (1 = faixa de título numa tabela de **1 linha e 2 células** com texto; 2 = estilo «heading 2», `Ttulo2` no Word em português), `title`, `order`, `mode` (fixed | parametric | adaptive), `activation_rule` (texto na linguagem de 8.3) e `activation_ast` (a árvore JSON que se avalia), `body_template` (lista de parágrafos `{mode, project, units, text, ooxml, keys, single_source, note}`: `text` e `ooxml` com `{{v:…}}` nos fixos e paramétricos, vazios nos adaptativos), `locked_ooxml` (o bloco inteiro, quando nenhum parágrafo é adaptativo), `ooxml_rels` (por projeto: as relações usadas; imagens no S3 por SHA-256), `required_keys[]`, `equipment_slots[]` (CTE: `{entry, reasons, projects}`), `archive_refs[]` (`arc:<projeto>:<key>`), `projects[]` (onde foi encontrado), `source_refs[]` (secções de origem), `notes[]` (para o curador), `version`, `status` (proposed | approved | rejected) e `reviewed_by` (o `approved_by` quando aprovado). Um bloco nunca guarda dados do projeto nem pessoais.
-- **SourceDocument**, **SourceSection** (Fase 3): cada MDJ/CTE de referência partido em secções (capa, índice, blocos, assinatura), cada secção com os seus elementos do corpo em OOXML tal como estão (`ooxml`), as relações que usa (`rels`) e a evidência para o curador (`units`: texto com marcadores e dados pessoais mascarados). O pacote do documento (o .docx com o corpo vazio: estilos, numeração, tema, cabeçalhos) fica no S3 por SHA-256; pacote + fragmentos reconstituem o documento (teste de ida e volta). O cabeçalho tem o técnico, a data e a revisão: fica no pacote e terá de ser paramétrico na Fase 4.
+- **SourceDocument**, **SourceSection** (Fase 3): cada MDJ/CTE de referência partido em secções (capa, índice, blocos, assinatura), cada secção com os seus elementos do corpo em OOXML tal como estão (`ooxml`), as relações que usa (`rels`) e a evidência para o curador (`units`: texto com marcadores e dados pessoais mascarados). O pacote do documento (o .docx com o corpo vazio: estilos, numeração, tema, cabeçalhos) fica no S3 por SHA-256; pacote + fragmentos reconstituem o documento (teste de ida e volta). O cabeçalho tem o técnico, a data e a revisão: fica no pacote; no rascunho da Fase 4, o nome do técnico e o mês/ano passam a marcadores (`tec.nome`, `doc.data`).
 - **Document**: `project_id`, `type` (MDJ | CTE | FICHA_ELE | IDENTIFICACAO | TERMO), `specialty`, `template_id`, `ficha_revision_id`, `status` (draft | in_review | approved), `responsible_user_id`.
-- **Section**: `document_id`, `block_key`, `order`, `title`, `active` (resultado da regra de ativação, pode ser alterado por pessoa com justificação), `status` (todo | generated | reviewed | alert).
-- **SectionVersion**: `section_id`, `number`, `content` (JSON TipTap), `author_type` (system | agent | human), `llm_call_id`, `created_by`.
+- **Section** (Fase 4): `document_id`, `block_id`, `block_key`, `block_version` e `block_status` (o estado do bloco quando foi montado: «bloco não aprovado» enquanto o curador não aprovar), `order`, `title`, `level`, `kind`, `mode`, `active` e `active_reason` (resultado da regra de ativação e a razão em português), `activation_override` (quem ativou ou desativou, com justificação), `status` (todo | generated | reviewed | alert) e `status_note`, `missing_keys[]`, `locked` e `unlocked` (bloco fixo desbloqueado com justificação), `equipment_slots[]` (vazios, marcados «Fase 7»), `current_version`, `reviewed_by/at`.
+- **SectionVersion**: `section_id`, `number`, `content` (JSON TipTap), `status` (current | proposed | rejected | superseded: o texto do agente chega como **proposta** e só passa a atual quando uma pessoa a aceita no diff), `author_type` (system | agent | human), `llm_call_id`, `request` (pedido em linguagem natural), `missing_data[]`, `assumptions[]`, `issues[]` (NUM-01, REF-01), `created_by`.
+- **Conteúdo TipTap**: nós `locked` (fixos, com a entrada do bloco; o OOXML vem do bloco), `pending` (adaptativo por gerar) e `paragraph`; marcas `value` (`key`, `anchor`; os valores pessoais aparecem mascarados), `generated` (texto do agente) e `citation`. Um valor da ficha editado à mão pede confirmação e fica marcado para a COE-01 (Fase 5).
 - **Citation**: `section_version_id`, `anchor` (id do nó no conteúdo), `kind` (regulation | archive | block | calc | ficha | datasheet), `target_id`, `locator` (capítulo, página, célula).
-- **ValueRef**: `section_version_id`, `anchor`, `ficha_value_id` ou `circuit_id` + campo, `rendered_text` (texto resolvido no momento).
+- **ValueRef**: `section_version_id`, `anchor`, `key`, `ficha_value_id` ou `circuit_id`/`bom_item_id` + campo, `personal`, `rendered_text` (texto resolvido no momento; vazio nos pessoais), `edited` (valor alterado à mão, para a COE-01).
+- **TechnicianProfile** (Fase 4): `user_id` e os dados do técnico (`tec.*`, `doc.local`) num JSON cifrado com Fernet (`PROFILE_ENCRYPTION_KEY`). Só o backend o lê: assinatura, rascunho e formulários. Os campos pessoais vão para a guarda de privacidade; nunca vão ao LLM. Em desenvolvimento, `dev:tecnico` tem um perfil falso evidente.
+- **LlmCall** e **BlockedTerm** (Fase 4): o registo de cada pedido ao LLM, sem conteúdo, e os nomes que a guarda bloqueia.
 
 ### 7.4 Validação
 
@@ -300,6 +322,30 @@ A biblioteca inicial de blocos é **extraída dos documentos de referência** (F
 - Igual nos dois → `fixed` (ou `parametric`, com os mesmos marcadores nos mesmos sítios); diferente → `adaptive` (texto para o arquivo); só num projeto → `parametric` com `single_source` quando tem valores da ficha, senão `adaptive`. Tabelas e imagens nunca são adaptativas. Um padrão de dado pessoal que sobre impede o modo fixo ou paramétrico. Capa e assinatura são sempre `parametric`. O bloco herda o modo mais forte dos seus parágrafos. Condições técnicas gerais do CTE: `fixed` (redação diferente fica com o texto de R1 e nota).
 - Um teste falha se um bloco proposto tiver emails, NIF, CC, telefones, códigos postais, números DGEG/OET, moradas, datas, nomes do conjunto de pseudónimos ou valores das fichas de R1/R2 fora de `{{v:…}}`.
 
+**Como se monta um documento (Fase 4, `POST /projects/{id}/documents`)** [A CONFIRMAR]:
+
+- Só com a ficha-base **confirmada** (senão HTTP 409) e pelos papéis redator ou técnico. Usa os
+  blocos na versão 1 que não foram rejeitados: um bloco proposto entra, mas a secção mostra
+  «bloco não aprovado»; a exportação oficial (Fase 6) só aceita blocos aprovados e secções
+  revistas (`export_readiness`, `GET /documents/{id}/export-check`).
+- As regras de ativação são avaliadas sobre a ficha-base: uma secção desativada fica a cinzento,
+  com a razão («desativada pela regra: …»), e só se ativa com justificação (auditoria).
+- Fixos: nó bloqueado com o OOXML do bloco (editar exige desbloquear com justificação).
+  Paramétricos: os marcadores resolvem-se com a ficha-base, os troços (`circ.<origem_destino>.<campo>`),
+  os artigos (`bom.<código>.<campo>`) e o perfil do técnico (`tec.*`, `doc.local`); cada valor
+  fica num `ValueRef`. Sem valor → secção `todo` «Falta dado: …». `doc.data` fica sempre vazio
+  (P8: o técnico data). Adaptativos: `todo` «Por gerar», até o agente propor.
+- Uma imagem que só existe num dos projetos de referência (em R1/R2: caixas e detetores de
+  movimento) não é montada: é quase sempre um equipamento desse projeto; a secção diz porquê
+  (a escolha é da Fase 7).
+- **Rascunho .docx** (`GET /documents/{id}/draft.docx`): o pacote do MDJ/CTE de R1 como modelo
+  provisório (até haver modelos TUU vazios); fixos e paramétricos com o OOXML original e os valores
+  escritos na primeira run; adaptativos como parágrafos novos com as propriedades do parágrafo de
+  origem; imagens e relações de R2 copiadas do S3; cabeçalho com `tec.nome` e mês/ano paramétricos;
+  campos (índice) atualizados ao abrir. Um paramétrico editado à mão exporta-se como texto com o
+  estilo do parágrafo.
+- A diferença para o original de R1 está em `docs/fase4-diff-R1.md` (`make diff-report`).
+
 **Linguagem das regras de ativação** (texto curto, lido por um parser próprio, sem `eval`; guarda-se o texto e a árvore JSON; os erros dizem a posição):
 
 ```
@@ -336,12 +382,21 @@ Regras de pós-processamento:
 - Um `{{v:…}}` sem valor confirmado fica marcado como "falta dado" e o bloco passa a `todo`.
 - Qualquer algarismo fora de *placeholder* gera `NUM-01`, com uma lista branca configurável (números de secções e artigos, normas, edições e designações técnicas como "IP65", "H07V-U" ou "16A-250V").
 - `missing_data` e `assumptions` aparecem ao técnico no painel lateral do editor.
-- Prompts versionados em `backend/app/llm/prompts/`. Pedidos em linguagem natural no editor criam uma nova `SectionVersion` proposta, aceite ou rejeitada através do diff.
+- Prompts versionados em `backend/app/llm/prompts/` (`adaptive_block_v1`, `rewrite_v1`). Pedidos em linguagem natural no editor criam uma nova `SectionVersion` proposta, aceite ou rejeitada através do diff.
+- O pedido (Fase 4) leva: as regras (sistema), o título e a tipologia do projeto, as fontes do
+  arquivo do bloco (`arc:<projeto>:<chave>`, já com marcadores e sem dados pessoais), os parágrafos
+  fixos da secção, as chaves disponíveis com etiqueta e unidade, os valores **não pessoais** da
+  ficha como contexto e, num pedido em linguagem natural, o texto atual. A lista branca da NUM-01
+  está em `backend/app/llm/whitelist.yaml` (normas, decretos, secções e artigos, IP/IK, designações
+  de cabos, 230/400 V, «16A-250V»). Os números copiados das fontes (distâncias regulamentares)
+  também geram NUM-01: ficam para o técnico confirmar.
 
 ### 8.5 Formulários
 
-- **Ficha eletrotécnica**: escrita nas mesmas células fixas do modelo DGEG (`openpyxl`, `keep_vba=True`), a partir da ficha-base e do perfil do técnico. A data (M40) e a assinatura ficam vazias.
-- **Identificação do projeto** e **Termo de responsabilidade**: modelos `docxtpl` com os campos das tabelas do formulário. Data, assinatura e declaração ficam por preencher.
+- **Ficha eletrotécnica**: escrita nas mesmas células fixas do modelo DGEG, a partir da ficha-base (inverso do mapa `fe_v20190222.yaml`) e do perfil do técnico (C11, Q11, C12, J12, Q12). As células são editadas no XML da folha (`app/forms/xlsx.py`), não com o `openpyxl`: este perderia as listas de validação DGEG e os controlos ActiveX. As macros (`vbaProject.bin`), os estilos e as fórmulas ficam iguais; as fórmulas recalculam ao abrir. A data (M40) e a assinatura ficam vazias. Circuito fechado: o leitor da Fase 1 lê de volta os valores da ficha-base.
+- **Identificação do projeto** e **Termo de responsabilidade**: preenchidos com o `python-docx` (MIT) pelas etiquetas das tabelas do formulário DGEG («Nome:», «NIF:», «N.º OET:»…), por secção numerada; o `docxtpl` (LGPL) não é necessário. A data sai do texto da declaração; assinatura por fazer. O «X» de «Instalação nova/existente» do Termo vem de `ele.instalacao`; a secção 4 da Identificação fica para o técnico [A CONFIRMAR].
+- **Modelos** (`backend/app/forms/templates/`): derivados dos formulários de R1 nas fixtures por `make form-templates`, com os valores do projeto apagados (células do mapa, técnico, data, resultados em cache das fórmulas, textos partilhados sem uso, ligações `mailto:`) [A CONFIRMAR até a TUU ter modelos vazios]. `make pii-check` também os verifica.
+- API: `GET /projects/{id}/forms` (o que falta preencher à mão) e `GET /projects/{id}/forms/{kind}` (ficheiro; auditoria), só com a ficha-base confirmada. O perfil é o do técnico que confirmou a ficha-base (`GET/PUT /me/profile`, papel técnico).
 - Os dados pessoais do técnico e do requerente só são inseridos neste passo, no backend, e nunca passam pelo LLM.
 
 ---
@@ -501,7 +556,7 @@ No fim de cada fase: testes a passar, um commit por tarefa e `CLAUDE.md` atualiz
 | **1 · Interface vazia e carregamento de documentos** | **Interface:** os 8 ecrãs do mock-up adaptados a eletricidade (secções 7.2, 8.3, 9, 10 e 13), cada um com estado vazio e sem dados inventados; os que dependem de fases seguintes (editor, validação, equipamentos, exportação) mostram o que vão fazer. **Backend mínimo:** modelos e migrações de `Project`, `ProjectFile`, `FichaRevision`, `FichaValue`, `FichaConflict`, `Circuit` e `AuditEvent` (7.1, 7.2, 7.7); criar e listar projetos, carregar ficheiros (S3, checksum, tipo detetado), consultar a ficha-base, resolver conflitos e confirmar revisões; ingestão em worker (RQ) com progresso por SSE; utilizador local de desenvolvimento com os papéis da secção 4 simulados (OIDC mais tarde, D6). **Leitores (sem LLM):** ficha eletrotécnica (células fixas, mapa por versão, para com aviso se R45 for desconhecida) e Tabela de Cálculo (um `Circuit` por linha, colunas pelo cabeçalho); cada valor com origem e `personal_data`; divergências criam `FichaConflict`. **Ecrã C com dados reais:** grupos 7.2, etiquetas de origem, dados pessoais mascarados, tabela de troços com a CAL-01 destacada, resolução de conflitos e confirmação da revisão na auditoria | Com R1 e R2 anonimizados: a potência de R1 coincide entre as fontes (controlo do Anexo C) e a divergência de R2 (C6) aparece como `FichaConflict`; percurso Playwright criar projeto → carregar os dois ficheiros de R2 → ver a ficha → resolver o conflito de potência → confirmar a revisão, com capturas em tema claro, escuro e telemóvel; dois temas, 400 px sem scroll horizontal, navegação por teclado, sem erros graves no `@axe-core/playwright`; `make test` e `make e2e` verdes |
 | **2 · Restantes leitores** ✅ (25 set 2026) | Leitores das 09-Folhas de Cálculo, MQT/LPU e PDF das peças desenhadas (secção 8.2), ligados à ficha-base com origem e conflitos; associação de 09-Folhas e de artigos por regras e à mão; ecrãs B e C com os novos tipos | As fichas-base de R1 e R2 incluem os valores destas fontes, com os conflitos reais do Anexo C a aparecer como `FichaConflict`: C7 (requerente da ficha ≠ adjudicante da LPU), C4 visível na ficha (índice de R1 com 17 folhas, PDF com 16); controlos sem alertas (quadros do MQT de R1 = Tabela; 09-Folhas de R1 = Tabela, exceto a queda de tensão de Q.E.G. → Q.P.1.2, decidida como divergência real); percurso Playwright com o conjunto completo de R2 |
 | **3 · Biblioteca de blocos e conhecimento** · implementada (25 set 2026), à espera do curador (D7) | Extração de blocos a partir dos MDJ/CTE de R1 e R2, aprovação pelo curador, corpus regulamentar, dicionário de cabos, léxico de tipologias. Feito: 42 blocos do MDJ e 53 do CTE propostos, com OOXML, evidência e regras; dicionário, léxico e corpus (só referências) propostos; ecrã do curador | Os esqueletos da secção 8.3 estão completos com blocos aprovados e regras de ativação (a aprovação é do curador: `docs/revisao-curador.md`) |
-| **4 · Montagem e redação** | Montagem `fixed`/`parametric`, redação `adaptive`, editor TipTap com blocos protegidos, pré-preenchimento dos formulários | O MDJ e o CTE de R1 são montados a partir da ficha-base, e a diferença para o original aprovado é só texto adaptativo e correções de incoerências |
+| **4 · Montagem e redação** · implementada (28 set 2026) | Montagem `fixed`/`parametric`, redação `adaptive`, editor TipTap com blocos protegidos, pré-preenchimento dos formulários. Feito: montagem com a biblioteca proposta («bloco não aprovado»), rascunho .docx, camada de LLM com D5, guarda de privacidade e ritmo, propostas do agente em diff, ecrã D, perfil do técnico cifrado, FE/Identificação/Termo; `docs/fase4-diff-R1.md` sem defeitos | O MDJ e o CTE de R1 são montados a partir da ficha-base, e a diferença para o original aprovado é só texto adaptativo e correções de incoerências |
 | **5 · Validação** | Regras da secção 9 e matriz de coerência do projeto | Todos os casos do Anexo C são detetados, com a leitura provável correta |
 | **6 · Revisão e exportação** | Diff, aprovação, exportação do conjunto do projeto | O conjunto de R1 exporta e abre no Word/Excel com os estilos e macros intactos |
 | **7 · Equipamentos** | Biblioteca semeada a partir dos CTE, fichas técnicas, requisitos, regras EQP | Os equipamentos de referência de R1 têm ficha técnica associada e verificada |

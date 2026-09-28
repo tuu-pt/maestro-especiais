@@ -168,6 +168,7 @@ Decisões da Fase 5 (28 set 2026; as do plano aprovado pelo utilizador, o resto 
 - make env                   # gera .env local com segredos aleatórios de desenvolvimento
 - docker compose up          # ambiente completo
 - make test                  # pytest + vitest
+- make test-docker           # pytest num contentor Linux (Windows com Controlo Inteligente de Aplicações); ARGS=...
 - make lint                  # ruff + mypy + eslint + tsc
 - make e2e                   # Playwright
 - make anonymize             # corre tools/anonymize.py (local, fora do Git)
@@ -258,10 +259,13 @@ Decisões da Fase 0:
 - Verificado (28 set 2026, Fase 5): pytest (suite completa) verde, Vitest 65, Playwright 79 (+ percursos opcionais), `make lint` e
   `make pii-check` limpos; `make anexo-c-report` 14/14; percurso RUN_AUDIT_JOURNEY verde contra a stack (R2 completo com a
   MDJ e o CTE existentes, validação no worker, aviso ignorado, envio bloqueado), capturas em claro, escuro e telemóvel.
+  Repetido num PC Windows 11 com Docker Desktop (28 set 2026): pytest 664 em contentor (`make test-docker`), Vitest 66,
+  Playwright 79, Anexo C 14/14 sem diferenças, e os percursos de auditoria, R2, curador e R1 no editor (Gemini real)
+  verdes. Encontrados e corrigidos: um teste que só passava com caminhos POSIX e textos «chega na Fase 4/5» na interface.
 - Verificado na Fase 4 (28 set 2026): pytest 566, Vitest 55, Playwright 74; avaliação com o Gemini real (RUN_LLM_EVAL=1,
   R2): 5/5 sem NUM-01, REF-01 nem dados pessoais; MDJ e CTE de R1 redigidos pelo worker (60 pedidos, 0 bloqueios).
   Percurso RUN_R1_EDITOR_JOURNEY verde, com o Gemini em 503 «high demand» respondido pela alternativa Groq.
-  Por afinar: a NUM-01 assinala «16 A a 250 V» (a lista branca só tem «16A-250V»).
+  A lista branca da NUM-01 aceita «16 A a 250 V» como «16A-250V» (28 set 2026).
 - [A CONFIRMAR] pela equipa:
   - Fase 5: as decisões acima e os «outros alertas reais» de docs/fase5-anexo-c.md, em especial: R2 com poder de corte
     de 3 kA na Tabela contra o mínimo de 6 kA da MDJ (12 troços); o título da obra nas peças desenhadas de R2
@@ -283,11 +287,14 @@ Decisões da Fase 0:
   repor com `docker compose down -v`). Percurso da Fase 4: `make up`, `make seed-library` e
   `RUN_R1_EDITOR_JOURNEY=1 npm run e2e` (cria um projeto R1-E2E-… e chama o Gemini duas vezes; um 503 persistente do
   Gemini faz o percurso falhar com a mensagem «o LLM falhou»). Percurso da Fase 5: `make up`, `make seed-library` e
-  `RUN_AUDIT_JOURNEY=1 npm run e2e` (cria um projeto E2E-AUD-… com o R2 completo). Depois de mudar dependências do
+  `RUN_AUDIT_JOURNEY=1 npm run e2e` (cria um projeto E2E-AUD-… com o R2 completo). O percurso do curador corre em
+  último: aprova a INTRODUÇÃO, que o R1 no editor espera «não aprovado» (senão, repor a BD entre os dois). Depois de mudar dependências do
   backend: `docker compose build backend worker`. Depois de atualizar para a Fase 5: `docker compose up -d backend worker`
   (as migrações 0013/0014 correm no arranque do backend e o worker passa a ouvir a fila `validation`).
 - Notas de ambiente:
   - `make test` exige o Docker a correr (Postgres do compose);
+  - Windows: `make` no PowerShell ou no `cmd`, não no Git Bash; com o Controlo Inteligente de Aplicações o `.venv` não
+    carrega a DLL do `psycopg-binary`: pytest com `make test-docker` (ver docs/CONTINUAR.md, secção 8);
   - o worker usa o código montado (PYTHONPATH=/srv/backend); o backend também (uvicorn);
   - o Vite no contentor não recarrega alterações no Windows, mesmo com polling: reiniciar o contentor
     frontend; o Playwright usa o seu próprio servidor na porta 5174;

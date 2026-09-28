@@ -98,7 +98,14 @@ def draft_document(db: Session, client: LlmClient, publish: Publish, document_id
 
 def _client(settings: Settings, connection: redis.Redis) -> LlmClient:
     limiter = RedisRateLimiter(connection, settings.llm_rpm, settings.llm_rpd)
-    return LlmClient(make_provider(settings), limiter, settings, sleep=time.sleep)
+    client = LlmClient(make_provider(settings), limiter, settings, sleep=time.sleep)
+    if settings.llm_fallback_provider:
+        client.fallback = make_provider(settings, settings.llm_fallback_provider)
+        client.fallback_limiter = RedisRateLimiter(
+            connection, settings.llm_fallback_rpm, settings.llm_fallback_rpd,
+            prefix=f"llm:{settings.llm_fallback_provider}",
+        )  # fmt: skip
+    return client
 
 
 def _session(settings: Settings) -> Session:

@@ -4,6 +4,11 @@ In order: D5 (the project must allow the LLM), the privacy guard, the pace of th
 retries with exponential backoff on 429/503, validation of the JSON with Pydantic (one retry with
 the error in the request, then the caller leaves the section "todo"), and one LlmCall record
 without the content of the request or of the answer.
+
+When the main provider stays unavailable (5xx after the retries, e.g. Gemini's 503 "high
+demand"), the same request (already checked by the guard) goes to the fallback provider, with
+its own pace; the LlmCall records the provider and model that answered. A 429 (quota) does not
+switch: the generation pauses as before.
 """
 
 import json
@@ -47,6 +52,8 @@ class LlmClient:
     sleep: Callable[[float], None] = time.sleep
     on_wait: Callable[[float], None] | None = None  # "em fila" for the interface
     calls: list[LlmCall] = field(default_factory=list)
+    fallback: LlmProvider | None = None
+    fallback_limiter: RateLimiter | None = None
 
     def model_for(self, purpose: Purpose) -> str:
         name = self.settings.llm_model_drafting if purpose == "drafting" else (
@@ -55,6 +62,11 @@ class LlmClient:
         if not name:
             raise LlmFailed(f"Sem modelo definido para «{purpose}» (LLM_MODEL_* no .env).")
         return name
+
+    def fallback_model_for(self, purpose: str) -> str:
+        s = self.settings
+        return (s.llm_fallback_model_drafting if purpose == "drafting"
+                else s.llm_fallback_model_extraction) or s.llm_fallback_model_drafting  # fmt: skip
 
     def generate(
         self, db: Session, *, project: Project, purpose: Purpose, prompt_version: str,
@@ -120,26 +132,59 @@ class LlmClient:
 
     def _send(self, call: LlmCall, system: str, messages: list[Message],
               json_schema: dict[str, object], temperature: float) -> str:  # fmt: skip
+        on_fallback = self.fallback is not None and call.provider == self.fallback.name
+        if not on_fallback:
+            try:
+                return self._try(self.provider, self.limiter, call, system, messages,
+                                 json_schema, temperature)  # fmt: skip
+            except ProviderError as exc:
+                if not (exc.unavailable and self.fallback and self.fallback_limiter):
+                    call.error = str(exc)
+                    raise LlmFailed(f"O LLM não respondeu: {exc}") from None
+                main = str(exc)
+            call.provider, call.model = self.fallback.name, self.fallback_model_for(call.purpose)
+            if not call.model:
+                call.error = f"{main} Sem modelo alternativo (LLM_FALLBACK_MODEL_*)."
+                raise LlmFailed(f"O LLM não respondeu: {main}")
+        assert self.fallback is not None and self.fallback_limiter is not None
+        try:
+            return self._try(self.fallback, self.fallback_limiter, call, system, messages,
+                             json_schema, temperature)  # fmt: skip
+        except ProviderError as exc:
+            call.error = str(exc)
+            raise LlmFailed(f"O LLM não respondeu (também o alternativo): {exc}") from None
+
+    def _try(
+        self,
+        provider: LlmProvider,
+        limiter: RateLimiter,
+        call: LlmCall,
+        system: str,
+        messages: list[Message],
+        json_schema: dict[str, object],
+        temperature: float,
+    ) -> str:
+        """One provider, with its pace and retries. Raises the last ProviderError."""
         delay = self.settings.llm_backoff_s
         for retry in range(self.settings.llm_max_retries + 1):
             try:
-                self.limiter.acquire(self.on_wait)
+                limiter.acquire(self.on_wait)
             except QuotaExhausted as exc:
                 call.status, call.error = "failed", str(exc)
                 raise LlmPaused(str(exc)) from None
             call.attempts += 1
             try:
-                raw = self.provider.generate(
+                raw = provider.generate(
                     model=call.model, system=system, messages=messages,
                     json_schema=json_schema, temperature=temperature,
                 )  # fmt: skip
             except ProviderError as exc:
                 if not exc.retryable or retry == self.settings.llm_max_retries:
-                    call.error = str(exc)
-                    raise LlmFailed(f"O LLM não respondeu: {exc}") from None
+                    raise
+                wait = max(delay, exc.retry_after_s or 0)
                 if self.on_wait:
-                    self.on_wait(delay)
-                self.sleep(delay)
+                    self.on_wait(wait)
+                self.sleep(wait)
                 delay *= 2
                 continue
             call.input_tokens = (call.input_tokens or 0) + (raw.input_tokens or 0)
@@ -148,11 +193,17 @@ class LlmClient:
         raise AssertionError("unreachable")
 
 
-def make_provider(settings: Settings) -> LlmProvider:
-    if settings.llm_provider == "fake":
+def make_provider(settings: Settings, name: str | None = None) -> LlmProvider:
+    """The main provider, or the one called `name` (e.g. the fallback)."""
+    name = name or settings.llm_provider
+    if name == "fake":
         from app.llm.fake import FakeProvider
 
         return FakeProvider()
+    if name == "groq":
+        from app.llm.groq import GroqProvider
+
+        return GroqProvider(settings.groq_api_key, settings.llm_timeout_s)
     from app.llm.gemini import GeminiProvider
 
     return GeminiProvider(settings.gemini_api_key, settings.llm_timeout_s)

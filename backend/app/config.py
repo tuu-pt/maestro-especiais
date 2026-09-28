@@ -21,8 +21,15 @@ class Settings(BaseSettings):
     dev_auth: bool = False
     max_upload_bytes: int = 200 * 1024 * 1024
     # LLM (SPEC 6.1): model names only here, from the environment; fake for tests and offline
-    llm_provider: str = "gemini"  # gemini | fake
+    llm_provider: str = "gemini"  # gemini | groq | fake
     gemini_api_key: str = ""
+    groq_api_key: str = ""  # Groq: fallback or evaluation [A CONFIRMAR: D5, D10]
+    # Fallback when the main provider stays unavailable (5xx after the retries), e.g. Groq
+    llm_fallback_provider: str = ""  # "" (none) | groq | gemini | fake
+    llm_fallback_model_drafting: str = ""
+    llm_fallback_model_extraction: str = ""
+    llm_fallback_rpm: int = 2  # its own pace (Groq's free tier limits tokens per minute)
+    llm_fallback_rpd: int = 200
     llm_model_drafting: str = ""
     llm_model_extraction: str = ""
     llm_model_embedding: str = ""

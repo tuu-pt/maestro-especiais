@@ -26,9 +26,16 @@ class RawResponse:
 class ProviderError(Exception):
     """A failed request. retryable for 429 (quota) and 5xx (e.g. 503 overloaded)."""
 
-    def __init__(self, message: str, status: int | None = None) -> None:
+    def __init__(self, message: str, status: int | None = None,
+                 retry_after_s: float | None = None) -> None:  # fmt: skip
         super().__init__(message)
         self.status = status
+        self.retry_after_s = retry_after_s  # what the provider asks to wait, when it says
+
+    @property
+    def unavailable(self) -> bool:
+        """5xx: the service is down or overloaded (503 high demand): worth another provider."""
+        return self.status is not None and self.status >= 500
 
     @property
     def retryable(self) -> bool:

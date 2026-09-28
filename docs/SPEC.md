@@ -193,6 +193,10 @@ EMBEDDING_DIM=768                     # tem de coincidir com a coluna pgvector
 - **Nomes de modelos nunca no código**: só na configuração. Confirmar os nomes atuais no Google AI Studio.
 - **Limites da quota gratuita**: controlo do ritmo de pedidos (por minuto e por dia, configurável), repetição com espera exponencial em 429/503 e indicação ao utilizador quando um pedido está em fila. A geração retoma a partir do último bloco concluído.
 - **Validação da saída**: resposta JSON sempre validada com Pydantic. Se falhar, repete uma vez com o erro no pedido; se voltar a falhar, o bloco fica em `todo` com a mensagem de erro.
+- **Alternativa** (Fase 4): `LLM_FALLBACK_PROVIDER` e `LLM_FALLBACK_MODEL_*` (ex.: Groq com
+  `openai/gpt-oss-120b`). Quando o principal fica indisponível (5xx depois das repetições), o mesmo
+  pedido segue para a alternativa, com ritmo próprio; um 429 (quota) não muda de fornecedor. O
+  `LlmCall` regista o fornecedor e o modelo que responderam. [A CONFIRMAR: termos da Groq, D5 e D10]
 - **Fila**: a geração corre no worker (fila RQ `llm`), com o progresso por SSE no canal do projeto
   (`queued`, `generating`, `generated`, `failed`, `paused`).
 - **Avaliação**: `backend/tests/llm_eval/` (`RUN_LLM_EVAL=1`) com casos fixos (a partir das *fixtures* anonimizadas) e verificações automáticas (zero NUM-01, zero TIP-01, blocos obrigatórios presentes) para comparar modelos e prompts antes de os trocar.

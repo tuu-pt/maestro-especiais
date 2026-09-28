@@ -75,6 +75,11 @@ services:
       LLM_RPM: ${LLM_RPM:-10}
       LLM_RPD: ${LLM_RPD:-200}
       PROFILE_ENCRYPTION_KEY: ${PROFILE_ENCRYPTION_KEY:-}
+      GROQ_API_KEY: ${GROQ_API_KEY:-}
+      LLM_FALLBACK_PROVIDER: ${LLM_FALLBACK_PROVIDER:-}
+      LLM_FALLBACK_MODEL_DRAFTING: ${LLM_FALLBACK_MODEL_DRAFTING:-}
+      LLM_FALLBACK_MODEL_EXTRACTION: ${LLM_FALLBACK_MODEL_EXTRACTION:-}
+      LLM_FALLBACK_RPM: ${LLM_FALLBACK_RPM:-2}
     volumes:
       - ./backend/app:/srv/backend/app:ro
       - ./backend/migrations:/srv/backend/migrations:ro
@@ -119,6 +124,11 @@ services:
       LLM_RPM: ${LLM_RPM:-10}
       LLM_RPD: ${LLM_RPD:-200}
       PROFILE_ENCRYPTION_KEY: ${PROFILE_ENCRYPTION_KEY:-}
+      GROQ_API_KEY: ${GROQ_API_KEY:-}
+      LLM_FALLBACK_PROVIDER: ${LLM_FALLBACK_PROVIDER:-}
+      LLM_FALLBACK_MODEL_DRAFTING: ${LLM_FALLBACK_MODEL_DRAFTING:-}
+      LLM_FALLBACK_MODEL_EXTRACTION: ${LLM_FALLBACK_MODEL_EXTRACTION:-}
+      LLM_FALLBACK_RPM: ${LLM_FALLBACK_RPM:-2}
     volumes:
       - ./backend/app:/srv/backend/app:ro
     depends_on:

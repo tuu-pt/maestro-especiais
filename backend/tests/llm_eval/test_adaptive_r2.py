@@ -1,6 +1,7 @@
 """Evaluation with the real LLM (SPEC 6.1): the adaptive blocks of R2 (PV, EV, SADI, audiovisual).
 
 Optional and slow, with the key and the models of the .env: RUN_LLM_EVAL=1 pytest
+(another provider for one run: LLM_PROVIDER=groq LLM_MODEL_DRAFTING=<model>, key in the .env)
 backend/tests/llm_eval. Only data/fixtures reach the LLM (D5 pending). Automatic checks for each
 case: valid JSON (the contract of SPEC 8.4), zero NUM-01, zero personal data sent (the privacy
 guard finds nothing in the request, and the call is not blocked), and every placeholder is a
@@ -48,12 +49,16 @@ CASES = {
 
 def settings() -> Settings:
     values = env()
-    if not values.get("GEMINI_API_KEY") or not values.get("LLM_MODEL_DRAFTING"):
-        pytest.skip("GEMINI_API_KEY e LLM_MODEL_DRAFTING no .env")
+    provider = os.environ.get("LLM_PROVIDER") or values.get("LLM_PROVIDER") or "gemini"
+    key = "GROQ_API_KEY" if provider == "groq" else "GEMINI_API_KEY"
+    model = os.environ.get("LLM_MODEL_DRAFTING") or values.get("LLM_MODEL_DRAFTING")
+    if not values.get(key) or not model:
+        pytest.skip(f"{key} e LLM_MODEL_DRAFTING no .env")
     return Settings(
-        llm_provider=values.get("LLM_PROVIDER") or "gemini",
-        gemini_api_key=values["GEMINI_API_KEY"],
-        llm_model_drafting=values["LLM_MODEL_DRAFTING"],
+        llm_provider=provider,
+        gemini_api_key=values.get("GEMINI_API_KEY", ""),
+        groq_api_key=values.get("GROQ_API_KEY", ""),
+        llm_model_drafting=model,
         llm_rpm=int(values.get("LLM_RPM") or 8),
         llm_rpd=int(values.get("LLM_RPD") or 200),
     )

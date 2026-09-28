@@ -108,6 +108,12 @@ Decisões da Fase 4 (28 set 2026; as quatro primeiras aprovadas pelo utilizador,
 - Chaves de troços e artigos: `circ.<origem_destino>.<campo>` e `bom.<código>.<campo>`; sem agregados calculados.
 - Modelo: Flash-Lite em LLM_MODEL_DRAFTING e LLM_MODEL_EXTRACTION (quota), contra a D10 (Flash) [A CONFIRMAR];
   LLM_MODEL_EMBEDDING vazia (não usada). Ritmo LLM_RPM=10, LLM_RPD=200; geração no worker (fila `llm`) com retoma.
+- Alternativa (decisão do utilizador, 28 set 2026): principal Gemini `gemini-3.5-flash-lite`; quando fica indisponível
+  (5xx depois das repetições, ex.: 503 «high demand» do nível gratuito), o mesmo pedido, já verificado pela guarda, vai para
+  a Groq com `openai/gpt-oss-120b` (LLM_FALLBACK_*, ritmo próprio LLM_FALLBACK_RPM=2); um 429 não muda de fornecedor.
+  GroqProvider sem SDK (httpx, API compatível com OpenAI), espera o `retry-after`. Avaliação R2 (28 set): Flash-Lite 5/5;
+  gpt-oss-120b 4/5 (o 5.º com chaves inventadas, que ficam «falta dado»); gemini-3.6-flash rejeitado (NUM-01 com
+  números de R2 e 20 pedidos/dia). Os termos da Groq não foram vistos: [A CONFIRMAR] com a D5, e muda a D10.
 - Texto do agente chega sempre como versão **proposta**; aceitar/rejeitar no diff. Pedidos em linguagem natural idem.
 - NUM-01 com lista branca em backend/app/llm/whitelist.yaml; os números copiados das fontes (distâncias
   regulamentares) também são assinalados: ficam para o técnico confirmar (a regra não é relaxada).

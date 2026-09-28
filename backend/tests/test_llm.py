@@ -265,3 +265,75 @@ def test_the_redis_limiter_is_shared_by_processes() -> None:
     a.acquire()
     b.acquire()  # the other process sees the same minute
     assert now[0] == 60.0
+
+
+# ---------------------------------------------------------------- fallback provider
+
+
+class Alternative(FakeProvider):
+    name = "alternativo"
+
+
+FALLBACK = Settings(
+    llm_model_drafting="principal", llm_fallback_provider="alternativo",
+    llm_fallback_model_drafting="modelo-alternativo", llm_max_retries=1, llm_backoff_s=1.0,
+)  # fmt: skip
+
+
+def with_fallback(main: FakeProvider, other: FakeProvider) -> tuple[LlmClient, list[float]]:
+    waits: list[float] = []
+    def limiter() -> MemoryRateLimiter:
+        return MemoryRateLimiter(rpm=100, rpd=100, sleep=lambda s: None)
+
+    c = LlmClient(main, limiter(), FALLBACK, sleep=waits.append, fallback=other,
+                  fallback_limiter=limiter())  # fmt: skip
+    return c, waits
+
+
+def test_a_503_that_stays_goes_to_the_fallback(db: Session) -> None:
+    other = Alternative(['{"text": "da alternativa"}'])
+    c, _ = with_fallback(FakeProvider([ProviderError("sobrecarga", 503)] * 2), other)
+
+    answer, call = ask(c, db, project(db))
+
+    assert answer.text == "da alternativa"
+    assert (call.provider, call.model, call.status) == ("alternativo", "modelo-alternativo", "ok")
+    assert call.attempts == 3  # 2 on the main one (1 retry), 1 on the fallback
+    assert other.sent[0][0] == "Sistema"  # the same request, after the guard
+
+
+def test_a_quota_429_does_not_switch_provider(db: Session) -> None:
+    other = Alternative(['{"text": "não devia"}'])
+    c, _ = with_fallback(FakeProvider([ProviderError("quota", 429)] * 2), other)
+
+    with pytest.raises(LlmFailed):
+        ask(c, db, project(db))
+    assert other.sent == []
+
+
+def test_the_second_attempt_of_the_validation_stays_on_the_fallback(db: Session) -> None:
+    main = FakeProvider([ProviderError("sobrecarga", 503)] * 2)
+    other = Alternative(['{"texto": "sem o campo"}', '{"text": "corrigido"}'])
+    c, _ = with_fallback(main, other)
+
+    answer, call = ask(c, db, project(db))
+
+    assert answer.text == "corrigido" and call.provider == "alternativo"
+    assert len(main.sent) == 2 and len(other.sent) == 2
+
+
+def test_both_down_fails_with_our_message(db: Session) -> None:
+    c, _ = with_fallback(FakeProvider([ProviderError("sobrecarga", 503)] * 2),
+                         Alternative([ProviderError("também", 503)] * 2))  # fmt: skip
+    with pytest.raises(LlmFailed, match="também o alternativo"):
+        ask(c, db, project(db))
+
+
+def test_the_wait_follows_the_retry_after_of_the_provider(db: Session) -> None:
+    fake = FakeProvider([ProviderError("tokens por minuto", 429, retry_after_s=42.0),
+                         '{"text": "ok"}'])  # fmt: skip
+    c, waits = client(fake)
+
+    ask(c, db, project(db))
+
+    assert waits == [42.0]

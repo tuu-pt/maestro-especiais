@@ -18,6 +18,7 @@ from app.models import FichaConflict, FichaRevision, FichaValue, Project, Projec
 from app.progress import Publish, file_event
 from app.schemas import ProjectFileOut, ProjectIn, ProjectOut, UploadOut
 from app.storage import ObjectStore, get_store
+from app.validation.engine import validation_summary
 
 router = APIRouter(prefix="/projects", tags=["projetos"])
 
@@ -47,6 +48,7 @@ def _summary(db: Session, project: Project) -> ProjectOut:
             )
             or 0
         )
+    out.validation = validation_summary(db, project.id)
     return out
 
 

@@ -1,7 +1,7 @@
 /** Screen H: review and export. The audit log is real; diff and export arrive in Phase 6. */
 
 import { useActiveProject } from "../app/activeProject";
-import { useAudit, useFicha, useProject } from "../api/queries";
+import { useAudit, useDocuments, useFicha, useProject } from "../api/queries";
 import { Button, Buttons, Card, EmptyState, Timeline } from "../components/ui";
 import { formatDateTime } from "../lib/format";
 import { Checklist, Loading, NoProject } from "./common";
@@ -13,7 +13,13 @@ export function ReviewScreen() {
   const { data: project } = useProject(projectId);
   const { data: ficha } = useFicha(projectId);
   const { data: audit, isLoading } = useAudit(projectId);
+  const { data: documents = [] } = useDocuments(projectId);
   const confirmed = ficha?.revisions.some((r) => r.status === "confirmed") ?? false;
+  const validation = project?.validation;
+  const critical = validation?.open_critical ?? 0;
+  const validated = Boolean(validation?.finished_at);
+  const sections = documents.reduce((n, d) => n + (d.counts.sections ?? 0), 0);
+  const reviewed = documents.reduce((n, d) => n + (d.counts.reviewed ?? 0), 0);
 
   return (
     <Screen
@@ -36,8 +42,20 @@ export function ReviewScreen() {
               <Checklist
                 items={[
                   { done: confirmed, text: "Ficha-base confirmada" },
-                  { done: false, text: "Todas as secções revistas (ainda não há documentos)" },
-                  { done: false, text: "Validação sem alertas críticos (ainda não corrida)" },
+                  {
+                    done: sections > 0 && reviewed === sections,
+                    text: sections
+                      ? `Todas as secções revistas (${reviewed} de ${sections})`
+                      : "Todas as secções revistas (ainda não há documentos)",
+                  },
+                  {
+                    done: validated && critical === 0,
+                    text: !validated
+                      ? "Validação sem alertas críticos (ainda não corrida)"
+                      : critical
+                        ? `Validação sem alertas críticos (${critical} abertos)`
+                        : "Validação sem alertas críticos",
+                  },
                 ]}
               />
               <Buttons>

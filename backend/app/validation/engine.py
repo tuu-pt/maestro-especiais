@@ -51,6 +51,23 @@ def latest(db: Session, project_id: uuid.UUID, *, before: ValidationRun | None =
     return db.scalars(query.order_by(ValidationRun.finished_at.desc()).limit(1)).first()
 
 
+def validation_summary(db: Session, project_id: uuid.UUID) -> dict[str, Any] | None:
+    """What the dashboard shows of the validation of a project, without opening it."""
+    current = db.scalars(select(ValidationRun).where(ValidationRun.project_id == project_id)
+                         .order_by(ValidationRun.created_at.desc()).limit(1)).first()  # fmt: skip
+    if current is None:
+        return None
+    done = current if current.status == "done" else latest(db, project_id)
+    open_issues = [i for i in done.issues if i.status == "open"] if done else []
+    return {
+        "status": current.status,
+        "finished_at": done.finished_at.isoformat() if done and done.finished_at else None,
+        "open_critical": sum(1 for i in open_issues if i.severity == "critical"),
+        "new_critical": sum(1 for i in open_issues if i.severity == "critical" and i.new),
+        "warning": sum(1 for i in open_issues if i.severity == "warning"),
+    }
+
+
 def queue_run(db: Session, project: Project, trigger: str, user_id: str | None) -> ValidationRun:
     # the clock, not now(): several runs may be queued in one transaction (tests, revalidation)
     run = ValidationRun(project_id=project.id, trigger=trigger, status="queued",
@@ -101,7 +118,7 @@ def _persist(db: Session, run: ValidationRun, rules: tuple[Rule, ...],
             run_id=run.id, order=n, rule_id=f.rule_id, severity=f.severity or rule.severity,
             category=rule.category, fingerprint=f.fingerprint(), location=f.location,
             message_pt=f.message, evidence=f.evidence, likely_reading=f.likely_reading,
-            suggested_fix=f.suggested_fix, actions=f.actions, new=old is None,
+            suggested_fix=f.suggested_fix, actions=f.actions, new=old is None, status="open",
         )  # fmt: skip
         if old is not None and old.status == "ignored":
             issue.status, issue.ignored_reason = "ignored", old.ignored_reason
@@ -163,7 +180,7 @@ def run_validation(db: Session, store: ObjectStore | None, settings: Settings,
     rules = all_rules()
     findings, failed = _check(rules, ctx)
     issues = _persist(db, run, rules, findings)
-    run.matrix = build_matrix(ctx)
+    run.matrix = build_matrix(ctx, findings)
     run.totals = {**totals(issues), "pieces": len(pieces), "reread": reread,
                   "rules": len(rules), "rules_failed": failed}  # fmt: skip
     run.status, run.finished_at = "done", datetime.now(UTC)

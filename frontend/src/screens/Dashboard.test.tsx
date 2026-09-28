@@ -58,4 +58,27 @@ describe("dashboard", () => {
     expect(screen.getByText("Conflitos por resolver").nextSibling).toHaveTextContent("1");
     expect(await screen.findByText(/Leu Tabela de Cálculo/)).toBeInTheDocument();
   });
+
+  it("shows new critical issues of a project without opening it", async () => {
+    server.use(
+      http.get(api("/projects"), () =>
+        HttpResponse.json([
+          project({
+            validation: { status: "done", finished_at: "2026-09-28T10:00:05Z", open_critical: 3, new_critical: 2, warning: 5 },
+          }),
+          project({ id: "p2", code: "R8", open_conflicts: 0, ficha_status: "confirmed", validation: null }),
+        ]),
+      ),
+      http.get(api("/activity"), () => HttpResponse.json([])),
+    );
+
+    renderAt("/");
+
+    const table = await screen.findByRole("region", { name: "Projetos" });
+    const alert = within(table).getByRole("link", { name: /3 críticos/ });
+    expect(alert).toHaveAttribute("href", "/projetos/p1/validacao");
+    expect(within(alert).getByText("2 novos")).toBeInTheDocument();
+    expect(within(table).getByText("Por validar")).toBeInTheDocument();
+    expect(screen.getByText("Alertas críticos abertos").nextSibling).toHaveTextContent("3");
+  });
 });

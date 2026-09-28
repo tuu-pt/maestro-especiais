@@ -188,7 +188,7 @@ export function ProjectFilesScreen() {
   const [dragging, setDragging] = useState(false);
 
   useProjectEvents(projectId, (event) => {
-    if (event.type === "section") return; // drafting progress: the editor follows it
+    if (event.type === "section" || event.type === "validation") return; // other screens follow them
     client.setQueryData<ProjectFile[]>(keys.files(projectId), (old) =>
       old?.map((f) =>
         f.id === event.file_id

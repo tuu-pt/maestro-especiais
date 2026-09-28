@@ -18,7 +18,7 @@ from app.assembly.assemble import confirmed_revision
 from app.audit import record
 from app.auth import CurrentUser, User, require_role
 from app.db import get_session
-from app.models import ValidationIssue, ValidationRun
+from app.models import Document, ValidationIssue, ValidationRun
 from app.validation.core import CATEGORIES
 from app.validation.engine import NO_FICHA, latest, queue_run
 from app.validation.jobs import ValidationQueue, get_validation_queue
@@ -206,3 +206,47 @@ def reopen(issue_id: uuid.UUID, body: ReopenIn, db: DB, user: Writer) -> IssueOu
     )
     db.commit()
     return issue_out(issue)
+
+
+class ReviewRequestIn(BaseModel):
+    note: str | None = Field(default=None, max_length=2000)
+
+
+NOT_VALIDATED = "Valide o projeto antes de enviar as peças para revisão."
+VALIDATING = "Há uma validação em curso: espere pelo resultado para enviar as peças para revisão."
+
+
+@router.post("/projects/{project_id}/review-request")
+def request_review(project_id: uuid.UUID, body: ReviewRequestIn, db: DB, user: Writer
+                   ) -> dict[str, Any]:  # fmt: skip
+    """Send the pieces for review (SPEC 10.E): refused while a critical issue is open."""
+    project = get_project(db, project_id)
+    current = db.scalars(
+        select(ValidationRun).where(ValidationRun.project_id == project.id)
+        .order_by(ValidationRun.created_at.desc()).limit(1)
+    ).first()  # fmt: skip
+    done = latest(db, project.id)
+    if done is None:
+        raise HTTPException(status.HTTP_409_CONFLICT, NOT_VALIDATED)
+    if current is not None and current.status in ("queued", "running"):
+        raise HTTPException(status.HTTP_409_CONFLICT, VALIDATING)
+    critical = [i for i in done.issues if i.severity == "critical" and i.status == "open"]
+    if critical:
+        n = len(critical)
+        raise HTTPException(status.HTTP_409_CONFLICT, {
+            "message": f"{n} alerta{'s' if n > 1 else ''} crítico{'s' if n > 1 else ''} "
+            f"abert{'os' if n > 1 else 'o'}: corrija-{'os' if n > 1 else 'o'} (ou ignore com "
+            "justificação) antes de enviar as peças para revisão.",
+            "open_critical": n,
+        })  # fmt: skip
+    documents = db.scalars(select(Document).where(Document.project_id == project.id)).all()
+    if not documents:
+        raise HTTPException(status.HTTP_409_CONFLICT, "Não há peças para enviar para revisão.")
+    sent = [d for d in documents if d.status == "draft"]
+    for d in sent:
+        d.status = "in_review"
+    record(db, user, "review.requested", "project", project.id,
+           {"documents": len(sent), "run": str(done.id), "note": body.note},
+           project_id=project.id)  # fmt: skip
+    db.commit()
+    return {"sent": len(sent), "documents": [str(d.id) for d in sent]}

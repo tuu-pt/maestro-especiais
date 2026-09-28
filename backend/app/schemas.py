@@ -2,7 +2,7 @@
 
 import uuid
 from datetime import datetime
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -31,6 +31,8 @@ class ProjectOut(BaseModel):
     file_count: int = 0
     ficha_status: str | None = None  # status of the latest revision, None when there is none
     open_conflicts: int = 0
+    # the last validation: {status, finished_at, open_critical, new_critical, warning} (Phase 5)
+    validation: dict[str, Any] | None = None
 
 
 class ProjectFileOut(BaseModel):

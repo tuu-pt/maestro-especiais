@@ -23,6 +23,24 @@ export function FichaStatus({ project }: { project: Project }) {
   }
 }
 
+/** The last validation of the project: new critical issues show here without opening it. */
+export function ValidationStatus({ project }: { project: Project }) {
+  const v = project.validation;
+  if (!v) return <Pill tone="mute">Por validar</Pill>;
+  if (v.status === "queued" || v.status === "running") return <Pill tone="info">A validar…</Pill>;
+  if (v.status === "failed" && !v.finished_at) return <Pill tone="warn">Validação falhou</Pill>;
+  if (v.open_critical === 0) {
+    return <Pill tone="ok">{v.warning ? `Sem críticos · ${v.warning} avisos` : "Sem alertas críticos"}</Pill>;
+  }
+  const n = v.open_critical;
+  return (
+    <Link to={`/projetos/${project.id}/validacao`} className={s.alert}>
+      <Pill tone="crit">{`${n} crítico${n > 1 ? "s" : ""}`}</Pill>
+      {v.new_critical ? <span className={s.new}>{`${v.new_critical} novo${v.new_critical > 1 ? "s" : ""}`}</span> : null}
+    </Link>
+  );
+}
+
 const PHASES = { licenciamento: "Licenciamento", execucao: "Execução" } as const;
 
 function Activity() {
@@ -56,6 +74,7 @@ export function DashboardScreen() {
   const drafts = list.filter((p) => p.ficha_status === "draft").length;
   const conflicts = list.reduce((sum, p) => sum + p.open_conflicts, 0);
   const files = list.reduce((sum, p) => sum + p.file_count, 0);
+  const critical = list.reduce((sum, p) => sum + (p.validation?.open_critical ?? 0), 0);
   return (
     <Screen
       crumb="Instalações elétricas"
@@ -90,6 +109,7 @@ export function DashboardScreen() {
             <Stat label="Projetos" value={list.length} />
             <Stat label="Fichas por confirmar" value={drafts} />
             <Stat label="Conflitos por resolver" value={conflicts} tone={conflicts ? "warn" : undefined} />
+            <Stat label="Alertas críticos abertos" value={critical} tone={critical ? "crit" : undefined} />
             <Stat label="Ficheiros carregados" value={files} />
           </div>
           <div className={s.dash}>
@@ -100,6 +120,7 @@ export function DashboardScreen() {
                   <th scope="col">Fase</th>
                   <th scope="col">Ficheiros</th>
                   <th scope="col">Ficha-base</th>
+                  <th scope="col">Validação</th>
                   <th scope="col">Criado</th>
                 </tr>
               </thead>
@@ -120,6 +141,9 @@ export function DashboardScreen() {
                     <td>
                       <FichaStatus project={p} />
                     </td>
+                    <td>
+                      <ValidationStatus project={p} />
+                    </td>
                     <td className={s.muted}>{formatDateTime(p.created_at)}</td>
                   </tr>
                 ))}
@@ -133,11 +157,11 @@ export function DashboardScreen() {
   );
 }
 
-function Stat({ label, value, tone }: { label: string; value: number; tone?: "warn" }) {
+function Stat({ label, value, tone }: { label: string; value: number; tone?: "warn" | "crit" }) {
   return (
     <div className={s.stat}>
       <div className={s.statLabel}>{label}</div>
-      <div className={tone ? `${s.statValue} ${s.warn}` : s.statValue}>{value}</div>
+      <div className={tone ? `${s.statValue} ${s[tone]}` : s.statValue}>{value}</div>
     </div>
   );
 }

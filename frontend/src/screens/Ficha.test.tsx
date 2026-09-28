@@ -193,7 +193,7 @@ describe("ficha do projeto", () => {
     expect(failing).toHaveTextContent("(não cumpre I2 ≤ 1,45·Iz)");
     expect(passing).not.toHaveTextContent("não cumpre");
     expect(screen.getByText("CAL-01: 1 troço a confirmar na folha")).toBeInTheDocument();
-    expect(screen.getByText(/aguarda|disponível quando houver MDJ/)).toBeInTheDocument();
+    expect(screen.getByText(/verificados na validação/)).toBeInTheDocument();
   });
 });
 

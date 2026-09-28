@@ -2,43 +2,19 @@
 its likely reading, the controls without alerts, and no personal value in any issue."""
 
 import json
-import uuid
 from datetime import date, timedelta
 from typing import Any
 
 import pytest
-from audit_projects import load_audit, validate
-from conftest import Api, Published, RecordingQueue
-from reference_projects import FIXTURES, seed_library
+from audit_projects import audited, validate
+from conftest import Api
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.config import Settings
-from app.knowledge.seed import seed_knowledge
 from app.models import FichaValue, PieceFacts, ProjectFile, RegulationDoc
-from app.storage import ObjectStore
-from app.validation.engine import run_validation
 
 pytestmark = pytest.mark.usefixtures("inline_ingestion")
-
-
-@pytest.fixture
-def audited(
-    api: Api, db: Session, store: ObjectStore, settings: Settings, published: Published,
-    validation_queue: RecordingQueue,
-) -> Any:  # fmt: skip
-    def run(run_id: uuid.UUID) -> None:
-        run_validation(db, store, settings, published, run_id)
-
-    validation_queue.run = run
-    seed_library(db, store)
-    seed_knowledge(db, FIXTURES)
-
-    def load(code: str, *, public: bool = False) -> tuple[str, dict[str, Any]]:
-        project_id = load_audit(api, code, public=public)
-        return project_id, validate(api, project_id)
-
-    return load
+__all__ = ["audited"]
 
 
 def issues(state: dict[str, Any], rule: str, *words: str) -> list[dict[str, Any]]:

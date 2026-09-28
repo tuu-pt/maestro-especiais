@@ -7,14 +7,20 @@ ficha eletrotécnica, then the drawings (whose personal fields the anonymizer sc
 The cases themselves are what the validation finds.
 """
 
+import uuid
 from pathlib import Path
 from typing import Any
 
 import pytest
-from conftest import Api
-from reference_projects import FIXTURES, have_fixtures
+from conftest import Api, Published, RecordingQueue
+from reference_projects import FIXTURES, have_fixtures, seed_library
+from sqlalchemy.orm import Session
 
+from app.config import Settings
 from app.ingest.detect import detect
+from app.knowledge.seed import seed_knowledge
+from app.storage import ObjectStore
+from app.validation.engine import run_validation
 
 AUDIT_KINDS = ("ficha_eletrotecnica", "calc_summary", "mqt", "lpu", "drawing_pdf", "mdj_docx",
                "cte_docx", "identificacao_docx", "termo_docx")  # fmt: skip
@@ -86,3 +92,22 @@ def validate(api: Api, project_id: str) -> dict[str, Any]:
     state: dict[str, Any] = api.as_("redator").get(f"/api/projects/{project_id}/validation").json()
     assert state["run"] is not None and state["run"]["status"] == "done", state["current"]
     return state
+
+
+@pytest.fixture
+def audited(
+    api: Api, db: Session, store: ObjectStore, settings: Settings, published: Published,
+    validation_queue: RecordingQueue,
+) -> Any:  # fmt: skip
+    def run(run_id: uuid.UUID) -> None:
+        run_validation(db, store, settings, published, run_id)
+
+    validation_queue.run = run
+    seed_library(db, store)
+    seed_knowledge(db, FIXTURES)
+
+    def load(code: str, *, public: bool = False) -> tuple[str, dict[str, Any]]:
+        project_id = load_audit(api, code, public=public)
+        return project_id, validate(api, project_id)
+
+    return load

@@ -13,6 +13,10 @@ FILE_KINDS = (
     "drawing_pdf",
     "drawing_dwg",
     "archive_docx",
+    "mdj_docx",
+    "cte_docx",
+    "identificacao_docx",
+    "termo_docx",
     "other",
 )
 INGEST_STATUSES = ("pending", "running", "done", "failed", "skipped")
@@ -34,11 +38,16 @@ REGULATION_REVIEW = ("proposed", "confirmed", "rejected")
 REGULATION_KINDS = ("diploma", "guia", "especificacao", "norma")
 DOCUMENT_TYPES = ("MDJ", "CTE", "FICHA_ELE", "IDENTIFICACAO", "TERMO")
 DOCUMENT_STATUSES = ("draft", "in_review", "approved")
+DOCUMENT_ORIGINS = ("assembled", "existing")
 SECTION_STATUSES = ("todo", "generated", "reviewed", "alert")
 VERSION_STATUSES = ("current", "proposed", "rejected", "superseded")
 LLM_CALL_STATUSES = ("ok", "invalid", "failed", "blocked", "refused")
 BOM_VARIANTS = ("mqt", "lpu")
 BOM_KINDS = ("chapter", "subchapter", "article", "description", "note", "total")
+ISSUE_SEVERITIES = ("critical", "warning", "info")
+ISSUE_STATUSES = ("open", "fixed", "ignored")
+RUN_STATUSES = ("queued", "running", "done", "failed")
+RUN_TRIGGERS = ("full", "changed")
 
 
 def one_of(

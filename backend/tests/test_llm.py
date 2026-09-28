@@ -282,6 +282,7 @@ FALLBACK = Settings(
 
 def with_fallback(main: FakeProvider, other: FakeProvider) -> tuple[LlmClient, list[float]]:
     waits: list[float] = []
+
     def limiter() -> MemoryRateLimiter:
         return MemoryRateLimiter(rpm=100, rpd=100, sleep=lambda s: None)
 

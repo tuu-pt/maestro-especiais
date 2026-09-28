@@ -24,8 +24,14 @@ from app.ingest.pipeline import run_ingestion
 from app.jobs import get_publisher, get_queue
 from app.main import create_app
 from app.storage import ObjectStore, get_store
+from app.validation.jobs import get_validation_queue
 
 BACKEND = Path(__file__).resolve().parents[1]
+
+
+def pytest_addoption(parser: pytest.Parser) -> None:
+    parser.addoption("--annex-c-report", default=None,
+                     help="write the Annex C report of Phase 5 to this path")  # fmt: skip
 
 
 def alembic_config(url: str) -> Config:
@@ -125,6 +131,11 @@ def queue() -> RecordingQueue:
 
 
 @pytest.fixture
+def validation_queue() -> RecordingQueue:
+    return RecordingQueue()
+
+
+@pytest.fixture
 def published() -> Published:
     return Published()
 
@@ -144,6 +155,7 @@ def app(
     queue: RecordingQueue,
     published: Published,
     store: ObjectStore,
+    validation_queue: RecordingQueue,
 ) -> FastAPI:
     application = create_app()
     application.dependency_overrides[get_settings] = lambda: settings
@@ -151,6 +163,7 @@ def app(
     application.dependency_overrides[get_queue] = lambda: queue
     application.dependency_overrides[get_publisher] = lambda: published
     application.dependency_overrides[get_store] = lambda: store
+    application.dependency_overrides[get_validation_queue] = lambda: validation_queue
     return application
 
 

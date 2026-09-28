@@ -441,7 +441,7 @@ function Drawings({ ficha }: { ficha: Ficha }) {
           {`O índice lista ${check.index_sheets} folha${check.index_sheets === 1 ? "" : "s"} e o PDF tem ${check.pages} página${check.pages === 1 ? "" : "s"}.`}
           {check.missing_in_pdf.length ? ` Sem página no PDF: ${check.missing_in_pdf.join(", ")}.` : ""}
           {check.not_in_index.length ? ` Fora do índice: ${check.not_in_index.join(", ")}.` : ""}
-          {" A regra DES-01 (Fase 5) vai sinalizar isto na validação."}
+          {" A regra DES-01 sinaliza isto na validação."}
         </p>
       ) : null}
       <DataTable caption="Folhas do índice">

@@ -18,6 +18,16 @@ export type Project = {
   file_count: number;
   ficha_status: "draft" | "confirmed" | "superseded" | null;
   open_conflicts: number;
+  /** the last validation (Phase 5): null until the project is validated */
+  validation?: ValidationSummary | null;
+};
+
+export type ValidationSummary = {
+  status: RunStatus;
+  finished_at: string | null;
+  open_critical: number;
+  new_critical: number;
+  warning: number;
 };
 
 export type ProjectIn = {
@@ -329,7 +339,15 @@ export type SectionEvent = {
   wait_s: number | null;
 };
 
-export type ProjectEvent = FileEvent | SectionEvent;
+export type ValidationEvent = {
+  type: "validation";
+  run_id: string;
+  status: RunStatus;
+  message: string | null;
+  step: string | null;
+};
+
+export type ProjectEvent = FileEvent | SectionEvent | ValidationEvent;
 
 export type Mark = { type: "value" | "generated" | "citation"; attrs?: Record<string, unknown> };
 
@@ -388,6 +406,9 @@ export type ProjectDocument = {
   id: string;
   project_id: string;
   type: "MDJ" | "CTE";
+  /** assembled by the tool, or made by hand and uploaded to be audited (read-only) */
+  origin: "assembled" | "existing";
+  source_file_id: string | null;
   status: string;
   ficha_revision: string;
   created_at: string;
@@ -408,4 +429,102 @@ export type SectionVersion = {
   created_by: string | null;
   content: SectionContent;
   citations: { anchor: string; kind: string; target: string }[];
+};
+
+// ---------------------------------------------------------------- validation (Phase 5, screen E)
+
+export type RunStatus = "queued" | "running" | "done" | "failed";
+export type Severity = "critical" | "warning" | "info";
+export type IssueStatus = "open" | "fixed" | "ignored";
+export type IssueAction = "open_editor" | "open_ficha" | "ask_curator" | "confirm_sheet" | "ignore";
+
+export type PieceInfo = {
+  ref: string;
+  kind: string;
+  origin: "assembled" | "existing" | "file";
+  name: string;
+  column: string;
+  date: string | null;
+  document_id: string | null;
+  file_id: string | null;
+};
+
+export type ValidationRun = {
+  id: string;
+  status: RunStatus;
+  trigger: "full" | "changed";
+  message: string | null;
+  created_at: string;
+  started_at: string | null;
+  finished_at: string | null;
+  totals: Record<string, number | string[]>;
+  pieces: PieceInfo[];
+};
+
+export type EvidenceValue = {
+  piece: string;
+  piece_name: string;
+  column?: string;
+  value: string;
+  differs?: boolean;
+  where: string;
+  note?: string | null;
+};
+
+export type ValidationIssue = {
+  id: string;
+  rule_id: string;
+  rule_title: string;
+  severity: Severity;
+  category: string;
+  category_label: string;
+  location: Record<string, unknown> & {
+    piece?: string | null;
+    piece_name?: string;
+    document_id?: string | null;
+    section_id?: string | null;
+    section_title?: string;
+    cell?: string;
+  };
+  message: string;
+  evidence: Record<string, unknown> & {
+    excerpt?: string;
+    values?: EvidenceValue[];
+    reference?: { label: string; value: string } | unknown;
+  };
+  likely_reading: string | null;
+  suggested_fix: string | null;
+  actions: IssueAction[];
+  new: boolean;
+  status: IssueStatus;
+  ignored_reason: string | null;
+  resolved_by: string | null;
+  resolved_at: string | null;
+};
+
+export type MatrixCell = { value: string; differs: boolean; pieces: string[] };
+
+export type MatrixRow = {
+  label: string;
+  unit: string;
+  reference: string | null;
+  cells: Record<string, MatrixCell>;
+  reading: string;
+  severity: Severity | null;
+  state: "ok" | "differs" | "na";
+};
+
+export type CoherenceMatrix = {
+  reference?: string;
+  columns?: { id: string; label: string }[];
+  rows?: MatrixRow[];
+};
+
+export type Validation = {
+  ready: boolean;
+  current: ValidationRun | null;
+  run: ValidationRun | null;
+  issues: ValidationIssue[];
+  matrix: CoherenceMatrix;
+  rules: { id: string; title: string; severity: Severity; category: string }[];
 };

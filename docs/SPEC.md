@@ -249,8 +249,10 @@ Nomes em inglês. Todas as tabelas têm `id` (UUID), `created_at`, `updated_at` 
 
 ### 7.4 Validação
 
-- **ValidationRun**: `project_id`, `document_ids[]`, `started_at`, `finished_at`, `totals`.
-- **ValidationIssue**: `run_id`, `rule_id` (secção 9), `severity` (critical | warning | info), `category`, `location` (peça, secção, âncora, célula ou página), `message_pt`, `evidence` (JSON), `likely_reading` (ex.: "erro provável na MDJ"), `suggested_fix` (opcional), `status` (open | fixed | ignored), `ignored_reason`, `resolved_by`.
+- **ValidationRun**: `project_id`, `ficha_revision_id`, `document_ids[]`, `pieces[]` (as peças lidas: referência, tipo, origem, data), `trigger` (full | changed: revalidação depois de uma edição), `status` (queued | running | done | failed), `message`, `started_at`, `finished_at`, `totals`, `matrix` (a matriz de coerência de 10.E, mascarada). Corre no worker (fila `validation`), com progresso por SSE.
+- **ValidationIssue**: `run_id`, `order`, `rule_id` (secção 9), `severity` (critical | warning | info), `category`, `fingerprint` (a mesma constatação em duas execuções: um alerta ignorado continua ignorado; um alerta que deixa de aparecer passa a `fixed`), `location` (peça, secção, âncora, célula ou página), `message_pt`, `evidence` (JSON, sempre mascarada), `likely_reading` (ex.: "erro provável na MDJ"), `suggested_fix` (opcional), `actions[]` (abrir no editor, abrir na ficha, pedir ao curador, confirmar na folha, ignorar), `new` (não estava na execução anterior: o painel mostra-o), `status` (open | fixed | ignored), `ignored_reason` (obrigatória, na auditoria), `resolved_by`, `resolved_at`.
+- **PieceFacts** (Fase 5): o que os extratores leram de cada peça (`facts`, `paragraphs`, `sections`), pelo `content_hash` da peça: uma revalidação só volta a ler as peças que mudaram. Pode conter valores pessoais (fica no backend, como a ficha-base); nunca sai sem máscara.
+- **Peças**: tudo o que se compara com a ficha-base. MDJ e CTE montados (`Document.origin = assembled`) ou feitos à mão e carregados para auditoria (`origin = existing`, só leitura, `source_file_id`; tipos de ficheiro `mdj_docx`, `cte_docx`, detetados pelo título); identificação e termo (`identificacao_docx`, `termo_docx`, lidos pelas etiquetas); ficha eletrotécnica, Tabela de Cálculo, MQT/LPU e desenhos, relidos com os leitores das Fases 1 e 2 (só o ficheiro mais recente de cada tipo).
 
 ### 7.5 Conhecimento
 
@@ -407,7 +409,17 @@ Regras de pós-processamento:
 
 ## 9. Regras de validação (MVP)
 
-As regras são módulos independentes (`backend/app/validation/rules/`), cada um com testes. A severidade por omissão é configurável. Cada regra tem pelo menos um caso de teste real no Anexo C.
+As regras são módulos independentes (`backend/app/validation/rules/`), cada um com testes. A severidade por omissão é configurável. Cada regra tem pelo menos um caso de teste real no Anexo C (as que não têm estão em `docs/fase5-anexo-c.md`, com os testes que as cobrem).
+
+Implementação (Fase 5): regras determinísticas, sem LLM, sobre factos extraídos de cada peça (`app/validation/extract/`): nas peças escritas, cada extrator só lê as secções do seu tema (potência nas de alimentação, carregadores na de veículos elétricos, quadros nas de quadros); números por extenso e uma única multiplicação escrita ("N pedestais com capacidade de M carregadores em cada"); cabos pelo localizador da Fase 3; capa e assinatura pelas etiquetas. O que não se lê com confiança fica "não comparável" (informação, com a razão). Os dados pessoais comparam-se no backend e a evidência sai mascarada (•••). Decisões por regra [A CONFIRMAR]:
+
+- NUM-01 só no texto do agente (no texto humano os números são das pessoas); REF-01 no texto do agente é crítico, e uma citação do texto humano fora do corpus é aviso com pedido ao curador; REF-02: revogado é crítico, por confirmar pelo curador é uma informação por peça.
+- COE-01: quadros, carregadores VE e módulos FV (luminárias: trabalho futuro); a referência é a ficha-base e, sem valor, a fonte de onde a ficha o tira (Tabela, depois MQT/LPU); um texto que só nomeia quadros é comparável quando nomeia os mesmos; um valor da ficha editado à mão numa peça montada é COE-01.
+- COE-03 e CNT-01 usam as regras de ativação do esqueleto 8.3 (regra "sempre" → CNT-01; regra que depende de um sistema → COE-03); a CNT-01 exige ainda que a MDJ indique a potência a alimentar (C6).
+- COE-04: uma forma mais curta conta como igual (nome curto na capa, obra sem a designação completa); uma peça que difere em dois ou mais campos de identificação (ou os deixa vazios) é "reaproveitada de outro projeto" (C7); os dados do técnico comparam-se entre peças e a leitura é "Confirmar com o perfil do técnico" (C3).
+- COE-06: a referência é a Tabela; MDJ e CTE comparam-se juntas e o MQT/LPU à parte; rígido vs flexível é crítico; sem equivalência aprovada, aviso e pedido ao curador; condutores de terra não se comparam.
+- TIP-01: léxico da Fase 3, tipo de utilização contra a obra descrita (tabela de usos) e nomes de outros projetos do arquivo (excluindo a identificação do próprio projeto).
+- CAL-01: queda de tensão total e poder de corte com os limites que a MDJ indica; os troços da Tabela são colunas montantes e comparam-se com o limite de "outros usos".
 
 | ID | Categoria | Regra | Severidade |
 |---|---|---|---|
@@ -446,6 +458,7 @@ Os ecrãs seguem o layout, os estados e as interações do mock-up, adaptados a 
 ### A · Painel
 - Projetos e peças em curso, com estado (revisão *x/y*, alertas críticos) e responsável.
 - ✅ Um alerta crítico novo aparece no painel sem ser preciso abrir a peça.
+- Implementado (Fase 5): coluna "Validação" com os críticos abertos e os novos (não estavam na execução anterior), ligação ao ecrã E e total de críticos abertos.
 
 ### B · Novo projeto
 - Assistente: Projeto → Âmbito → Ficheiros → Ficha-base → Montar.
@@ -469,6 +482,7 @@ Os ecrãs seguem o layout, os estados e as interações do mock-up, adaptados a 
 - Resumo, alertas com evidência e ações, e **matriz de coerência** do projeto: ficha-base como referência e colunas MDJ, CTE, MQT/LPU, Ficha ELE, Identificação/Termo, Tabela de Cálculo e Desenhos.
 - Linhas mínimas da matriz: requerente, obra, localização, tipo de utilização, potência, n.º de quadros, cabos principais, n.º de carregadores VE, potência FV, dados do técnico.
 - ✅ Com alertas críticos abertos, as peças não podem ser enviadas para revisão.
+- Implementado (Fase 5): filtros por severidade, estado, regra e peça; evidência mascarada; ações "abrir no editor" (as peças existentes abrem só para leitura), "abrir na ficha", "pedir ao curador", "ignorar com justificação" (≥ 10 caracteres, na auditoria) e "reabrir"; `POST /projects/{id}/review-request` recusado (409) com críticos abertos, sem validação ou com uma validação em curso. Uma edição no editor pede uma revalidação das peças alteradas.
 
 ### F · Equipamentos
 - Equipamentos de referência do CTE com modelo, data da ficha técnica e resultado da verificação.
@@ -561,7 +575,7 @@ No fim de cada fase: testes a passar, um commit por tarefa e `CLAUDE.md` atualiz
 | **2 · Restantes leitores** ✅ (25 set 2026) | Leitores das 09-Folhas de Cálculo, MQT/LPU e PDF das peças desenhadas (secção 8.2), ligados à ficha-base com origem e conflitos; associação de 09-Folhas e de artigos por regras e à mão; ecrãs B e C com os novos tipos | As fichas-base de R1 e R2 incluem os valores destas fontes, com os conflitos reais do Anexo C a aparecer como `FichaConflict`: C7 (requerente da ficha ≠ adjudicante da LPU), C4 visível na ficha (índice de R1 com 17 folhas, PDF com 16); controlos sem alertas (quadros do MQT de R1 = Tabela; 09-Folhas de R1 = Tabela, exceto a queda de tensão de Q.E.G. → Q.P.1.2, decidida como divergência real); percurso Playwright com o conjunto completo de R2 |
 | **3 · Biblioteca de blocos e conhecimento** · implementada (25 set 2026), à espera do curador (D7) | Extração de blocos a partir dos MDJ/CTE de R1 e R2, aprovação pelo curador, corpus regulamentar, dicionário de cabos, léxico de tipologias. Feito: 42 blocos do MDJ e 53 do CTE propostos, com OOXML, evidência e regras; dicionário, léxico e corpus (só referências) propostos; ecrã do curador | Os esqueletos da secção 8.3 estão completos com blocos aprovados e regras de ativação (a aprovação é do curador: `docs/revisao-curador.md`) |
 | **4 · Montagem e redação** · implementada (28 set 2026) | Montagem `fixed`/`parametric`, redação `adaptive`, editor TipTap com blocos protegidos, pré-preenchimento dos formulários. Feito: montagem com a biblioteca proposta («bloco não aprovado»), rascunho .docx, camada de LLM com D5, guarda de privacidade e ritmo, propostas do agente em diff, ecrã D, perfil do técnico cifrado, FE/Identificação/Termo; `docs/fase4-diff-R1.md` sem defeitos | O MDJ e o CTE de R1 são montados a partir da ficha-base, e a diferença para o original aprovado é só texto adaptativo e correções de incoerências |
-| **5 · Validação** | Regras da secção 9 e matriz de coerência do projeto | Todos os casos do Anexo C são detetados, com a leitura provável correta |
+| **5 · Validação** · implementada (28 set 2026) | Regras da secção 9 e matriz de coerência do projeto. Feito: motor em worker com revalidação das peças alteradas, peças existentes (modo auditoria), extração de factos sem LLM, 16 regras (EQP-* na Fase 7), ecrã E com matriz, bloqueio do envio para revisão, painel; `docs/fase5-anexo-c.md` | Todos os casos do Anexo C são detetados, com a leitura provável correta (14/14 em R1 e R2 carregados como auditoria; controlos sem alertas) |
 | **6 · Revisão e exportação** | Diff, aprovação, exportação do conjunto do projeto | O conjunto de R1 exporta e abre no Word/Excel com os estilos e macros intactos |
 | **7 · Equipamentos** | Biblioteca semeada a partir dos CTE, fichas técnicas, requisitos, regras EQP | Os equipamentos de referência de R1 têm ficha técnica associada e verificada |
 | **8 · Piloto** | Três projetos reais de eletricidade feitos no Maestro Especiais | Tempos medidos e comparados com o processo atual |

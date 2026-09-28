@@ -84,14 +84,17 @@ Depois de mudar o `.env`: `docker compose up -d backend worker` (o `restart` nã
   propostas em diff, editor (ecrã D), perfil do técnico cifrado, formulários FE/Identificação/Termo,
   `docs/fase4-diff-R1.md` sem defeitos, percurso Playwright de R1 verde.
 - Verificado: pytest 566, Vitest 55, Playwright 74, lint e `pii-check` limpos; CI verde até `4e31808`.
+- **5 implementada** (28 set 2026): validação com 16 regras, peças existentes (modo auditoria), ecrã E com
+  matriz de coerência, envio para revisão bloqueado com críticos; `docs/fase5-anexo-c.md` com 14/14 casos.
+  Depois de atualizar: `docker compose up -d backend worker` (migrações 0013/0014 e fila `validation`).
+- Verificada num PC Windows 11 com Docker Desktop (28 set 2026, ramo `fase5`): lint, pytest 664 (em contentor,
+  `make test-docker`), Vitest 66, Playwright 79, `pii-check`, Anexo C 14/14 sem diferenças e os quatro
+  percursos contra a stack (auditoria, R2, curador, R1 no editor com o Gemini real).
 
 ## 7. O que falta
 
-**Próximo trabalho (Claude): Fase 5 · Validação** — regras da secção 9 da SPEC, uma por ficheiro
-em `backend/app/validation/rules/`, cada uma com o seu caso do Anexo C (C1–C14) e a leitura
-provável. Pode começar já: COE-06, TIP-01, REF-02 e CNT-01 usam as propostas da Fase 3
-([A CONFIRMAR] até o curador rever); a CAL-01 pode passar a incluir queda de tensão e poder de corte
-(a MDJ já existe); EQP-* são da Fase 7. Afinar também a lista branca da NUM-01 («16 A a 250 V»).
+**Próximo trabalho (Claude): Fase 6 · Revisão e exportação** — ver «Próximo» no `CLAUDE.md`. Rever antes
+os [A CONFIRMAR] da Fase 5 e os «outros alertas reais» de `docs/fase5-anexo-c.md`.
 
 **Decisões pendentes:** D4 (alojamento: cloud UE ou VPS da TUU), D5 (termos da Gemini API e agora
 da Groq), D6 (Entra ID), D7 (curador), D8 (esqueletos com os técnicos), D10 (Flash-Lite e a
@@ -113,17 +116,26 @@ morada da capa da MDJ de R1 (≠ ficha eletrotécnica, `docs/fase4-diff-R1.md`);
 - **Avaliação real:** `RUN_LLM_EVAL=1 pytest backend/tests/llm_eval`; outro fornecedor numa corrida:
   `LLM_PROVIDER=groq LLM_MODEL_DRAFTING=openai/gpt-oss-120b` no ambiente.
 - **Percursos contra a stack** (criam dados; repor com `docker compose down -v`, `make up`,
-  `make seed-library`): `RUN_R2_JOURNEY=1`, `RUN_CURATOR_JOURNEY=1`, `RUN_R1_EDITOR_JOURNEY=1`
-  (`npm run e2e` em `frontend/`).
+  `make seed-library`): `RUN_AUDIT_JOURNEY=1`, `RUN_R2_JOURNEY=1`, `RUN_R1_EDITOR_JOURNEY=1` e, **em
+  último**, `RUN_CURATOR_JOURNEY=1` (`npm run e2e` em `frontend/`). O do curador aprova o primeiro bloco
+  adaptativo proposto (a INTRODUÇÃO), e o R1 no editor espera-o «não aprovado»: depois do curador, repor a BD.
 - **Relatórios gerados:** `make curator-review` → `docs/revisao-curador.md`; `make diff-report` →
   `docs/fase4-diff-R1.md` (com R1 montado e redigido na stack); `make form-templates`.
 - **Windows:** o Vite do contentor não recarrega (reiniciar o contentor `frontend`); o Docker
   Desktop com Resource Saver pára ao fim de ~5 min sem contentores; `make test` exige o Docker.
+  - Correr o `make` no PowerShell ou no `cmd`, não no Git Bash (as receitas usam `.venv\Scripts\...`).
+  - Windows 11 Home precisa do WSL 2 para o Docker Desktop: `wsl --install --no-distribution` (administrador).
+  - Com o Controlo Inteligente de Aplicações ligado, o `.venv` não carrega a DLL do `psycopg-binary`
+    («Uma política de Controlo de Aplicações bloqueou este ficheiro»): usar `make test-docker` em vez do
+    pytest do `make test` (e `make test-docker ARGS="-q backend/tests/test_validation_annex_c.py
+    --annex-c-report=docs/fase5-anexo-c.md"` em vez do `make anexo-c-report`). O Vitest corre com `npm --prefix frontend run test`.
+  - Mudar a pasta do repositório mantém os volumes (o nome do projeto Compose é fixo): copiar o `.env`
+    antigo em vez de `make env`, senão as palavras-passe novas não abrem o Postgres existente.
 - Scripts dentro do contentor: `docker compose exec -w /srv/backend -e PYTHONPATH=/srv/backend backend …`
   (senão usa o pacote instalado na imagem, não o código montado).
 
 ## 9. Primeira mensagem sugerida na conta nova
 
-> Lê o `CLAUDE.md`, o `docs/CONTINUAR.md` e a SPEC (secções 9, 14 e Anexo C). Confirma que a stack
-> arranca (`make up`, `make seed-library`, `make test`). Depois propõe o plano da Fase 5 (validação),
-> uma regra por tarefa e um commit cada, e espera pela minha aprovação antes de implementar.
+> Lê o `CLAUDE.md`, o `docs/CONTINUAR.md` e a SPEC (secções 10.H, 11 e 14). Confirma que a stack
+> arranca (`make up`, `make seed-library`, `make test`). Depois propõe o plano da Fase 6 (revisão e
+> exportação), uma tarefa por commit, e espera pela minha aprovação antes de implementar.

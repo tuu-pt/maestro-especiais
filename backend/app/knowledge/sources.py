@@ -8,17 +8,16 @@ import hashlib
 import re
 from collections.abc import Iterator
 from dataclasses import dataclass
-from itertools import islice
 from pathlib import Path
 
 import docx
 import xlrd
 from docx.document import Document as DocxDocument
-from docx.oxml.ns import qn
 
 from app.ingest import bom, tabela_calculo
-from app.ingest.detect import detect, fold
+from app.ingest.detect import detect
 from app.ingest.pipeline import ReaderError
+from app.ingest.written import docx_texts, piece_kind
 
 READ = (".xlsx", ".xlsm", ".xls", ".docx")
 SOURCE_OF_KIND = {"calc_summary": "Tabela", "calc_circuit": "09-Folha", "mqt": "MQT", "lpu": "LPU"}
@@ -35,32 +34,8 @@ class SourceText:
 
 def docx_kind(document: DocxDocument) -> str | None:
     """MDJ, CTE or a form (identificação, termo), from the title (the first paragraphs)."""
-    head = fold(" ".join(p.text for p in document.paragraphs[:40]))
-    if "memoria descritiva" in head:
-        return "MDJ"
-    if "condicoes tecnicas" in head or "caderno de encargos" in head:
-        return "CTE"
-    # the forms have their title in a table
-    head += " " + fold(" ".join(text for _, text in islice(docx_texts(document), 60)))
-    if "termo de responsabilidade" in head or "identificacao do projeto" in head:
-        return "Formulário"
-    return None
-
-
-def docx_texts(document: DocxDocument) -> Iterator[tuple[str, str]]:
-    """(locator, text) of every paragraph of the body, in order, tables included."""
-    body = document.element.body
-    for n, element in enumerate(body.iterchildren(), start=1):
-        if element.tag == qn("w:p"):
-            text = "".join(t.text or "" for t in element.iter(qn("w:t")))
-            if text.strip():
-                yield f"parágrafo {n}", text
-        elif element.tag == qn("w:tbl"):
-            for r, row in enumerate(element.iter(qn("w:tr")), start=1):
-                for c, cell in enumerate(row.iter(qn("w:tc")), start=1):
-                    text = "".join(t.text or "" for t in cell.iter(qn("w:t")))
-                    if text.strip():
-                        yield f"tabela no elemento {n}, linha {r}, célula {c}", text
+    kind = piece_kind(document)
+    return "Formulário" if kind in ("IDENTIFICACAO", "TERMO") else kind
 
 
 def unique_files(root: Path) -> Iterator[Path]:

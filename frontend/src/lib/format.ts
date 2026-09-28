@@ -42,6 +42,10 @@ export const KIND_LABELS: Record<string, string> = {
   drawing_pdf: "Peças desenhadas (PDF)",
   drawing_dwg: "Peças desenhadas (DWG)",
   archive_docx: "Documento",
+  mdj_docx: "MDJ existente",
+  cte_docx: "CTE existente",
+  identificacao_docx: "Identificação existente",
+  termo_docx: "Termo existente",
   other: "Outro ficheiro",
 };
 

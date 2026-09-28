@@ -29,6 +29,8 @@ import type {
   Typology,
   UploadResult,
   User,
+  Validation,
+  ValidationIssue,
 } from "./types";
 
 export const keys = {
@@ -50,6 +52,7 @@ export const keys = {
   documents: (projectId: string) => ["projects", projectId, "documents"] as const,
   document: (id: string) => ["documents", id] as const,
   versions: (sectionId: string) => ["sections", sectionId, "versions"] as const,
+  validation: (projectId: string) => ["projects", projectId, "validation"] as const,
 };
 
 export const useMe = () => useQuery({ queryKey: keys.me, queryFn: () => request<User>("/me") });
@@ -353,5 +356,64 @@ export function useGenerateDocument(documentId: string, projectId: string) {
   return useMutation({
     mutationFn: () => postJson<{ queued: number }>(`/documents/${documentId}/generate`),
     onSuccess: refresh,
+  });
+}
+
+// ---------------------------------------------------------------- validation (screen E)
+
+export const useValidation = (projectId: string | undefined) =>
+  useQuery({
+    queryKey: keys.validation(projectId ?? ""),
+    queryFn: () => request<Validation>(`/projects/${projectId}/validation`),
+    enabled: Boolean(projectId),
+    refetchInterval: (query) =>
+      query.state.data?.current && ["queued", "running"].includes(query.state.data.current.status) ? 2000 : false,
+  });
+
+function useRefreshValidation(projectId: string) {
+  const client = useQueryClient();
+  return () => {
+    void client.invalidateQueries({ queryKey: keys.validation(projectId) });
+    void client.invalidateQueries({ queryKey: keys.projects });
+    void client.invalidateQueries({ queryKey: keys.audit(projectId) });
+  };
+}
+
+export { useRefreshValidation };
+
+export function useRunValidation(projectId: string) {
+  const refresh = useRefreshValidation(projectId);
+  return useMutation({
+    mutationFn: () => postJson(`/projects/${projectId}/validation`, { trigger: "full" }),
+    onSuccess: refresh,
+  });
+}
+
+export function useIgnoreIssue(projectId: string) {
+  const refresh = useRefreshValidation(projectId);
+  return useMutation({
+    mutationFn: ({ id, reason }: { id: string; reason: string }) =>
+      postJson<ValidationIssue>(`/validation/issues/${id}/ignore`, { reason }),
+    onSuccess: refresh,
+  });
+}
+
+export function useReopenIssue(projectId: string) {
+  const refresh = useRefreshValidation(projectId);
+  return useMutation({
+    mutationFn: (id: string) => postJson<ValidationIssue>(`/validation/issues/${id}/reopen`, {}),
+    onSuccess: refresh,
+  });
+}
+
+export function useRequestReview(projectId: string) {
+  const refresh = useRefreshValidation(projectId);
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: () => postJson<{ sent: number }>(`/projects/${projectId}/review-request`, {}),
+    onSuccess: () => {
+      refresh();
+      void client.invalidateQueries({ queryKey: keys.documents(projectId) });
+    },
   });
 }

@@ -11,7 +11,7 @@ patterns:
   - '\b(?:sec[çc](?:ão|ões|ao|oes)|art(?:igo|igos|\.º|\.)?|quadro|tabela|anexo|ponto|cap[íi]tulo|n\.º)\s*\d+(?:[.\-]\d+)*(?:\.?º)?(?:\s*(?:,|e|a)\s*\d+(?:[.\-]\d+)*(?:\.?º)?)*'
   # letters followed by digits: IP65, IK08, AD4, BE2, H07V-U, RZ1-K, XZ1(frt,zh), L4.1, Cca-s1b,d1,a1
   - '\b[A-Za-z]+\d+[A-Za-z0-9.,()\-]*'
-  # normalized characteristics: 16A-250V, 230/400 V, 400 V, 230 V
-  - '\b\d+\s*A\s*-\s*\d+\s*V\b'
+  # normalized characteristics: 16A-250V, 16 A a 250 V, 230/400 V, 400 V, 230 V
+  - '\b\d+\s*A\s*(?:-|a)\s*\d+\s*V\b'
   - '\b230\s*/\s*400\s*V\b'
   - '\b(?:230|400)\s*V\b'

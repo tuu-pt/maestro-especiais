@@ -26,7 +26,6 @@ from app.assembly.values import ValueSource
 from app.ingest.keys import KEYS
 from app.llm import prompts
 from app.llm.client import LlmClient
-from app.llm.numbers import stray_numbers
 from app.llm.provider import Message
 from app.models import (
     ArchiveChunk,
@@ -40,10 +39,12 @@ from app.models import (
     TemplateBlock,
 )
 from app.profiles import revision_profile
+from app.validation.rules.num_01 import MESSAGE as NUM_01
+from app.validation.rules.num_01 import stray_numbers
+from app.validation.rules.ref_01 import REMOVED, outside
 
 PLACEHOLDER = re.compile(r"\{\{v:([a-z0-9_.]+)\}\}")
 KEY = re.compile(r"[a-z]+\.[a-z0-9_.]+")
-NUM_01 = "Número fora de marcador: confirmar ou trocar por um valor da ficha."
 CONTEXT_PREFIXES = ("ele.", "sys.")  # never id.*: identification is only written by placeholder
 
 
@@ -140,9 +141,8 @@ def postprocess(
         KEY.fullmatch(m) and not values.resolve(m).missing)]  # fmt: skip
     for p in output.paragraphs:
         kept = [s for s in p.sources if s in allowed]
-        issues += [{"rule": "REF-01", "paragraph": p.id, "source": s,
-                    "message": "Fonte fora do conjunto fornecido: removida."}
-                   for s in p.sources if s not in allowed]  # fmt: skip
+        issues += [{"rule": "REF-01", "paragraph": p.id, "source": s, "message": REMOVED}
+                   for s in outside(p.sources, allowed)]  # fmt: skip
         issues += [{"rule": "NUM-01", "paragraph": p.id, "snippet": snippet,
                     "message": NUM_01}
                    for snippet in stray_numbers(p.text)]  # fmt: skip

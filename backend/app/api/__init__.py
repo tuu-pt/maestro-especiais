@@ -14,6 +14,7 @@ from app.api import (
     library,
     me,
     projects,
+    validation,
 )
 
 api_router = APIRouter(prefix="/api")
@@ -28,3 +29,4 @@ api_router.include_router(documents.router)
 api_router.include_router(drafting.router)
 api_router.include_router(editor.router)
 api_router.include_router(forms.router)
+api_router.include_router(validation.router)

@@ -144,6 +144,22 @@ def describe(action: str, payload: dict[str, Any]) -> str:
             return f"Descarregou o rascunho do {payload.get('type', '')}"
         case "ficha.confirmed":
             return f"Confirmou a ficha-base rev. {payload.get('label', '')}"
+        case "validation.requested":
+            what = "a revalidação" if payload.get("trigger") == "changed" else "a validação"
+            return f"Pediu {what} do projeto"
+        case "validation.run":
+            n = payload.get("critical", 0)
+            return (
+                f"Validou o projeto: {n} crítico{'s' if n != 1 else ''}, "
+                f"{payload.get('warning', 0)} avisos, {payload.get('info', 0)} informações"
+            )
+        case "validation.issue_ignored":
+            return f"Ignorou um alerta {payload.get('rule', '')}: {payload.get('reason', '')}"
+        case "validation.issue_reopened":
+            return f"Reabriu um alerta {payload.get('rule', '')}"
+        case "review.requested":
+            n = payload.get("documents", 0)
+            return f"Enviou {n} peça{'s' if n != 1 else ''} para revisão"
     return action
 
 

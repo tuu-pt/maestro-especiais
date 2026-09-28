@@ -1,6 +1,6 @@
 .stats {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 12px;
 }
 .stat {
@@ -26,6 +26,23 @@
 }
 .warn {
   color: var(--warn);
+}
+.crit {
+  color: var(--crit);
+}
+.alert {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  flex-wrap: wrap;
+  text-decoration: none;
+}
+.new {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--crit);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
 }
 .dash {
   display: grid;

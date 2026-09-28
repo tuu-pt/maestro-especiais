@@ -188,7 +188,7 @@ export function ProjectFilesScreen() {
   const [dragging, setDragging] = useState(false);
 
   useProjectEvents(projectId, (event) => {
-    if (event.type === "section") return; // drafting progress: the editor follows it
+    if (event.type === "section" || event.type === "validation") return; // other screens follow them
     client.setQueryData<ProjectFile[]>(keys.files(projectId), (old) =>
       old?.map((f) =>
         f.id === event.file_id
@@ -234,7 +234,7 @@ export function ProjectFilesScreen() {
     <Screen
       crumb={project ? `${project.code} · ${project.name}` : "Projeto"}
       title="Ficheiros do projeto"
-      description="Carregue os ficheiros do projeto. A ficha eletrotécnica, a Tabela de Cálculo, as 09-Folhas de Cálculo, o MQT ou a LPU e o PDF das peças desenhadas são lidos e juntam-se à ficha-base, cada valor com a sua origem. Os restantes (DWG, DOCX…) ficam guardados."
+      description="Carregue os ficheiros do projeto. A ficha eletrotécnica, a Tabela de Cálculo, as 09-Folhas de Cálculo, o MQT ou a LPU e o PDF das peças desenhadas são lidos e juntam-se à ficha-base, cada valor com a sua origem. A MDJ, o CTE, a identificação e o termo já feitos (.docx) entram como peças existentes, para auditar; os restantes (DWG…) ficam guardados."
     >
       <div className={s.wiz}>
         <Steps current={step} />
@@ -250,7 +250,8 @@ export function ProjectFilesScreen() {
           >
             <p>
               Arraste para aqui os ficheiros do projeto: ficha eletrotécnica (.xlsm), Tabela de Cálculo e
-              MQT/LPU (.xlsx), 09-Folhas de Cálculo (.xls) e peças desenhadas (.pdf)
+              MQT/LPU (.xlsx), 09-Folhas de Cálculo (.xls) e peças desenhadas (.pdf). Para auditar um projeto já
+              feito, junte também a MDJ, o CTE, a identificação e o termo (.docx).
             </p>
             <label className={s.pick}>
               Escolher ficheiros
@@ -336,13 +337,18 @@ export function ProjectFilesScreen() {
               <ButtonLink to={`/projetos/${projectId}/ficha`} variant="primary">
                 Ver a ficha do projeto →
               </ButtonLink>
-              <Button disabled title="Disponível na Fase 4, com a ficha-base confirmada">
-                Montar peças
-              </Button>
+              {confirmed ? (
+                <ButtonLink to={`/projetos/${projectId}/documentos`}>Montar peças</ButtonLink>
+              ) : (
+                <Button disabled title="Disponível com a ficha-base confirmada">
+                  Montar peças
+                </Button>
+              )}
             </Buttons>
             <p className={s.hint}>
-              Não é possível montar peças sem ficha-base confirmada. A montagem do MDJ e do CTE chega
-              na Fase 4.
+              {confirmed
+                ? "O MDJ e o CTE montam-se em Documentos, a partir da ficha-base confirmada."
+                : "Não é possível montar peças sem ficha-base confirmada."}
             </p>
           </Card>
           <p className={s.hint}>
@@ -355,13 +361,14 @@ export function ProjectFilesScreen() {
 }
 
 
-/** The five kinds that are read (SPEC 8.2), with what arrived of each. */
+/** The kinds that are read (SPEC 8.2; written pieces to audit, Phase 5), with what arrived of each. */
 const READ_KINDS: [kinds: string[], label: string][] = [
   [["ficha_eletrotecnica"], "Ficha eletrotécnica"],
   [["calc_summary"], "Tabela de Cálculo"],
   [["calc_circuit"], "09-Folhas de Cálculo"],
   [["mqt", "lpu"], "MQT / LPU"],
   [["drawing_pdf"], "Peças desenhadas (PDF)"],
+  [["mdj_docx", "cte_docx", "identificacao_docx", "termo_docx"], "Peças escritas existentes (auditoria)"],
 ];
 
 function ReadSummary({ files }: { files: ProjectFile[] }) {

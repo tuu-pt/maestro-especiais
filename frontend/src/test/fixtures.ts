@@ -48,7 +48,7 @@ export const emptyFicha = (): Ficha => ({
   drawings_check: null,
   open_conflicts: 0,
   can_confirm: false,
-  cal01_note: "Queda de tensão e poder de corte: a verificação fica disponível quando houver MDJ com os limites do projeto.",
+  cal01_note: "Queda de tensão e poder de corte: verificados na validação (ecrã E), com os limites que a MDJ indica.",
 });
 
 export const sse = (...events: object[]) =>

@@ -70,7 +70,8 @@ def load_audit(api: Api, code: str, *, public: bool = False) -> str:
         pytest.skip("data/fixtures/R1 e R2 são precisos")
     client = api.as_("redator")
     project = client.post("/api/projects", json={
-        "code": f"{code}-AUD", "name": f"{code} (auditoria)", "building_type": BUILDING[code],
+        "code": f"{code}-AUD" + ("-CCP" if public else ""), "name": f"{code} (auditoria)",
+        "building_type": BUILDING[code],
         "public_procurement": public,
     }).json()  # fmt: skip
     for path in audit_files(code):

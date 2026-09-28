@@ -234,7 +234,7 @@ export function ProjectFilesScreen() {
     <Screen
       crumb={project ? `${project.code} · ${project.name}` : "Projeto"}
       title="Ficheiros do projeto"
-      description="Carregue os ficheiros do projeto. A ficha eletrotécnica, a Tabela de Cálculo, as 09-Folhas de Cálculo, o MQT ou a LPU e o PDF das peças desenhadas são lidos e juntam-se à ficha-base, cada valor com a sua origem. Os restantes (DWG, DOCX…) ficam guardados."
+      description="Carregue os ficheiros do projeto. A ficha eletrotécnica, a Tabela de Cálculo, as 09-Folhas de Cálculo, o MQT ou a LPU e o PDF das peças desenhadas são lidos e juntam-se à ficha-base, cada valor com a sua origem. A MDJ, o CTE, a identificação e o termo já feitos (.docx) entram como peças existentes, para auditar; os restantes (DWG…) ficam guardados."
     >
       <div className={s.wiz}>
         <Steps current={step} />

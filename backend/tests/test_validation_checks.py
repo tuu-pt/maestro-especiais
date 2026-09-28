@@ -41,3 +41,29 @@ def test_cal_01_without_limits_in_the_mdj_is_not_comparable() -> None:
 
     assert [f.severity for f in found] == ["info"]
     assert "não comparável" in found[0].message
+
+
+def test_tip_01_names_of_other_projects_but_not_this_projects_own() -> None:
+    from app.validation.pieces import Fact
+    from app.validation.rules import tip_01
+
+    ctx = mdj(("introducao", "Obra da Biblioteca Municipal de Aldeia Velha, requerente Rui."),
+              ("introducao", "Moradia do requerente Ana Maria Costa."))  # fmt: skip
+    ctx.data["doc:1"].facts.append(
+        Fact("id.requerente.nome", "Ana Maria Costa", "doc:1", personal=True)
+    )  # another project's, in a piece: flagged
+    ctx.memo = {}
+    ctx.__dict__["other_projects_names"] = [
+        ("R2", "id.obra.designacao", "Biblioteca Municipal de Aldeia Velha"),  # same work
+        ("R1", "id.requerente.nome", "Ana Maria Costa"),
+    ]
+    ctx.ficha = {
+        "id.obra.designacao": cast(
+            Any, SimpleNamespace(value="Biblioteca Municipal de Aldeia Velha")
+        )
+    }  # this project's own work
+
+    found = tip_01.other_projects(ctx)
+
+    assert [f.evidence["project"] for f in found] == ["R1", "R1"]  # the text and the piece
+    assert {f.evidence["value"] for f in found} == {"•••"}

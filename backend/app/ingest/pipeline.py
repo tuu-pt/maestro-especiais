@@ -53,7 +53,7 @@ def run_ingestion(db: Session, store: ObjectStore, publish: Publish, file_id: uu
             publish,
             file,
             "skipped",
-            "Guardado: este tipo de ficheiro não é lido (DWG, DOCX e outros).",
+            "Guardado: este tipo de ficheiro não é lido (DWG, Word sem título de peça…).",
         )
         return
     file.ingest_warnings = []

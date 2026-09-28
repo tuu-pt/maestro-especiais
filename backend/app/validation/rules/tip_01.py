@@ -32,6 +32,7 @@ USES = {
 }
 DESCRIBING = ("introducao", "classificacao")
 INHERITED = "Texto herdado de outro projeto."
+OWN = ("id.requerente.nome", "id.obra.designacao", "id.local.rua")
 
 
 def _words(text: str) -> str:
@@ -103,7 +104,10 @@ def uses(ctx: Context) -> list[Finding]:
 
 def other_projects(ctx: Context) -> list[Finding]:
     out: list[Finding] = []
-    names = [(c, k, v) for c, k, v in ctx.other_projects_names if len(v.strip()) >= 6]
+    # a name that is also this project's own identification is not another project's
+    own = {_words(str(ctx.ficha_value(k))) for k in OWN if ctx.ficha_value(k)}
+    names = [(c, k, v) for c, k, v in ctx.other_projects_names
+             if len(v.strip()) >= 6 and _words(v) not in own]  # fmt: skip
     if not names:
         return out
     for p in ctx.paragraphs("MDJ", "CTE"):

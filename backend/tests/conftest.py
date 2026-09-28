@@ -29,6 +29,11 @@ from app.validation.jobs import get_validation_queue
 BACKEND = Path(__file__).resolve().parents[1]
 
 
+def pytest_addoption(parser: pytest.Parser) -> None:
+    parser.addoption("--annex-c-report", default=None,
+                     help="write the Annex C report of Phase 5 to this path")  # fmt: skip
+
+
 def alembic_config(url: str) -> Config:
     config = Config(str(BACKEND / "alembic.ini"))
     config.attributes["database_url"] = url

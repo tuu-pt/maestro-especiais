@@ -141,7 +141,7 @@ def upload_file(
         or (
             None
             if found.kind in READABLE_KINDS
-            else "Guardado: este tipo de ficheiro não é lido (DWG, DOCX e outros)."
+            else "Guardado: este tipo de ficheiro não é lido (DWG, Word sem título de peça…)."
         ),
         created_by=user.id,
     )

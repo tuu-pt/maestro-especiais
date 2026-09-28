@@ -337,13 +337,18 @@ export function ProjectFilesScreen() {
               <ButtonLink to={`/projetos/${projectId}/ficha`} variant="primary">
                 Ver a ficha do projeto →
               </ButtonLink>
-              <Button disabled title="Disponível na Fase 4, com a ficha-base confirmada">
-                Montar peças
-              </Button>
+              {confirmed ? (
+                <ButtonLink to={`/projetos/${projectId}/documentos`}>Montar peças</ButtonLink>
+              ) : (
+                <Button disabled title="Disponível com a ficha-base confirmada">
+                  Montar peças
+                </Button>
+              )}
             </Buttons>
             <p className={s.hint}>
-              Não é possível montar peças sem ficha-base confirmada. A montagem do MDJ e do CTE chega
-              na Fase 4.
+              {confirmed
+                ? "O MDJ e o CTE montam-se em Documentos, a partir da ficha-base confirmada."
+                : "Não é possível montar peças sem ficha-base confirmada."}
             </p>
           </Card>
           <p className={s.hint}>

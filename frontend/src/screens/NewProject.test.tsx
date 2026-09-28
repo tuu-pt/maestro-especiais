@@ -4,6 +4,7 @@ import { http, HttpResponse } from "msw";
 import { describe, expect, it, vi } from "vitest";
 
 import type { ProjectFile } from "../api/types";
+import { confirmedFicha } from "../test/documents";
 import { emptyFicha, file, project, sse } from "../test/fixtures";
 import { renderAt } from "../test/render";
 import { api, server } from "../test/server";
@@ -105,6 +106,24 @@ describe("project files", () => {
     expect(uploaded).toEqual([{ projectId: "p1", name: "FE.xlsm" }]);
     expect(screen.getByRole("button", { name: "Montar peças" })).toBeDisabled();
     expect(screen.getByRole("link", { name: /Ver a ficha do projeto/ })).toHaveAttribute("href", "/projetos/p1/ficha");
+    expect(screen.getByText("Não é possível montar peças sem ficha-base confirmada.")).toBeInTheDocument();
+  });
+
+  it("opens the assembly in Documentos once the ficha is confirmed", async () => {
+    server.use(
+      http.get(api("/projects/p1"), () => HttpResponse.json(project())),
+      http.get(api("/projects/p1/files"), () => HttpResponse.json([file({ ingest_status: "done" })])),
+      http.get(api("/projects/p1/ficha"), () => HttpResponse.json(confirmedFicha())),
+      http.get(api("/projects/p1/events"), () =>
+        new HttpResponse(sse(), { headers: { "Content-Type": "text/event-stream" } }),
+      ),
+    );
+    renderAt("/projetos/p1/ficheiros");
+
+    const assemble = await screen.findByRole("link", { name: "Montar peças" });
+    expect(assemble).toHaveAttribute("href", "/projetos/p1/documentos");
+    expect(screen.getByText(/O MDJ e o CTE montam-se em Documentos/)).toBeInTheDocument();
+    expect(screen.queryByText(/Fase 4/)).toBeNull();
   });
 });
 

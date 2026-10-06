@@ -59,6 +59,7 @@ export function EditorScreen() {
 function useCanWrite(doc?: ProjectDocument): boolean {
   const { data: me } = useMe();
   if (doc?.origin === "existing") return false; // a piece made by hand is only audited here
+  if (doc?.status === "approved") return false; // reopened in screen H, as the next revision
   return me?.roles.some((r) => r.id === "redator" || r.id === "tecnico") ?? false;
 }
 
@@ -304,6 +305,12 @@ function Summary({ doc }: { doc: ProjectDocument }) {
         <>
           <strong>Peça existente, carregada para auditoria: só leitura.</strong> Os dados pessoais aparecem
           mascarados; a validação compara-os no servidor.{" "}
+        </>
+      ) : null}
+      {doc.status === "approved" ? (
+        <>
+          <strong>Aprovada (rev. {doc.revision_label ?? "A"}): só leitura.</strong> Para alterar, reabra-a no ecrã de
+          revisão (cria a revisão seguinte).{" "}
         </>
       ) : null}
       {doc.type} · ficha-base rev. {doc.ficha_revision} · {c.sections ?? 0} secções: {c.reviewed ?? 0} revistas,{" "}

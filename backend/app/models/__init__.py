@@ -1,7 +1,14 @@
 """SQLAlchemy models (SPEC 7). Importing this package registers every table."""
 
 from app.models.audit import AuditEvent
-from app.models.document import Citation, Document, Section, SectionVersion, ValueRef
+from app.models.document import (
+    Citation,
+    Document,
+    DocumentRevision,
+    Section,
+    SectionVersion,
+    ValueRef,
+)
 from app.models.ficha import (
     BomItem,
     Circuit,
@@ -43,6 +50,7 @@ __all__ = [
     "CircuitSheet",
     "Citation",
     "Document",
+    "DocumentRevision",
     "FichaConflict",
     "FichaRevision",
     "FichaValue",

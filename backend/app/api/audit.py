@@ -140,6 +140,16 @@ def describe(action: str, payload: dict[str, Any]) -> str:
             return f"Descarregou {title} pré-preenchido"
         case "profile.updated":
             return "Atualizou o perfil de técnico"
+        case "document.approved":
+            return f"Aprovou o {payload.get('type', '')} (rev. {payload.get('revision', '')})"
+        case "document.reopened":
+            return (f"Reabriu o {payload.get('type', '')}: rev. {payload.get('from', '')} → "
+                    f"rev. {payload.get('to', '')} ({payload.get('reason', '')})")  # fmt: skip
+        case "document.responsible_assigned":
+            return f"Atribuiu o técnico responsável do {payload.get('type', '')}"
+        case "document.header_date":
+            what = "Escreveu" if payload.get("set") else "Apagou"
+            return f"{what} a data do cabeçalho do {payload.get('type', '')}"
         case "document.draft_downloaded":
             return f"Descarregou o rascunho do {payload.get('type', '')}"
         case "ficha.manual_value":

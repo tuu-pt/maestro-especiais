@@ -14,6 +14,7 @@ from app.api import (
     library,
     me,
     projects,
+    review,
     validation,
 )
 
@@ -30,3 +31,4 @@ api_router.include_router(drafting.router)
 api_router.include_router(editor.router)
 api_router.include_router(forms.router)
 api_router.include_router(validation.router)
+api_router.include_router(review.router)

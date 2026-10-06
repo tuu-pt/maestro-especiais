@@ -47,7 +47,15 @@ class Document(Entity):
         ForeignKey("ficha_revision.id", ondelete="CASCADE")
     )
     status: Mapped[str] = mapped_column(String(15), default="draft")
+    # the técnico responsável atribuído (Phase 6): only they approve; by default, who confirmed
+    # the ficha-base the document was assembled from
     responsible_user_id: Mapped[str | None] = mapped_column(String(64))
+    # revision n (Phase 6): file V<n>, header R<nn>, "rev. A, B…" in the interface
+    revision: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    approved_by: Mapped[str | None] = mapped_column(String(64))
+    approved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # month/year of the header, only when the técnico writes it (P8: empty by default)
+    header_date: Mapped[str | None] = mapped_column(String(30))
     # assembled by the tool, or made by hand and uploaded to be audited (Phase 5; read-only)
     origin: Mapped[str] = mapped_column(String(10), default="assembled", server_default="assembled")
     source_file_id: Mapped[uuid.UUID | None] = mapped_column(
@@ -57,6 +65,35 @@ class Document(Entity):
     sections: Mapped[list["Section"]] = relationship(
         back_populates="document", cascade="all, delete-orphan", order_by="Section.order"
     )
+    revisions: Mapped[list["DocumentRevision"]] = relationship(
+        back_populates="document", cascade="all, delete-orphan", order_by="DocumentRevision.number"
+    )
+
+
+class DocumentRevision(Entity):
+    """An approved revision of a document: who approved, when, and which version of each section.
+
+    Reopening keeps it (the history) and the document goes on as revision n+1, in draft.
+    """
+
+    __tablename__ = "document_revision"
+    __table_args__ = (UniqueConstraint("document_id", "number", name="uq_document_revision"),)
+
+    document_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("document.id", ondelete="CASCADE"))
+    number: Mapped[int] = mapped_column(Integer)
+    approved_by: Mapped[str] = mapped_column(String(64))
+    approved_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    ficha_revision_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("ficha_revision.id", ondelete="SET NULL")
+    )
+    header_date: Mapped[str | None] = mapped_column(String(30))
+    # [{"section_id", "order", "title", "version", "block_key", "active"}]
+    sections: Mapped[list[Any]] = mapped_column(default=list)
+    reopened_by: Mapped[str | None] = mapped_column(String(64))
+    reopened_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    reopen_reason: Mapped[str | None] = mapped_column(Text)
+
+    document: Mapped[Document] = relationship(back_populates="revisions")
 
 
 class Section(Entity):

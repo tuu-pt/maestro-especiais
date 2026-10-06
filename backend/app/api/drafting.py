@@ -13,7 +13,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
-from app.api.documents import get_document
+from app.api.documents import ensure_editable, get_document
 from app.api.projects import get_project
 from app.audit import record
 from app.auth import CurrentUser, User, require_role
@@ -97,6 +97,7 @@ def _queued(job: str | None) -> None:
 @router.post("/documents/{document_id}/generate", status_code=status.HTTP_202_ACCEPTED)
 def generate_document(document_id: uuid.UUID, db: DB, queue: Queue, user: Writer) -> dict[str, Any]:
     document = get_document(db, document_id)
+    ensure_editable(document)
     project = _allowed(db, document, user)
     sections = to_draft(db, document)
     record(db, user, "document.generation_requested", "document", document.id,
@@ -120,6 +121,7 @@ def request_section(
 
 def _enqueue_section(db: Session, queue: DraftQueue, user: User, section: Section,
                      request: str | None) -> dict[str, Any]:  # fmt: skip
+    ensure_editable(section.document)
     block = db.get(TemplateBlock, section.block_id) if section.block_id else None
     if block is None or not adaptive_entries(block):
         raise HTTPException(status.HTTP_409_CONFLICT,
@@ -146,6 +148,7 @@ def _version(db: Session, version_id: uuid.UUID) -> SectionVersion:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Versão não encontrada.")
     if version.status != "proposed":
         raise HTTPException(status.HTTP_409_CONFLICT, "Esta versão já não é uma proposta.")
+    ensure_editable(version.section.document)
     return version
 
 

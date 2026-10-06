@@ -413,7 +413,10 @@ export type ProjectDocument = {
   /** assembled by the tool, or made by hand and uploaded to be audited (read-only) */
   origin: "assembled" | "existing";
   source_file_id: string | null;
-  status: string;
+  status: "draft" | "in_review" | "approved";
+  /** rev. A, B… (Phase 6): file V<n>, header R<nn> */
+  revision_label?: string;
+  responsible_user_id?: string | null;
   ficha_revision: string;
   created_at: string;
   counts: Record<string, number>;

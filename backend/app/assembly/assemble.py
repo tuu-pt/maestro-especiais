@@ -155,7 +155,9 @@ def assemble(
     template = template_for(db, doc_type)
     document = Document(
         project_id=project.id, type=doc_type, ficha_revision_id=revision.id,
-        template_id=template.id if template else None, responsible_user_id=user_id,
+        template_id=template.id if template else None,
+        # the técnico responsável (Phase 6): who confirmed the ficha-base, reassignable
+        responsible_user_id=revision.confirmed_by or user_id,
     )  # fmt: skip
     for n, block in enumerate(blocks, start=1):
         tree = block.activation_ast or parse(block.activation_rule or "true")
@@ -193,15 +195,15 @@ def assemble(
     return document
 
 
-def export_readiness(document: Document) -> list[dict[str, Any]]:
-    """What stops the official export (Phase 6): an empty list means ready."""
+def export_readiness(db: Session, document: Document) -> list[dict[str, Any]]:
+    """What stops the official export: an empty list means ready (see app.review.conditions)."""
+    from app.review import conditions
+
     problems = []
-    for s in document.sections:
-        if not s.active:
+    for c in conditions(db, document):
+        if c.ok:
             continue
-        if s.block_status != "approved":
-            problems.append({"section": s.order, "title": s.title, "reason": "bloco não aprovado"})
-        if s.status != "reviewed":
-            reason = s.status_note or "secção por rever"
-            problems.append({"section": s.order, "title": s.title, "reason": reason})
+        problems += [{"code": c.code, **i} for i in c.items] or [
+            {"code": c.code, "section": None, "title": c.text, "reason": c.reason}
+        ]
     return problems

@@ -144,6 +144,15 @@ export function useResolveConflict(projectId: string) {
   });
 }
 
+export function useAddManualValue(projectId: string) {
+  const refresh = useRefreshProject();
+  return useMutation({
+    mutationFn: (body: { key: string; value: string; note: string }) =>
+      postJson<FichaValue>(`/projects/${projectId}/ficha/values`, body),
+    onSuccess: () => refresh(projectId),
+  });
+}
+
 export function useConfirmRevision(projectId: string) {
   const refresh = useRefreshProject();
   return useMutation({

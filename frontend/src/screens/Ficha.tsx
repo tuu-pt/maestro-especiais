@@ -9,6 +9,7 @@ import {
   useFicha,
   useLinkBomItem,
   useLinkSheet,
+  useAddManualValue,
   useMe,
   useProject,
   useResolveConflict,
@@ -579,6 +580,65 @@ function BomRow({ item, keys, canLink, onLink }: { item: BomItem; keys: LinkKey[
 
 // ---------------------------------------------------------------- screen
 
+/** A value no source of the project gives (e.g. the designation of the work): only a técnico adds it. */
+function MissingValues({ ficha, projectId }: { ficha: Ficha; projectId: string }) {
+  const keys = ficha.missing_keys ?? [];
+  const [key, setKey] = useState("");
+  const [value, setValue] = useState("");
+  const [note, setNote] = useState("");
+  const add = useAddManualValue(projectId);
+  if (!keys.length) return null;
+  const chosen = keys.find((k) => k.key === key);
+  return (
+    <Card title="Valores em falta">
+      <p className={s.muted}>
+        Campos sem valor em nenhuma fonte. Um técnico pode acrescentá-los à mão: entram numa revisão por confirmar e ficam
+        com a origem «introduzido à mão».
+      </p>
+      <form
+        className={s.resolve}
+        onSubmit={(e) => {
+          e.preventDefault();
+          add.mutate(
+            { key, value, note },
+            {
+              onSuccess: () => {
+                setKey("");
+                setValue("");
+                setNote("");
+              },
+            },
+          );
+        }}
+      >
+        <label htmlFor="missing-key">Campo</label>
+        <select id="missing-key" value={key} onChange={(e) => setKey(e.target.value)} className={s.input}>
+          <option value="">Escolha um campo…</option>
+          {keys.map((k) => (
+            <option key={k.key} value={k.key}>
+              {k.group} · {k.label}
+            </option>
+          ))}
+        </select>
+        <label htmlFor="missing-value">Valor{chosen?.unit ? ` (${chosen.unit})` : ""}</label>
+        <input id="missing-value" value={value} onChange={(e) => setValue(e.target.value)} className={s.input} />
+        <label htmlFor="missing-note">De onde vem o valor (fica registado)</label>
+        <textarea id="missing-note" rows={2} value={note} onChange={(e) => setNote(e.target.value)} className={s.input} />
+        {add.error ? <ErrorNote>{add.error.message}</ErrorNote> : null}
+        <Buttons>
+          <Button
+            type="submit"
+            variant="primary"
+            disabled={!key || !value.trim() || note.trim().length < 3 || add.isPending}
+          >
+            Acrescentar à ficha-base
+          </Button>
+        </Buttons>
+      </form>
+    </Card>
+  );
+}
+
 export function FichaScreen() {
   const projectId = useActiveProject();
   const { data: project } = useProject(projectId);
@@ -659,6 +719,7 @@ export function FichaScreen() {
               {confirmReason ? <p className={s.muted}>{confirmReason}</p> : null}
               {confirm.error ? <ErrorNote>{confirm.error.message}</ErrorNote> : null}
             </Card>
+            {isTecnico ? <MissingValues ficha={ficha} projectId={projectId} /> : null}
             <Card title="Revisões">
               <Timeline
                 items={[...ficha.revisions].reverse().map((r) => ({

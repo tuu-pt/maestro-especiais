@@ -142,6 +142,8 @@ def describe(action: str, payload: dict[str, Any]) -> str:
             return "Atualizou o perfil de técnico"
         case "document.draft_downloaded":
             return f"Descarregou o rascunho do {payload.get('type', '')}"
+        case "ficha.manual_value":
+            return f"Acrescentou à mão o valor «{label}» (rev. {payload.get('revision', '')})"
         case "ficha.confirmed":
             return f"Confirmou a ficha-base rev. {payload.get('label', '')}"
         case "validation.requested":

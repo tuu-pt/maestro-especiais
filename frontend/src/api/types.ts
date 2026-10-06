@@ -172,6 +172,9 @@ export type Revision = {
   created_at: string;
 };
 
+/** A key of SPEC 7.2 without a value that the técnico may add by hand (Phase 6). */
+export type MissingKey = { key: string; label: string; group: string; unit: string | null; numeric: boolean };
+
 export type Ficha = {
   revision: Revision | null;
   revisions: Revision[];
@@ -184,6 +187,7 @@ export type Ficha = {
   open_conflicts: number;
   can_confirm: boolean;
   cal01_note: string;
+  missing_keys?: MissingKey[];
 };
 
 export type AuditEntry = {

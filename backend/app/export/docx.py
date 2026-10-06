@@ -6,6 +6,7 @@ the revision R<nn>; the document properties name TUU and the document, never peo
 """
 
 import io
+import re
 import zipfile
 from collections import Counter
 
@@ -24,7 +25,6 @@ from app.export import (
     draft_name,
     official_name,
 )
-from app.export.checks import MISSING
 from app.models import Document, FichaRevision, Project, TemplateBlock
 from app.profiles import revision_profile
 from app.review import conditions, file_version, header_revision
@@ -91,8 +91,9 @@ def export_docx(db: Session, store: ObjectStore, settings: Settings, document: D
         subject=SUBJECTS.get(project.phase, SUBJECTS["execucao"]),
     )
     data = draft_docx(db, store, document, values, options)
-    if official and MISSING in _visible_xml(data):
-        raise ExportRefused(["Há valores em falta na peça: acrescente-os à ficha-base."])
+    missing = sorted(set(re.findall(r"\[falta: ([^\]]+)\]", _visible_xml(data))))
+    if official and missing:  # labels only, never values
+        raise ExportRefused([f"Há valores em falta no {document.type}: {', '.join(missing)}."])
     name = (official_name(project.code, document.type, project.phase,
                           file_version(document.revision), "docx")
             if official else draft_name(project.code, document.type, "docx"))  # fmt: skip

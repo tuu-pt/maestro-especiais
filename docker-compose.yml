@@ -118,6 +118,8 @@ services:
       S3_ACCESS_KEY: ${S3_ACCESS_KEY}
       S3_SECRET_KEY: ${S3_SECRET_KEY}
       S3_BUCKET: ${S3_BUCKET:-maestro-especiais}
+      # Development: the worker also resolves the profile of dev:tecnico (exports, LLM guard)
+      DEV_AUTH: "true"
       # LLM (SPEC 6.1): the key and the model names only in the .env
       LLM_PROVIDER: ${LLM_PROVIDER:-gemini}
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}

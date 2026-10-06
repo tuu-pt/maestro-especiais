@@ -118,3 +118,16 @@ def test_libreoffice_converts_the_official_mdj(
     exported = export_docx(db, store, settings, document(db, r1, "MDJ"), official=True)
     report = check_docx(exported.data, official=True, libreoffice=True)
     assert report.ok and not report.notes, (report.problems, report.notes)
+
+
+def test_a_missing_value_refuses_the_official_export_and_says_which(
+    api: Api, db: Session, store: ObjectStore, r1: dict[str, Any]
+) -> None:
+    approve_all(api, db, r1)
+    no_profile = Settings()  # no DEV_AUTH: the development técnico has no profile here
+
+    with pytest.raises(ExportRefused) as refused:
+        export_docx(db, store, no_profile, document(db, r1, "MDJ"), official=True)
+
+    [reason] = refused.value.reasons
+    assert reason.startswith("Há valores em falta no MDJ: ") and "Nome do técnico" in reason

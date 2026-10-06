@@ -9,6 +9,13 @@ from app.models.document import (
     SectionVersion,
     ValueRef,
 )
+from app.models.equipment import (
+    Datasheet,
+    Equipment,
+    EquipmentParam,
+    ProjectEquipment,
+    Requirement,
+)
 from app.models.export import Export
 from app.models.ficha import (
     BomItem,
@@ -50,8 +57,11 @@ __all__ = [
     "Circuit",
     "CircuitSheet",
     "Citation",
+    "Datasheet",
     "Document",
     "DocumentRevision",
+    "Equipment",
+    "EquipmentParam",
     "Export",
     "FichaConflict",
     "FichaRevision",
@@ -59,8 +69,10 @@ __all__ = [
     "LlmCall",
     "PieceFacts",
     "Project",
+    "ProjectEquipment",
     "ProjectFile",
     "RegulationDoc",
+    "Requirement",
     "Section",
     "SectionVersion",
     "SourceDocument",

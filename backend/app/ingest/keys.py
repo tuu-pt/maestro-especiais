@@ -65,6 +65,7 @@ KEYS: dict[str, KeyInfo] = {
     "eq.portinhola": KeyInfo("Equipamentos", "Portinhola"),
     "eq.luminarias": KeyInfo("Equipamentos", "Luminárias"),
     "eq.quadros_modelo": KeyInfo("Equipamentos", "Quadros (modelo)"),
+    "eq.aparelhagem_serie": KeyInfo("Equipamentos", "Aparelhagem (série)"),
     # Peças desenhadas (PDF): index, title block and number of pages
     "pd.indice": KeyInfo("Peças desenhadas", "Índice das folhas"),
     "pd.n_paginas_pdf": KeyInfo("Peças desenhadas", "Páginas do PDF", numeric=True),

@@ -76,6 +76,10 @@ WITHOUT_CASE = {
     "pelo curador (informação, em R1 e R2)",
     "NUM-01": "número fora de marcador no texto do agente (tests/test_validation_engine.py)",
     "COE-02": "ficheiro com data posterior à ficha-base (tests/test_validation_rules.py)",
+    "EQP-01": "equipamento do CTE montado contra a ficha técnica "
+    "(tests/test_validation_equipment.py); R1 e R2 entram aqui como peças existentes",
+    "EQP-02": "ficha técnica com mais de 3 anos (tests/test_validation_equipment.py)",
+    "EQP-03": "equipamento sem ficha técnica (tests/test_validation_equipment.py)",
 }
 
 
@@ -198,5 +202,5 @@ def markdown(states: dict[str, dict[str, Any]]) -> str:
         out.append("")
     out += ["## Regras sem caso no Anexo C", "", "| Regra | Coberta por |", "|---|---|"]
     out += [f"| {rule} | {_cell(how)} |" for rule, how in WITHOUT_CASE.items()]
-    out += ["", "EQP-01 a EQP-03 são da Fase 7.", ""]
+    out += [""]
     return "\n".join(out)

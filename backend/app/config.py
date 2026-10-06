@@ -41,6 +41,7 @@ class Settings(BaseSettings):
     # Exports (Phase 6): links signed by the API (HMAC) and the service token of TUU Maestro (D9)
     export_link_secret: str = ""
     export_link_ttl_s: int = 24 * 3600
+    equipment_datasheet_max_age_years: int = 3  # EQP-02 (SPEC 9)
     maestro_service_token: str = ""
     # Fernet key for the technicians' profiles (make env generates one)
     profile_encryption_key: str = ""

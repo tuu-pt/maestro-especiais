@@ -80,5 +80,6 @@ Alertas que a validação encontra em R1 e R2 para além do Anexo C, para a equi
 | REF-02 | documento revogado (tests/test_validation_rules.py) e documentos por confirmar pelo curador (informação, em R1 e R2) |
 | NUM-01 | número fora de marcador no texto do agente (tests/test_validation_engine.py) |
 | COE-02 | ficheiro com data posterior à ficha-base (tests/test_validation_rules.py) |
-
-EQP-01 a EQP-03 são da Fase 7.
+| EQP-01 | equipamento do CTE montado contra a ficha técnica (tests/test_validation_equipment.py); R1 e R2 entram aqui como peças existentes |
+| EQP-02 | ficha técnica com mais de 3 anos (tests/test_validation_equipment.py) |
+| EQP-03 | equipamento sem ficha técnica (tests/test_validation_equipment.py) |

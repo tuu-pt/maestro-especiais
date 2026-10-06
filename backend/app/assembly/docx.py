@@ -5,6 +5,7 @@ Built on the package of the template document (styles, numbering, theme, headers
 - parametric: the same OOXML, each {{v:key}} replaced in the w:t it is in (the run keeps its
   formatting); missing values are written as "[falta: …]";
 - adaptive: the current version's paragraphs, with the paragraph properties of the source text;
+- the illustration of an equipment a person chose (Phase 7) after the entry of its slot;
 - an entry changed by hand (an unlocked fixed block, an edited parametric one) leaves as text
   with the paragraph properties of the source (Phase 4 decision [A CONFIRMAR]);
 - fragments of another reference project: their relationships are copied into the package
@@ -32,6 +33,7 @@ from sqlalchemy.orm import Session
 from app.assembly import toc
 from app.assembly.assemble import PLACEHOLDER, omitted
 from app.assembly.values import ValueSource, label
+from app.equipment.project import chosen_images, image_fragment
 from app.library.docx_blocks import DOCUMENT, DOCUMENT_RELS, PKG_R, STYLES, rebuild, w
 from app.library.facts import Fact, signature_facts, text_fact
 from app.library.placeholders import substitute
@@ -343,6 +345,17 @@ def _update_fields(package: _Package) -> None:
                                          standalone=True)  # fmt: skip
 
 
+def _image_fragment(db: Session, store: ObjectStore, package: _Package,
+                    template: SourceDocument, key: str, values: ValueSource) -> str:  # fmt: skip
+    found = image_fragment(db, key)
+    if found is None:
+        return ""
+    ooxml, project, rels = found
+    if project != template.project_code:
+        ooxml = _remap(package, store, ooxml, rels)
+    return fill(ooxml, values)
+
+
 def draft_docx(db: Session, store: ObjectStore, document: Document, values: ValueSource,
                options: Options | None = None) -> bytes:  # fmt: skip
     options = options or Options()
@@ -351,6 +364,7 @@ def draft_docx(db: Session, store: ObjectStore, document: Document, values: Valu
         raise ValueError("Sem documento modelo para o rascunho (make seed-library).")
     package = _Package(store.get(template.package_key))
     fragments: list[str] = []
+    images = chosen_images(db, document)
     for section in document.sections:
         if not section.active:
             continue
@@ -361,7 +375,11 @@ def draft_docx(db: Session, store: ObjectStore, document: Document, values: Valu
         first = next((v for v in section.versions if v.number == 1), version)
         nodes = version.content.get("content") or []
         now, assembled = by_entry(nodes), by_entry(first.content.get("content") or [])
+        later: list[str] = []
         for i, entry in enumerate(block.body_template):
+            fragments += later  # the illustrations chosen for the entry before
+            later = [_image_fragment(db, store, package, template, key, values)
+                     for key in images.get((section.id, i), [])]  # fmt: skip
             if omitted(entry):
                 continue
             if entry["mode"] != "adaptive" and entry.get("ooxml"):
@@ -380,6 +398,7 @@ def draft_docx(db: Session, store: ObjectStore, document: Document, values: Valu
             for node in nodes:
                 if node.get("attrs", {}).get("entry") == i and node["type"] == "paragraph":
                     fragments.append(_paragraph(_text_of(node, values), ppr))
+        fragments += later
     body = rebuild(package.data, fragments)
     _headers(package, template, db, values, options)
     _update_fields(package)

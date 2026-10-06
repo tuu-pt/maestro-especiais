@@ -126,12 +126,15 @@ class ProjectEquipment(Entity):
     """The equipment of one slot (a block entry) of an assembled CTE section."""
 
     __tablename__ = "project_equipment"
-    __table_args__ = (UniqueConstraint("section_id", "entry", name="uq_project_equipment_slot"),)
+    __table_args__ = (
+        UniqueConstraint("section_id", "entry", "slot", name="uq_project_equipment_slot"),
+    )
 
     project_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("project.id", ondelete="CASCADE"))
     document_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("document.id", ondelete="CASCADE"))
     section_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("section.id", ondelete="CASCADE"))
     entry: Mapped[int] = mapped_column(Integer)  # the block entry that names the equipment
+    slot: Mapped[int] = mapped_column(Integer, default=0)  # its order in the entry
     block_key: Mapped[str] = mapped_column(String(200))
     default_equipment_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("equipment.id", ondelete="SET NULL")

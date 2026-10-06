@@ -57,11 +57,11 @@ def test_general_conditions_are_locked(cte: dict[str, Any]) -> None:
     assert len(fixed) == 3 and all(s["locked"] and s["status"] == "generated" for s in fixed)
 
 
-def test_equipment_slots_are_empty_and_marked_for_phase_7(cte: dict[str, Any]) -> None:
+def test_equipment_slots_point_to_the_library(cte: dict[str, Any]) -> None:
     slots = [slot for s in cte["sections"] for slot in s["equipment_slots"]]
 
-    assert slots
-    assert all(slot["phase"] == 7 and slot["equipment"] is None for slot in slots)
+    assert slots and all(slot["phase"] == 7 for slot in slots)
+    assert any(slot.get("equipment_id") for slot in slots)  # Phase 7: the item of each line
     assert all(s["equipment_slots"] == [] for s in cte["sections"] if s["kind"] != "block")
 
 
@@ -83,4 +83,4 @@ def test_an_image_of_another_project_only_is_left_out(cte: dict[str, Any]) -> No
     notes = {s["title"]: s["status_note"] or "" for s in cte["sections"] if s["active"]}
     for title in ("Caixas", "Detetores de Movimento"):
         assert "Imagem de um só projeto de referência (" in notes[title], title
-        assert "R2" in notes[title] and "Fase 7" in notes[title]
+        assert "R2" in notes[title] and "ecrã Equipamentos" in notes[title]

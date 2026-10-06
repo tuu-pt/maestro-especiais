@@ -219,7 +219,7 @@ def build(db: Session, settings: Settings, document: Document, fixtures: Path, c
             if omitted(e):
                 report.differences.append(Difference(
                     section.title, i, "structure", "imagem de um só projeto",
-                    f"só em {e.get('project')}: não incluída (equipamento, Fase 7)"))  # fmt: skip
+                    f"só em {e.get('project')}: não incluída (por escolher)"))  # fmt: skip
                 continue
             if not idx and e["mode"] != "adaptive":
                 report.differences.append(Difference(section.title, i, "structure",

@@ -18,6 +18,7 @@ from app.assembly.assemble import omitted
 from app.assembly.docx import Options, by_entry, draft_docx
 from app.assembly.values import ValueSource
 from app.config import Settings
+from app.equipment.project import chosen_images, image_fragment
 from app.export import (
     SUBJECTS,
     TITLES,
@@ -62,6 +63,11 @@ def expected_counts(db: Session, document: Document) -> Counter[str]:
                 continue
             if now.get(i, []) == assembled.get(i, []):
                 total += ooxml_counts(entry["ooxml"])
+    for keys in chosen_images(db, document).values():  # the illustrations chosen (Phase 7)
+        for key in keys:
+            found = image_fragment(db, key)
+            if found is not None:
+                total += ooxml_counts(found[0])
     return total
 
 

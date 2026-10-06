@@ -166,6 +166,7 @@ def upgrade() -> None:
         sa.Column("document_id", sa.UUID(), nullable=False),
         sa.Column("section_id", sa.UUID(), nullable=False),
         sa.Column("entry", sa.Integer(), nullable=False),
+        sa.Column("slot", sa.Integer(), nullable=False),
         sa.Column("block_key", sa.String(length=200), nullable=False),
         sa.Column("default_equipment_id", sa.UUID(), nullable=True),
         sa.Column("equipment_id", sa.UUID(), nullable=True),
@@ -194,7 +195,7 @@ def upgrade() -> None:
         sa.ForeignKeyConstraint(["project_id"], ["project.id"], ondelete="CASCADE"),
         sa.ForeignKeyConstraint(["section_id"], ["section.id"], ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("id"),
-        sa.UniqueConstraint("section_id", "entry", name="uq_project_equipment_slot"),
+        sa.UniqueConstraint("section_id", "entry", "slot", name="uq_project_equipment_slot"),
     )
     op.create_index("ix_equipment_param_equipment_id", "equipment_param", ["equipment_id"])
     op.create_index("ix_equipment_requirement_block_key", "equipment_requirement", ["block_key"])

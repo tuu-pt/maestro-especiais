@@ -8,6 +8,7 @@ from app.api import (
     drafting,
     editor,
     events,
+    exports,
     ficha,
     forms,
     knowledge,
@@ -32,3 +33,4 @@ api_router.include_router(editor.router)
 api_router.include_router(forms.router)
 api_router.include_router(validation.router)
 api_router.include_router(review.router)
+api_router.include_router(exports.router)

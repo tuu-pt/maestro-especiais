@@ -38,6 +38,8 @@ GENERATED: dict[str, Callable[[], str]] = {
     "S3_ACCESS_KEY": _access_key,
     "S3_SECRET_KEY": _token,
     "PROFILE_ENCRYPTION_KEY": _fernet_key,
+    "EXPORT_LINK_SECRET": _token,
+    "MAESTRO_SERVICE_TOKEN": _token,
 }
 
 DEFAULTS: dict[str, str] = {

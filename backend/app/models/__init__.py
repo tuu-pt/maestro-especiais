@@ -9,6 +9,7 @@ from app.models.document import (
     SectionVersion,
     ValueRef,
 )
+from app.models.export import Export
 from app.models.ficha import (
     BomItem,
     Circuit,
@@ -51,6 +52,7 @@ __all__ = [
     "Citation",
     "Document",
     "DocumentRevision",
+    "Export",
     "FichaConflict",
     "FichaRevision",
     "FichaValue",

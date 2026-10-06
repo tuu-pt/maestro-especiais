@@ -76,6 +76,8 @@ services:
       LLM_RPD: ${LLM_RPD:-200}
       PROFILE_ENCRYPTION_KEY: ${PROFILE_ENCRYPTION_KEY:-}
       GROQ_API_KEY: ${GROQ_API_KEY:-}
+      EXPORT_LINK_SECRET: ${EXPORT_LINK_SECRET:-}
+      MAESTRO_SERVICE_TOKEN: ${MAESTRO_SERVICE_TOKEN:-}
       LLM_FALLBACK_PROVIDER: ${LLM_FALLBACK_PROVIDER:-}
       LLM_FALLBACK_MODEL_DRAFTING: ${LLM_FALLBACK_MODEL_DRAFTING:-}
       LLM_FALLBACK_MODEL_EXTRACTION: ${LLM_FALLBACK_MODEL_EXTRACTION:-}
@@ -106,7 +108,7 @@ services:
 
   worker:
     build: ./backend
-    command: ["rq", "worker", "ingest", "llm", "validation", "--url", "redis://:${REDIS_PASSWORD}@redis:6379/0"]
+    command: ["rq", "worker", "ingest", "llm", "validation", "export", "--url", "redis://:${REDIS_PASSWORD}@redis:6379/0"]
     environment:
       # The mounted code, not the copy installed in the image (rq does not add the workdir).
       PYTHONPATH: /srv/backend
@@ -125,6 +127,8 @@ services:
       LLM_RPD: ${LLM_RPD:-200}
       PROFILE_ENCRYPTION_KEY: ${PROFILE_ENCRYPTION_KEY:-}
       GROQ_API_KEY: ${GROQ_API_KEY:-}
+      EXPORT_LINK_SECRET: ${EXPORT_LINK_SECRET:-}
+      MAESTRO_SERVICE_TOKEN: ${MAESTRO_SERVICE_TOKEN:-}
       LLM_FALLBACK_PROVIDER: ${LLM_FALLBACK_PROVIDER:-}
       LLM_FALLBACK_MODEL_DRAFTING: ${LLM_FALLBACK_MODEL_DRAFTING:-}
       LLM_FALLBACK_MODEL_EXTRACTION: ${LLM_FALLBACK_MODEL_EXTRACTION:-}

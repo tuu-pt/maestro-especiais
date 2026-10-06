@@ -140,6 +140,20 @@ def describe(action: str, payload: dict[str, Any]) -> str:
             return f"Descarregou {title} pré-preenchido"
         case "profile.updated":
             return "Atualizou o perfil de técnico"
+        case "export.requested":
+            kind = "o conjunto oficial" if payload.get("kind") == "official" else "um rascunho"
+            return f"Pediu a exportação de {kind} ({payload.get('version', '')})"
+        case "export.done":
+            kind = "Conjunto oficial" if payload.get("kind") == "official" else "Rascunho"
+            files, version = payload.get("files", 0), payload.get("version", "")
+            return f"{kind} exportado ({files} ficheiros, {version})"
+        case "export.failed":
+            return "A exportação falhou"
+        case "export.downloaded":
+            via = " por link assinado" if payload.get("via") == "link" else ""
+            return f"Descarregou {payload.get('file', 'a exportação')}{via}"
+        case "export.integration_read":
+            return f"O TUU Maestro leu o conjunto oficial ({payload.get('version', '')})"
         case "document.approved":
             return f"Aprovou o {payload.get('type', '')} (rev. {payload.get('revision', '')})"
         case "document.reopened":

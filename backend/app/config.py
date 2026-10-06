@@ -38,6 +38,10 @@ class Settings(BaseSettings):
     llm_max_retries: int = 4  # on 429/503
     llm_backoff_s: float = 2.0  # first wait, doubled at each retry
     llm_timeout_s: float = 60.0
+    # Exports (Phase 6): links signed by the API (HMAC) and the service token of TUU Maestro (D9)
+    export_link_secret: str = ""
+    export_link_ttl_s: int = 24 * 3600
+    maestro_service_token: str = ""
     # Fernet key for the technicians' profiles (make env generates one)
     profile_encryption_key: str = ""
 

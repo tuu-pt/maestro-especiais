@@ -11,7 +11,7 @@ WORKDIR /srv/backend
 # LibreOffice (MPL) without a desktop: PDF of the exported pieces and the fidelity check (Phase 6)
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
-       libreoffice-writer-nogui libreoffice-calc-nogui fonts-dejavu-core \
+       libreoffice-writer-nogui libreoffice-calc-nogui fonts-dejavu-core fonts-crosextra-carlito fonts-liberation2 \
     && rm -rf /var/lib/apt/lists/*
 
 COPY pyproject.toml ./

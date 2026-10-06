@@ -12,7 +12,9 @@ Built on the package of the template document (styles, numbering, theme, headers
 - headers and footers: the template project's technician, date and revision (R00) become the
   target's (the date only when the técnico wrote it, P8);
 - the draft carries a watermark in every header; the document properties name TUU, not people;
-- Word updates the fields (the index) when the file is opened.
+- the index's entries are written from the document's own titles (app.assembly.toc); Word
+  updates their page numbers when the file is opened, unless the export wrote them
+  (app.export.toc, with LibreOffice).
 Inactive sections are left out. Personal values are only written here, in the backend.
 """
 
@@ -27,9 +29,10 @@ from typing import Any
 from lxml import etree
 from sqlalchemy.orm import Session
 
+from app.assembly import toc
 from app.assembly.assemble import PLACEHOLDER, omitted
 from app.assembly.values import ValueSource, label
-from app.library.docx_blocks import DOCUMENT, DOCUMENT_RELS, PKG_R, rebuild, w
+from app.library.docx_blocks import DOCUMENT, DOCUMENT_RELS, PKG_R, STYLES, rebuild, w
 from app.library.facts import Fact, signature_facts, text_fact
 from app.library.placeholders import substitute
 from app.library.sources import media_key
@@ -54,6 +57,7 @@ EXT = "http://schemas.openxmlformats.org/officeDocument/2006/extended-properties
 VML = "urn:schemas-microsoft-com:vml"
 OFFICE = "urn:schemas-microsoft-com:office:office"
 WP = "http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing"
+NUMBERING = "word/numbering.xml"
 
 
 @dataclass
@@ -381,4 +385,10 @@ def draft_docx(db: Session, store: ObjectStore, document: Document, values: Valu
     _update_fields(package)
     _properties(package, options)
     document_xml = _unique_drawing_ids(zipfile.ZipFile(io.BytesIO(body)).read(DOCUMENT))
+    names = package.zip.namelist()
+    document_xml = toc.rebuild(
+        document_xml,
+        package.zip.read(STYLES) if STYLES in names else None,
+        package.zip.read(NUMBERING) if NUMBERING in names else None,
+    )
     return package.write(document_xml)

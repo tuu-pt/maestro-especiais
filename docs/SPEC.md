@@ -350,7 +350,8 @@ A biblioteca inicial de blocos é **extraída dos documentos de referência** (F
   provisório (até haver modelos TUU vazios); fixos e paramétricos com o OOXML original e os valores
   escritos na primeira run; adaptativos como parágrafos novos com as propriedades do parágrafo de
   origem; imagens e relações de R2 copiadas do S3; cabeçalho com `tec.nome` e mês/ano paramétricos;
-  campos (índice) atualizados ao abrir. Um paramétrico editado à mão exporta-se como texto com o
+  índice escrito a partir dos títulos da peça (as páginas, na exportação, pelo LibreOffice; sem ele, o Word
+  atualiza-as ao abrir). Um paramétrico editado à mão exporta-se como texto com o
   estilo do parágrafo.
 - A diferença para o original de R1 está em `docs/fase4-diff-R1.md` (`make diff-report`).
 
@@ -533,6 +534,9 @@ Os ecrãs seguem o layout, os estados e as interações do mock-up, adaptados a 
 - Propriedades do documento: autor, «último a alterar» e empresa = TUU; título `<CÓDIGO> · <peça>`; nunca nomes de
   pessoas. Nada de `{{v:…}}`, marcas do editor nem `[falta: …]` no oficial (a exportação recusa e diz que valores
   faltam, só pelas etiquetas).
+- **Índice**: as entradas saem dos títulos da própria peça (secções omitidas, novas ou editadas; numeração e
+  marcadores `_Toc`), com o estilo das entradas do modelo; os números de página saem de um PDF do LibreOffice
+  (com fontes métricas compatíveis: Carlito, Liberation) e o ficheiro já não pede ao Word para atualizar os campos.
 - **Verificações automáticas** (`app/export/checks.py`), em cada exportação e nos testes: pacote (tipos de conteúdo,
   relações), IDs únicos, abre com o python-docx, estilos usados existem no modelo, imagens/fórmulas/tabelas iguais às
   secções de origem, LibreOffice converte (headless, na imagem do backend); .xlsm: todas as partes exceto a folha iguais

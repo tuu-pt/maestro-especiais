@@ -185,7 +185,7 @@ def draft(document_id: uuid.UUID, db: DB, store: Store, user: Writer, settings: 
 
     document = get_document(db, document_id)
     try:
-        exported = export_docx(db, store, settings, document, official=False)
+        exported = export_docx(db, store, settings, document, official=False, paginate=False)
     except ExportRefused as exc:
         raise HTTPException(status.HTTP_409_CONFLICT, str(exc)) from exc
     except ValueError as exc:

@@ -118,6 +118,8 @@ def test_libreoffice_converts_the_official_mdj(
     exported = export_docx(db, store, settings, document(db, r1, "MDJ"), official=True)
     report = check_docx(exported.data, official=True, libreoffice=True)
     assert report.ok and not report.notes, (report.problems, report.notes)
+    settings_xml = zipfile.ZipFile(io.BytesIO(exported.data)).read("word/settings.xml")
+    assert b"updateFields" not in settings_xml  # the index has its page numbers: Word does not ask
 
 
 def test_a_missing_value_refuses_the_official_export_and_says_which(

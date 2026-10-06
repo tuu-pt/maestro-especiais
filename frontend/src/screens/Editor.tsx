@@ -3,7 +3,7 @@
 import { useId, useState } from "react";
 import { useSearchParams } from "react-router";
 
-import { ApiError, download } from "../api/client";
+import { ApiError } from "../api/client";
 import { useProjectEvents } from "../api/events";
 import {
   useAssemble,
@@ -21,6 +21,7 @@ import {
 import type { DocSection, ProjectDocument, SectionContent, SectionEvent } from "../api/types";
 import { useActiveProject } from "../app/activeProject";
 import { DiffView } from "../components/DiffView";
+import { DownloadButton } from "../components/DownloadButton";
 import { BlockModeBadge, Button, Buttons, Chip, EmptyState, ErrorNote, Pill, type Tone } from "../components/ui";
 import { generatedParagraphs, hasPending } from "../lib/content";
 import { Checklist, Loading, NoProject } from "./common";
@@ -158,29 +159,6 @@ function ProjectEditor({ projectId }: { projectId: string }) {
       )}
       {canWrite ? <FormsPanel projectId={projectId} /> : null}
     </div>
-  );
-}
-
-function DownloadButton({ path, filename, children }: { path: string; filename: string; children: string }) {
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  return (
-    <>
-      <Button
-        small
-        disabled={busy}
-        onClick={() => {
-          setBusy(true);
-          setError(null);
-          download(path, filename)
-            .catch((e: unknown) => setError(e instanceof Error ? e.message : "Erro ao descarregar."))
-            .finally(() => setBusy(false));
-        }}
-      >
-        {children}
-      </Button>
-      {error ? <ErrorNote>{error}</ErrorNote> : null}
-    </>
   );
 }
 

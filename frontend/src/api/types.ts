@@ -423,6 +423,80 @@ export type ProjectDocument = {
   sections: DocSection[] | null;
 };
 
+/** One condition of the approval card (Phase 6): what is required, why it fails, where to fix it. */
+export type ApprovalCondition = {
+  code: "assembled" | "ficha" | "sections" | "blocks" | "validation";
+  text: string;
+  ok: boolean;
+  reason: string | null;
+  link: string | null;
+  items: { section_id: string; order: number; title: string; reason: string }[];
+};
+
+/** An approved revision of a document: rev. A, file V0, header R00. */
+export type DocRevision = {
+  number: number;
+  label: string;
+  file_version: string;
+  header_revision: string;
+  approved_by: string;
+  approved_by_name: string | null;
+  approved_at: string;
+  header_date: string | null;
+  sections: number;
+  reopened_by_name: string | null;
+  reopened_at: string | null;
+  reopen_reason: string | null;
+};
+
+export type Approval = {
+  document_id: string;
+  type: "MDJ" | "CTE";
+  status: "draft" | "in_review" | "approved";
+  origin: "assembled" | "existing";
+  revision: number;
+  revision_label: string;
+  file_version: string;
+  header_revision: string;
+  header_date: string | null;
+  responsible_id: string | null;
+  responsible_name: string | null;
+  approved_by_name: string | null;
+  approved_at: string | null;
+  conditions: ApprovalCondition[];
+  ready: boolean;
+  can_approve: boolean;
+  why_not: string | null;
+  revisions: DocRevision[];
+  tecnicos: { id: string; name: string }[];
+};
+
+export type ExportFile = {
+  name: string;
+  piece: string;
+  revision: string | null;
+  sha256: string;
+  size: number;
+  by_hand?: string[] | null;
+};
+
+/** A draft or the official set of the project (Phase 6). */
+export type ProjectExport = {
+  id: string;
+  kind: "draft" | "official";
+  status: "queued" | "running" | "done" | "failed";
+  message: string | null;
+  version: string;
+  with_pdf: boolean;
+  zip_name: string | null;
+  zip_size: number | null;
+  zip_sha256: string | null;
+  files: ExportFile[];
+  created_at: string;
+  created_by_name: string | null;
+  finished_at: string | null;
+};
+
 /** A section at an approved revision against another one or now (Phase 6). */
 export type DiffSection = {
   section_id: string;

@@ -37,8 +37,9 @@ def entries(document_xml: bytes) -> list[tuple[str, str]]:
     root = etree.fromstring(document_xml)
     out = []
     for link in root.iter(w("hyperlink")):
-        if (link.get(w("anchor")) or "").startswith("_Toc"):
-            out.append((link.get(w("anchor")), " | ".join(t.text or "" for t in link.iter(w("t")))))
+        anchor = link.get(w("anchor")) or ""
+        if anchor.startswith("_Toc"):
+            out.append((anchor, " | ".join(t.text or "" for t in link.iter(w("t")))))
     return out
 
 

@@ -438,7 +438,7 @@ Implementação (Fase 5): regras determinísticas, sem LLM, sobre factos extraí
 | REF-03 | Referências | Referência incompleta, ex.: "secção das RTIEBT" ou "secções da RTIEBT" sem número | Aviso |
 | NUM-01 | Referências | Número no texto sem origem (fora de *placeholder* e da lista branca) | Crítico |
 | COE-01 | Coerência | Quantidade de um elemento (quadros, carregadores, módulos, luminárias…) difere entre peças e ficha-base | Crítico se afetar MDJ ou CTE; aviso se afetar só o MQT |
-| COE-02 | Coerência | Fonte com data posterior à ficha-base e que diverge dela → propor atualização da **ficha** | Aviso |
+| COE-02 | Coerência | Fonte com data posterior à ficha-base e que diverge dela → propor atualização da **ficha** (ficheiros pela data de carregamento; peças desenhadas pelo mês da carimbadura) | Aviso |
 | COE-03 | Coerência | Sistema presente na ficha ou na Tabela de Cálculo sem bloco correspondente na MDJ ou no CTE, ou o inverso (ex.: troços `ENT` sem bloco de canalizações enterradas) | Aviso |
 | COE-04 | Coerência | Identificação diferente entre peças: requerente, obra, localização, tipo de utilização ou dados do técnico (MDJ, CTE, MQT, ficha eletrotécnica, identificação, termo, carimbadura dos desenhos) | Crítico |
 | COE-05 | Coerência | Potência instalada ou a alimentar diferente entre ficha eletrotécnica, identificação, MDJ, CTE e 1.ª linha da Tabela de Cálculo | Crítico |

@@ -149,6 +149,9 @@ Decisões da Fase 5 (28 set 2026; as do plano aprovado pelo utilizador, o resto 
   sem quantidades): tipos L#/SNC da lista do CTE/MDJ (secções de iluminação, não de comandos) contra os artigos do
   MQT/LPU (designação «L1», «L8 / L7», «L1 - Luminária…»); referência = MQT, depois LPU; variantes contam como o tipo
   (L5.1, L5.2 → L5); aviso; linha «Tipos de luminárias» na matriz. R1 e R2 coerentes (sem alertas novos).
+- [A CONFIRMAR] COE-02 (6 out 2026): as peças desenhadas datam-se pelo mês da carimbadura (`pd.carimbadura.data`, o
+  mais recente), não pelo dia do carregamento; são «mais recentes» só num mês posterior ao da confirmação da ficha-base
+  (`Piece.date` = `2026-06`, `date_source` = `carimbadura`). Os outros ficheiros continuam pela data de carregamento.
 - [A CONFIRMAR] COE-04: forma mais curta = igual (nome curto na capa, obra abreviada na carimbadura); dois ou mais
   campos diferentes ou vazios → «reaproveitada de outro projeto» (C7); técnico comparado entre peças, leitura
   «Confirmar com o perfil do técnico» (C3).
@@ -368,5 +371,5 @@ Decisões da Fase 0:
   pacote de R1) e dos formulários, a convenção de nomes confirmada pela TUU, o curador (D7) para haver conjunto oficial.
   Trabalho futuro da Fase 6: PDF assinado,
   integração mais funda com o TUU Maestro (D9). Trabalho futuro da Fase 5: citações com locator
-  nas peças humanas, COE-02 por data de desenho (carimbadura), extração assistida por LLM para o que fica «não comparável».
+  nas peças humanas, extração assistida por LLM para o que fica «não comparável».
   Continuam pendentes D7 (curador), D8 (esqueletos), D5 (dados reais no LLM; agora também a Groq) e D6 (Entra ID).

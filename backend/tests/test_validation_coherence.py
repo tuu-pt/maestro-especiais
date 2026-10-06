@@ -1,14 +1,17 @@
 """COE-01 to COE-06: how values are compared (task 4b). R1/R2 in test_validation_rules.py."""
 
+from datetime import UTC, datetime
 from types import SimpleNamespace
 from typing import Any
 
 import pytest
 
 from app.validation.context import Context
+from app.validation.extract.files import TITLE_BLOCK_DATE, date_drawings
 from app.validation.extract.text import LUMINAIRE_TYPES, luminaire_fact
+from app.validation.normalize import month_year, shown_date
 from app.validation.pieces import Fact, Piece, PieceData
-from app.validation.rules import coe_01
+from app.validation.rules import coe_01, coe_02
 from app.validation.rules.coe_04 import equal
 from app.validation.rules.coe_06 import _earth, base
 
@@ -59,3 +62,46 @@ def test_luminaire_types_are_compared_with_the_bill_of_quantities() -> None:
 
 def test_without_a_bill_of_quantities_the_luminaires_are_not_compared() -> None:
     assert coe_01.luminaires(_context(CTE=["L1"])) == []
+
+
+@pytest.mark.parametrize(
+    ("written", "iso"),
+    [("JUNHO 2026", "2026-06"), ("Março de 2026", "2026-03"), ("janeiro/2026", "2026-01"),
+     ("06/2026", "2026-06"), ("01/26", "2026-01"), ("13/2026", None), ("Coimbra", None)],
+)  # fmt: skip
+def test_the_month_of_a_title_block(written: str, iso: str | None) -> None:
+    assert month_year(written) == iso
+
+
+def test_dates_are_shown_the_portuguese_way() -> None:
+    assert shown_date("2026-03") == "março de 2026"
+    assert shown_date("2026-10-06") == "06/10/2026"
+
+
+def _drawings(title_block: list[str], confirmed: datetime) -> Context:
+    piece = Piece("DRAWINGS", "DRAWINGS", "file", "", date="2026-10-06")  # uploaded today
+    facts = [Fact(TITLE_BLOCK_DATE, d, "DRAWINGS", {}) for d in title_block]
+    facts.append(Fact("id.obra.designacao", "Moradia MBERAL", "DRAWINGS", {}))
+    data = {"DRAWINGS": PieceData(facts=facts)}
+    date_drawings([piece], data)
+    revision: Any = SimpleNamespace(confirmed_at=confirmed)
+    ficha: Any = {"id.obra.designacao": SimpleNamespace(value="Biblioteca")}
+    return Context(None, None, revision, {"DRAWINGS": piece}, data, ficha)  # type: ignore[arg-type]
+
+
+def test_the_drawings_are_dated_by_their_title_block() -> None:
+    ctx = _drawings(["MAIO 2026", "JUNHO 2026"], datetime(2026, 5, 20, tzinfo=UTC))
+    [finding] = coe_02.check(ctx)
+
+    assert ctx.pieces["DRAWINGS"].date == "2026-06"  # the latest month, not the upload day
+    assert ctx.pieces["DRAWINGS"].date_source == "carimbadura"
+    assert finding.message == (
+        "Peças desenhadas (de junho de 2026 pela carimbadura) é posterior à ficha-base "
+        "(confirmada a 20/05/2026) e diverge em «Designação da obra»."
+    )
+
+
+def test_drawings_of_the_month_of_the_ficha_are_not_more_recent() -> None:
+    assert coe_02.check(_drawings(["JUNHO 2026"], datetime(2026, 6, 3, tzinfo=UTC))) == []
+    # uploaded after the ficha, but drawn before it: not a more recent source
+    assert coe_02.check(_drawings(["ABRIL 2026"], datetime(2026, 6, 3, tzinfo=UTC))) == []

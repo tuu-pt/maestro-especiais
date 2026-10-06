@@ -35,7 +35,7 @@ from app.validation.extract.text import (
     luminaire_fact,
     personal,
 )
-from app.validation.normalize import shown_number
+from app.validation.normalize import month_year, shown_number
 from app.validation.pieces import Fact, Piece, PieceData
 
 KIND_OF_FILE = {
@@ -201,6 +201,22 @@ def read_bom(sources: Sources, piece: Piece) -> PieceData:
                 facts.append(Fact(CABLE, d.family, piece.ref, {"cell": line.source_ref},
                                   shown=d.raw, note=line.designation[:160]))  # fmt: skip
     return PieceData(facts=facts, warnings=reading.warnings)
+
+
+TITLE_BLOCK_DATE = "pd.carimbadura.data"
+
+
+def date_drawings(pieces: list[Piece], data: dict[str, PieceData]) -> None:
+    """The drawings are dated by their title block (the latest month it says), not by the day
+    the file was uploaded: COE-02 then compares a later month with the ficha-base (an ISO month
+    is after the days of the months before it, and not after any day of its own month)."""
+    for piece in pieces:
+        if piece.kind != "DRAWINGS" or piece.ref not in data:
+            continue
+        months = [m for f in data[piece.ref].facts if f.key == TITLE_BLOCK_DATE
+                  if (m := month_year(f.value))]  # fmt: skip
+        if months:
+            piece.date, piece.date_source = max(months), "carimbadura"
 
 
 @extractor("file:DRAWINGS")

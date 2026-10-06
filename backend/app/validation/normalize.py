@@ -34,6 +34,36 @@ def number(value: Any) -> float | None:
         return None
 
 
+MONTHS = ("janeiro", "fevereiro", "marco", "abril", "maio", "junho", "julho", "agosto",
+          "setembro", "outubro", "novembro", "dezembro")  # fmt: skip
+_MONTH_YEAR = re.compile(rf"^({'|'.join(MONTHS)})\s*(?:de\s+|/\s*)?(\d{{4}})$")
+_NUMERIC_MONTH_YEAR = re.compile(r"^(\d{1,2})\s*[/.-]\s*(\d{4}|\d{2})$")
+
+
+def month_year(value: Any) -> str | None:
+    """«JUNHO 2026», «junho de 2026», «06/2026» or «06/26» as an ISO month (2026-06)."""
+    folded = text(value)
+    m = _MONTH_YEAR.match(folded)
+    if m:
+        return f"{m.group(2)}-{MONTHS.index(m.group(1)) + 1:02d}"
+    m = _NUMERIC_MONTH_YEAR.match(folded)
+    if m and 1 <= int(m.group(1)) <= 12:
+        year = m.group(2) if len(m.group(2)) == 4 else f"20{m.group(2)}"
+        return f"{year}-{int(m.group(1)):02d}"
+    return None
+
+
+def shown_date(iso: str | None) -> str:
+    """2026-06 → «junho de 2026»; 2026-10-06 → «06/10/2026»."""
+    if not iso:
+        return "(sem data)"
+    parts = iso.split("-")
+    if len(parts) == 2:
+        month = MONTHS[int(parts[1]) - 1].replace("marco", "março")
+        return f"{month} de {parts[0]}"
+    return "/".join(reversed(parts))
+
+
 def text(value: Any) -> str:
     """Folded text: no accents, lower case, single spaces, no punctuation at the ends."""
     folded = fold(str(value or ""))

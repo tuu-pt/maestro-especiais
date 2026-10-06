@@ -235,14 +235,14 @@ def _headers(package: _Package, template: SourceDocument, db: Session, values: V
                 parent.replace(p, sub.element)
                 changed = True
         if name.startswith("word/header") and options.watermark:
-            _watermark(root, options.watermark)
+            watermark(root, options.watermark)
             changed = True
         if changed:
             xml = etree.tostring(root, xml_declaration=True, encoding="UTF-8", standalone=True)
             package.parts[name] = fill(xml.decode("utf-8"), values, extra).encode("utf-8")
 
 
-def _watermark(header: Any, text: str) -> None:
+def watermark(header: Any, text: str) -> None:
     """A diagonal text shape behind the page, as Word's own watermark (VML), in a header."""
     p = etree.SubElement(header, w("p"))
     r = etree.SubElement(p, w("r"))

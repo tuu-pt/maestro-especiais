@@ -22,7 +22,7 @@ from app.auth import CurrentUser, User, require_role
 from app.db import get_session
 from app.library.preview import label, preview
 from app.library.rules import RuleError, parse
-from app.models import AuditEvent, SourceSection, TemplateBlock
+from app.models import AuditEvent, Requirement, SourceSection, TemplateBlock
 
 router = APIRouter(prefix="/library", tags=["biblioteca de blocos"])
 
@@ -175,9 +175,16 @@ def review_block(block_id: uuid.UUID, body: DecisionIn, db: DB, user: Curador) -
     b.status = body.decision
     b.reviewed_by, b.reviewed_at = user.id, datetime.now(UTC)
     b.review_note = (body.note or "").strip() or None
+    requirements = 0
+    if body.decision == "approved":  # the requirements of a CTE block are approved with it
+        for r in db.scalars(select(Requirement).where(
+                Requirement.block_key == b.key, Requirement.status == "proposed")):  # fmt: skip
+            r.status, r.reviewed_by, r.reviewed_at = "approved", user.id, b.reviewed_at
+            requirements += 1
     record(
         db, user, f"library.block_{body.decision}", "template_block", b.id,
-        {"key": b.key, "title": b.title, "doc_type": b.doc_type, "from": before},
+        {"key": b.key, "title": b.title, "doc_type": b.doc_type, "from": before,
+         **({"requirements_approved": requirements} if requirements else {})},
         project_id=None,
     )  # fmt: skip
     db.commit()

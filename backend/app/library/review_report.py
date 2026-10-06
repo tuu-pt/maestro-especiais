@@ -142,6 +142,43 @@ def _corpus(db: Session) -> Iterator[str]:
     yield ""
 
 
+def _equipment(db: Session) -> Iterator[str]:
+    from app.equipment import CATEGORIES
+    from app.equipment.params import shown
+    from app.models import Equipment, Requirement
+
+    items = db.scalars(select(Equipment).order_by(Equipment.category, Equipment.code,
+                                                  Equipment.name)).all()  # fmt: skip
+    yield (f"{len(items)} equipamentos de referência propostos dos CTE de R1 e R2. Nenhum tem "
+           "ficha técnica: carregá-las no ecrã G e rever os parâmetros (EQP-01 só usa os "
+           "revistos).")  # fmt: skip
+    yield ""
+    yield ("| Categoria | Equipamento | Fabricante | Modelo / referência | «ou equivalente» | Onde "
+           "| Estado |")  # fmt: skip
+    yield "|---|---|---|---|---|---|---|"
+    for e in items:
+        model = " · ".join(x for x in (e.code, e.model, e.reference) if x)
+        where = ", ".join(sorted({s["project"] for s in e.sources}))
+        equivalent = "sim" if e.or_equivalent else "**não**"
+        yield (f"| {CATEGORIES.get(e.category, e.category)} | {_cell(e.name)} | "
+               f"{_cell(e.manufacturer)} | {_cell(model)} | {equivalent} "
+               f"| {where} | {STATUS[e.status]} |")  # fmt: skip
+    yield ""
+    yield "Requisitos propostos dos CTE (aprovados com o bloco):"
+    yield ""
+    by_block: dict[str, list[str]] = {}
+    for r in db.scalars(
+        select(Requirement).order_by(Requirement.block_key, Requirement.param_name)
+    ):
+        whose = "do bloco" if r.equipment_id is None else "da linha"
+        by_block.setdefault(r.block_key, []).append(
+            f"{r.param_name} {r.operator} {shown(r.param_name, r.value)} ({whose})"
+        )
+    for key, needs in by_block.items():
+        yield f"- `{key}`: " + "; ".join(needs)
+    yield ""
+
+
 def report(db: Session) -> str:
     lines = [
         "# Revisão do curador · Fase 3",
@@ -216,6 +253,9 @@ def report(db: Session) -> str:
         "pesquisa no texto integral (RegulationChunk) fica para mais tarde.",
         "",
         *_corpus(db),
+        "## Equipamentos (Fase 7)",
+        "",
+        *_equipment(db),
     ]
     return "\n".join(lines).rstrip() + "\n"
 

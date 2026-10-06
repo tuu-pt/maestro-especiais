@@ -153,3 +153,22 @@ def satisfies(name: str, operator: str, required: Any, offered: Any) -> bool | N
     if operator == LE:
         return o <= r
     return abs(o - r) < 1e-9
+
+
+def normalize(name: str, raw: object) -> Any:
+    """A value written by a curator, as the patterns would read it; ValueError if it is not."""
+    param = PARAMS.get(name)
+    if param is None:
+        raise ValueError(f"Parâmetro desconhecido: {name}")
+    text = str(raw).strip()
+    if param.kind == "number":
+        value = number(text) if not isinstance(raw, int | float) else float(raw)
+        if value is None:
+            raise ValueError(f"«{text}» não é um número.")
+        return value
+    if param.kind == "text":
+        return text
+    m = param.pattern.search(text) or param.pattern.search(f"{name[:2].upper()}{text}")
+    if m is None:
+        raise ValueError(f"«{text}» não é um valor de {param.label}.")
+    return _value(param, m.group(1))

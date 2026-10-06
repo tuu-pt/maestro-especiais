@@ -7,6 +7,7 @@ from app.api import (
     documents,
     drafting,
     editor,
+    equipment,
     events,
     exports,
     ficha,
@@ -34,3 +35,4 @@ api_router.include_router(forms.router)
 api_router.include_router(validation.router)
 api_router.include_router(review.router)
 api_router.include_router(exports.router)
+api_router.include_router(equipment.router)

@@ -423,6 +423,20 @@ export type ProjectDocument = {
   sections: DocSection[] | null;
 };
 
+/** A section at an approved revision against another one or now (Phase 6). */
+export type DiffSection = {
+  section_id: string;
+  order: number;
+  title: string;
+  before: string;
+  after: string;
+  changed: boolean;
+  active_before: boolean | null;
+  active_after: boolean;
+};
+
+export type DocumentDiff = { from_label: string; to_label: string; sections: DiffSection[]; changed: number };
+
 export type SectionVersion = {
   id: string;
   number: number;

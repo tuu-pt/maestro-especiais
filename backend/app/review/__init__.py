@@ -136,3 +136,21 @@ def section_snapshot(document: Document) -> list[dict[str, Any]]:
     return [{"section_id": str(s.id), "order": s.order, "title": s.title,
              "version": s.current_version, "block_key": s.block_key, "active": s.active}
             for s in document.sections]  # fmt: skip
+
+
+PENDING_TEXT = "[texto adaptativo por gerar]"
+
+
+def content_text(content: dict[str, Any]) -> str:
+    """Plain text of a section version, values as the editor shows them (personal ones masked)."""
+
+    def text(node: dict[str, Any]) -> str:
+        if node.get("type") == "text":
+            return str(node.get("text") or "")
+        joiner = "\n" if node.get("type") == "locked" else ""
+        return joiner.join(text(child) for child in node.get("content") or [])
+
+    lines = []
+    for node in content.get("content") or []:
+        lines.append(PENDING_TEXT if node.get("type") == "pending" else text(node))
+    return "\n".join(line for line in lines if line.strip())

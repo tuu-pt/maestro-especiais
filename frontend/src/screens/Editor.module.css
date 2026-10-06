@@ -292,21 +292,6 @@
   font-variant-ligatures: none;
   font-size: 11.5px;
 }
-.diff {
-  margin: 0 0 6px;
-  font-family: var(--f-doc);
-  font-size: 13.5px;
-  line-height: 1.5;
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-}
-.diff ins {
-  background: var(--ok-bg);
-  text-decoration: none;
-}
-.diff del {
-  background: var(--crit-bg);
-}
 .forms {
   display: grid;
   gap: 6px;

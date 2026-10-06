@@ -17,6 +17,7 @@ import type {
   KnowledgeKind,
   Project,
   ProjectFile,
+  DocumentDiff,
   ProjectDocument,
   ProjectForm,
   ProjectIn,
@@ -281,6 +282,16 @@ export const useForms = (projectId: string, enabled: boolean) =>
     queryKey: ["projects", projectId, "forms"],
     queryFn: () => request<ProjectForm[]>(`/projects/${projectId}/forms`),
     enabled,
+  });
+
+export const useDocumentDiff = (documentId: string | undefined, base: number | null, against: number | null) =>
+  useQuery({
+    queryKey: ["documents", documentId, "diff", base, against],
+    queryFn: () =>
+      request<DocumentDiff>(
+        `/documents/${documentId}/diff?base=${base}${against === null ? "" : `&against=${against}`}`,
+      ),
+    enabled: Boolean(documentId) && base !== null,
   });
 
 export const useDocuments = (projectId: string | undefined) =>

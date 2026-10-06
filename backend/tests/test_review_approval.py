@@ -156,3 +156,34 @@ def test_a_ficha_revised_after_the_assembly_asks_to_assemble_again(
     assert added.status_code == 201
     ficha = next(c for c in approval(api, mdj["id"])["conditions"] if c["code"] == "ficha")
     assert not ficha["ok"] and "volte a montar" in ficha["reason"]
+
+
+def test_the_diff_between_revision_a_and_now(api: Api, db: Session, mdj: dict[str, Any]) -> None:
+    make_ready(api, db, mdj)
+    api.as_("tecnico").post(f"/api/documents/{mdj['id']}/approve")
+    api.as_("tecnico").post(f"/api/documents/{mdj['id']}/reopen",
+                            json={"reason": "Acrescentar a entrada."})  # fmt: skip
+    doc = api.as_("redator").get(f"/api/documents/{mdj['id']}").json()
+    supply = next(s for s in doc["sections"] if s["block_key"].endswith("alimentacao_de_energia"))
+    content = supply["content"]
+    content["content"] = [
+        {"type": "paragraph", "content": [{"type": "text", "text": "Entrada pela portinhola."}]}
+        if n["type"] == "pending" else n
+        for n in content["content"]
+    ]  # fmt: skip
+    edited = api.as_("redator").put(f"/api/sections/{supply['id']}/content",
+                                    json={"content": content})  # fmt: skip
+    assert edited.status_code == 200, edited.text
+
+    response = api.as_("redator").get(f"/api/documents/{mdj['id']}/diff", params={"base": 0})
+
+    assert response.status_code == 200, response.text
+    data = response.json()
+    assert (data["from_label"], data["to_label"], data["changed"]) == ("A", "atual", 1)
+    [changed] = [s for s in data["sections"] if s["changed"]]
+    assert changed["title"] == supply["title"]
+    assert "[texto adaptativo por gerar]" in changed["before"]
+    assert "Entrada pela portinhola." in changed["after"]
+    assert "Bruno Exemplo" not in str(data)  # personal values stay masked
+    missing = api.as_("redator").get(f"/api/documents/{mdj['id']}/diff", params={"base": 5})
+    assert missing.status_code == 404

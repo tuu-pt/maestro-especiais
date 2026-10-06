@@ -1,0 +1,50 @@
+.diff {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+.head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12px;
+  color: var(--ink-3);
+}
+.count {
+  font-family: var(--f-mono);
+}
+.nav {
+  display: flex;
+  gap: 6px;
+}
+.text {
+  margin: 0;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--paper);
+  font-family: var(--f-doc);
+  font-size: 13.5px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  color: var(--ink);
+}
+.text ins {
+  background: var(--ok-bg);
+  text-decoration: none;
+  border-radius: 2px;
+}
+.text del {
+  background: var(--crit-bg);
+  text-decoration: line-through;
+  border-radius: 2px;
+}
+.text ins:focus,
+.text del:focus,
+.focus {
+  outline: 2px solid var(--info);
+  outline-offset: 1px;
+}

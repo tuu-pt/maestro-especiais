@@ -20,6 +20,7 @@ from app.db import get_session
 from app.models import Document, DocumentRevision
 from app.review import (
     conditions,
+    content_text,
     file_version,
     header_revision,
     ready,
@@ -229,3 +230,70 @@ def reopen(document_id: uuid.UUID, body: ReopenIn, db: DB, user: Tecnico) -> App
     db.commit()
     db.refresh(document)
     return approval_out(db, document, user)
+
+
+class DiffSection(BaseModel):
+    section_id: str
+    order: int
+    title: str
+    before: str
+    after: str
+    changed: bool
+    active_before: bool | None  # None: the section did not exist in the earlier revision
+    active_after: bool
+
+
+class DiffOut(BaseModel):
+    from_label: str
+    to_label: str
+    sections: list[DiffSection]
+    changed: int
+
+
+def _texts_at(document: Document, revision: DocumentRevision | None) -> dict[str, dict[str, Any]]:
+    """section id → {text, active} at an approved revision, or now (None)."""
+    out: dict[str, dict[str, Any]] = {}
+    if revision is None:
+        for s in document.sections:
+            version = next((v for v in s.versions if v.number == s.current_version), None)
+            out[str(s.id)] = {"text": content_text(version.content) if version else "",
+                              "active": s.active}  # fmt: skip
+        return out
+    by_id = {str(s.id): s for s in document.sections}
+    for item in revision.sections:
+        section = by_id.get(item["section_id"])
+        version = None if section is None else next(
+            (v for v in section.versions if v.number == item["version"]), None
+        )
+        out[item["section_id"]] = {"text": content_text(version.content) if version else "",
+                                   "active": bool(item.get("active", True))}  # fmt: skip
+    return out
+
+
+@router.get("/documents/{document_id}/diff")
+def diff(document_id: uuid.UUID, db: DB, _: CurrentUser, base: int, against: int | None = None
+         ) -> DiffOut:  # fmt: skip
+    """The text of each section at revision `base` against revision `against` (or now).
+
+    The word-level diff is drawn by the interface (DiffView); values appear as in the editor.
+    """
+    document = get_document(db, document_id)
+    revisions = {r.number: r for r in document.revisions}
+    if base not in revisions or (against is not None and against not in revisions):
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Revisão aprovada inexistente.")
+    before = _texts_at(document, revisions[base])
+    after = _texts_at(document, revisions[against] if against is not None else None)
+    sections = []
+    for s in document.sections:
+        key = str(s.id)
+        then, now = before.get(key), after.get(key, {"text": "", "active": s.active})
+        old_text = then["text"] if then else ""
+        moved = then is not None and then["active"] != now["active"]
+        sections.append(DiffSection(
+            section_id=key, order=s.order, title=s.title, before=old_text, after=now["text"],
+            changed=old_text != now["text"] or moved,
+            active_before=then["active"] if then else None, active_after=now["active"],
+        ))  # fmt: skip
+    to_label = revision_label(against) if against is not None else "atual"
+    return DiffOut(from_label=revision_label(base), to_label=to_label, sections=sections,
+                   changed=sum(1 for s in sections if s.changed))  # fmt: skip

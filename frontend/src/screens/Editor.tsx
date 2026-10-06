@@ -1,6 +1,5 @@
 /** Screen D · Editor assistido: the MDJ and the CTE assembled from the ficha-base, section by section. */
 
-import { diffWords } from "diff";
 import { useId, useState } from "react";
 import { useSearchParams } from "react-router";
 
@@ -21,6 +20,7 @@ import {
 } from "../api/queries";
 import type { DocSection, ProjectDocument, SectionContent, SectionEvent } from "../api/types";
 import { useActiveProject } from "../app/activeProject";
+import { DiffView } from "../components/DiffView";
 import { BlockModeBadge, Button, Buttons, Chip, EmptyState, ErrorNote, Pill, type Tone } from "../components/ui";
 import { generatedParagraphs, hasPending } from "../lib/content";
 import { Checklist, Loading, NoProject } from "./common";
@@ -589,9 +589,12 @@ function SidePanel({
             Proposta do agente · versão {proposal.number}
             {proposal.request ? <span className={s.muted}> · «{proposal.request}»</span> : null}
           </h4>
-          <Diff
+          <DiffView
             before={current ? generatedParagraphs(current.content).join("\n") : ""}
             after={generatedParagraphs(proposal.content).join("\n")}
+            beforeLabel={current ? `versão ${current.number}` : "sem texto"}
+            afterLabel={`proposta (versão ${proposal.number})`}
+            label="Diferenças entre o texto atual e a proposta"
           />
           {proposal.issues.length ? (
             <p className={s.note}>
@@ -654,22 +657,5 @@ function SidePanel({
         </section>
       ) : null}
     </div>
-  );
-}
-
-function Diff({ before, after }: { before: string; after: string }) {
-  const parts = diffWords(before, after);
-  return (
-    <p className={s.diff} aria-label="Diferenças entre o texto atual e a proposta">
-      {parts.map((p, i) =>
-        p.added ? (
-          <ins key={i}>{p.value}</ins>
-        ) : p.removed ? (
-          <del key={i}>{p.value}</del>
-        ) : (
-          <span key={i}>{p.value}</span>
-        ),
-      )}
-    </p>
   );
 }

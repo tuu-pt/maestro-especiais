@@ -262,8 +262,10 @@ def _texts_at(document: Document, revision: DocumentRevision | None) -> dict[str
     by_id = {str(s.id): s for s in document.sections}
     for item in revision.sections:
         section = by_id.get(item["section_id"])
-        version = None if section is None else next(
-            (v for v in section.versions if v.number == item["version"]), None
+        version = (
+            None
+            if section is None
+            else next((v for v in section.versions if v.number == item["version"]), None)
         )
         out[item["section_id"]] = {"text": content_text(version.content) if version else "",
                                    "active": bool(item.get("active", True))}  # fmt: skip

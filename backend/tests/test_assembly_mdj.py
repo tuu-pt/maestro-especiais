@@ -153,7 +153,7 @@ def test_draft_docx_keeps_the_fixed_ooxml(api: Api, mdj: dict[str, Any], db: Ses
     response = api.as_("redator").get(f"/api/documents/{mdj['id']}/draft.docx")
 
     assert response.status_code == 200
-    assert "R1_MDJ_rascunho.docx" in response.headers["content-disposition"]
+    assert "R1_MDJ_RASCUNHO-nao-aprovado.docx" in response.headers["content-disposition"]
     data = response.content
     document = docx.Document(io.BytesIO(data))
     body = "\n".join(p.text for p in document.paragraphs)

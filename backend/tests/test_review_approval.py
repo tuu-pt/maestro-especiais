@@ -41,7 +41,7 @@ def mdj(api: Api, db: Session, store: ObjectStore) -> dict[str, Any]:
 
 
 def make_ready(api: Api, db: Session, doc: dict[str, Any]) -> None:
-    """What the curator, the técnico and the validation would have done, straight in the database."""
+    """What the curator, the técnico and the validation would have done, in the database."""
     db.execute(update(TemplateBlock).values(status="approved"))
     document = db.get(Document, uuid.UUID(doc["id"]))
     assert document is not None

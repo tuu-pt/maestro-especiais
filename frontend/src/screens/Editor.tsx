@@ -276,7 +276,7 @@ function DocumentEditor({ documentId, projectId }: { documentId: string; project
               Gerar texto adaptativo ({toDraft} {toDraft === 1 ? "secção" : "secções"})
             </Button>
           ) : null}
-          <DownloadButton path={`/documents/${doc.id}/draft.docx`} filename={`${doc.type}_rascunho.docx`}>
+          <DownloadButton path={`/documents/${doc.id}/draft.docx`} filename={`${doc.type}_RASCUNHO-nao-aprovado.docx`}>
             Rascunho .docx
           </DownloadButton>
           {generate.error ? <ErrorNote>{generate.error.message}</ErrorNote> : null}

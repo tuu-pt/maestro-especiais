@@ -11,8 +11,6 @@ from sqlalchemy.orm import Session
 
 from app.api.projects import get_project
 from app.assembly.assemble import AssemblyError, assemble, confirmed_revision, export_readiness
-from app.assembly.docx import draft_docx
-from app.assembly.values import ValueSource
 from app.audit import record
 from app.auth import CurrentUser, User, require_role
 from app.config import Settings, get_settings
@@ -181,18 +179,20 @@ def export_check(document_id: uuid.UUID, db: DB, _: CurrentUser) -> dict[str, An
 
 @router.get("/documents/{document_id}/draft.docx")
 def draft(document_id: uuid.UUID, db: DB, store: Store, user: Writer, settings: Config) -> Response:
+    """The draft .docx: watermark "RASCUNHO — não aprovado" and never the official name."""
+    from app.export import ExportRefused
+    from app.export.docx import export_docx
+
     document = get_document(db, document_id)
-    revision = db.get(FichaRevision, document.ficha_revision_id)
-    assert revision is not None
     try:
-        values = ValueSource.load(db, revision, revision_profile(db, settings, revision))
-        data = draft_docx(db, store, document, values)
+        exported = export_docx(db, store, settings, document, official=False)
+    except ExportRefused as exc:
+        raise HTTPException(status.HTTP_409_CONFLICT, str(exc)) from exc
     except ValueError as exc:
         raise HTTPException(status.HTTP_409_CONFLICT, str(exc)) from exc
-    project = db.get(Project, document.project_id)
     record(db, user, "document.draft_downloaded", "document", document.id, {"type": document.type},
            project_id=document.project_id)  # fmt: skip
     db.commit()
-    name = f"{project.code if project else 'PROJETO'}_{document.type}_rascunho.docx"
-    return Response(data, media_type=DOCX,
+    name = exported.name
+    return Response(exported.data, media_type=DOCX,
                     headers={"Content-Disposition": f'attachment; filename="{name}"'})  # fmt: skip

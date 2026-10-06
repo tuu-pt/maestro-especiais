@@ -8,6 +8,7 @@ datasheet (SHA-256).
 import hashlib
 import uuid
 from dataclasses import dataclass
+from datetime import date
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -21,6 +22,21 @@ from app.storage import ObjectStore
 class Added:
     datasheet: Datasheet
     duplicate: bool
+
+
+def _plus_years(since: date, years: int) -> date:
+    try:
+        return since.replace(year=since.year + years)
+    except ValueError:  # 29 February
+        return since.replace(year=since.year + years, day=28)
+
+
+def is_old(sheet: Datasheet, years: int, today: date | None = None) -> bool:
+    """Issued more than `years` ago (EQP-02); a datasheet without a date is not old, it is
+    undated."""
+    if sheet.issue_date is None:
+        return False
+    return _plus_years(sheet.issue_date, years) < (today or date.today())
 
 
 def current(equipment: Equipment) -> Datasheet | None:

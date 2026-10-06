@@ -3,24 +3,15 @@ EQUIPMENT_DATASHEET_MAX_AGE_YEARS). A datasheet without an issue date is informa
 curator writes it. One finding per item, whatever the number of slots it fills.
 """
 
-from datetime import date
-
 from app.config import get_settings
+from app.equipment.datasheets import is_old
 from app.validation.context import Context
 from app.validation.core import ASK_CURATOR, OPEN_EQUIPMENT, Finding, Rule
 from app.validation.equipment import slots
 
 
-def _plus_years(since: date, years: int) -> date:
-    try:
-        return since.replace(year=since.year + years)
-    except ValueError:  # 29 February
-        return since.replace(year=since.year + years, day=28)
-
-
 def check(ctx: Context) -> list[Finding]:
     limit = get_settings().equipment_datasheet_max_age_years
-    today = date.today()
     out, seen = [], set()
     for slot in slots(ctx):
         sheet = slot.sheet
@@ -36,7 +27,7 @@ def check(ctx: Context) -> list[Finding]:
                 actions=[OPEN_EQUIPMENT, ASK_CURATOR],
             ))  # fmt: skip
             continue
-        if _plus_years(sheet.issue_date, limit) < today:
+        if is_old(sheet, limit):
             out.append(RULE.finding(
                 f"{slot.label}: a ficha técnica é de {sheet.issue_date:%m/%Y} (mais de {limit} "
                 "anos).",

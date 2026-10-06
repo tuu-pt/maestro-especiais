@@ -531,7 +531,7 @@ export type SectionVersion = {
 export type RunStatus = "queued" | "running" | "done" | "failed";
 export type Severity = "critical" | "warning" | "info";
 export type IssueStatus = "open" | "fixed" | "ignored";
-export type IssueAction = "open_editor" | "open_ficha" | "ask_curator" | "confirm_sheet" | "ignore";
+export type IssueAction = "open_editor" | "open_ficha" | "ask_curator" | "confirm_sheet" | "ignore" | "open_equipment";
 
 export type PieceInfo = {
   ref: string;
@@ -624,3 +624,139 @@ export type Validation = {
   matrix: CoherenceMatrix;
   rules: { id: string; title: string; severity: Severity; category: string }[];
 };
+
+// ---------------------------------------------------------------- equipment (Phase 7)
+
+export type EquipmentVerdict = "ok" | "fails" | "to_confirm" | "no_datasheet" | "no_requirements" | "no_equipment";
+export type CheckResult =
+  | "ok"
+  | "fails"
+  | "unconfirmed_ok"
+  | "unconfirmed_fails"
+  | "missing"
+  | "not_comparable"
+  | "no_datasheet";
+
+export type Datasheet = {
+  id: string;
+  file_name: string;
+  size: number;
+  pages: number;
+  issue_date: string | null;
+  issue_date_text: string | null;
+  language: string | null;
+  status: "current" | "outdated";
+  warnings: string[];
+  created_at: string;
+  old: boolean; // older than the limit of EQP-02 (3 years by default)
+};
+
+export type EquipmentCheck = {
+  requirement_id: string;
+  param: string;
+  label: string;
+  operator: ">=" | "<=" | "=" | ">=class" | "info";
+  required: string;
+  requirement_status: ReviewStatus;
+  block_key: string;
+  result: CheckResult;
+  offered: string | null;
+  page: number | null;
+  review_status: "extracted" | "reviewed" | null;
+  param_id: string | null;
+  others: string[];
+  evidence: string[];
+};
+
+export type EquipmentParam = {
+  id: string;
+  name: string;
+  label: string;
+  value: unknown;
+  shown: string;
+  unit: string;
+  origin: "cte" | "datasheet";
+  text: string;
+  page: number | null;
+  datasheet_id: string | null;
+  review_status: "extracted" | "reviewed";
+  reviewed_by: string | null;
+};
+
+export type EquipmentSummary = {
+  id: string;
+  category: string;
+  category_label: string;
+  name: string;
+  manufacturer: string;
+  model: string | null;
+  reference: string | null;
+  code: string | null;
+  or_equivalent: boolean;
+  status: ReviewStatus;
+  projects: string[];
+  datasheet: Datasheet | null;
+  params_reviewed: number;
+  params_to_review: number;
+  verdict: EquipmentVerdict;
+};
+
+export type EquipmentDetail = EquipmentSummary & {
+  sources: { project: string; block_key: string; entry: number | null; unit: number; text: string }[];
+  image: { project: string; block_key: string; entry: number } | null;
+  params: EquipmentParam[];
+  datasheets: Datasheet[];
+  checks: EquipmentCheck[];
+  review_note: string | null;
+  reviewed_by: string | null;
+  reviewed_at: string | null;
+};
+
+export type EquipmentItem = {
+  id: string;
+  category: string;
+  category_label: string;
+  name: string;
+  manufacturer: string;
+  model: string | null;
+  reference: string | null;
+  code: string | null;
+  status: ReviewStatus;
+  datasheet: Datasheet | null;
+  has_image: boolean;
+};
+
+export type EquipmentSlot = {
+  id: string;
+  document_id: string;
+  section_id: string;
+  section_title: string;
+  entry: number;
+  block_key: string;
+  item: EquipmentItem | null;
+  is_reference: boolean;
+  chosen: boolean;
+  chosen_by: string | null;
+  chosen_at: string | null;
+  reason: string | null;
+  or_equivalent: boolean;
+  ficha_key: string | null;
+  quantity: string | null;
+  unit: string | null;
+  articles: string[];
+  verdict: EquipmentVerdict;
+  checks: EquipmentCheck[];
+};
+
+export type EquipmentSlotDetail = EquipmentSlot & {
+  alternatives: { item: EquipmentItem; verdict: EquipmentVerdict; checks: EquipmentCheck[] }[];
+};
+
+export type ProjectEquipment = {
+  document_id: string | null;
+  document_status: "draft" | "in_review" | "approved" | null;
+  slots: EquipmentSlot[];
+};
+
+export type EquipmentCategory = { id: string; label: string };
+export type EquipmentParamInfo = { name: string; label: string; unit: string; operator: string };

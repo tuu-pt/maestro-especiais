@@ -20,7 +20,7 @@ from app.auth import CurrentUser, User, require_role
 from app.config import Settings, get_settings
 from app.db import get_session
 from app.equipment import CATEGORIES
-from app.equipment.datasheets import add_datasheet, current
+from app.equipment.datasheets import add_datasheet, current, is_old
 from app.equipment.params import PARAMS, normalize, shown
 from app.equipment.verify import block_keys, check, requirements_for, verdict
 from app.ingest.pipeline import ReaderError
@@ -45,6 +45,7 @@ class DatasheetOut(BaseModel):
     status: str
     warnings: list[str]
     created_at: datetime
+    old: bool  # older than EQUIPMENT_DATASHEET_MAX_AGE_YEARS (EQP-02)
 
 
 class ParamOut(BaseModel):
@@ -184,10 +185,11 @@ def _equipment(db: Session, equipment_id: uuid.UUID) -> Equipment:
 
 
 def _sheet(d: Datasheet) -> DatasheetOut:
+    old = is_old(d, get_settings().equipment_datasheet_max_age_years)
     return DatasheetOut(id=d.id, file_name=d.file_name, size=d.size, pages=d.pages,
                         issue_date=d.issue_date, issue_date_text=d.issue_date_text,
                         language=d.language, status=d.status, warnings=d.warnings,
-                        created_at=d.created_at)  # fmt: skip
+                        created_at=d.created_at, old=old)  # fmt: skip
 
 
 def _param(p: EquipmentParam) -> ParamOut:

@@ -6,7 +6,7 @@ import { NewProjectScreen, ProjectFilesScreen } from "../screens/NewProject";
 import { NotFoundScreen } from "../screens/NotFound";
 import { KnowledgeScreen } from "../screens/Knowledge";
 import { EditorScreen } from "../screens/Editor";
-import { EquipmentScreen } from "../screens/Pending";
+import { EquipmentScreen } from "../screens/Equipment";
 import { ReviewScreen } from "../screens/Review";
 import { ValidationScreen } from "../screens/Validation";
 import { SettingsScreen } from "../screens/Settings";

@@ -18,6 +18,7 @@ import { formatDateTime } from "../lib/format";
 import { BlocksPanel } from "./Blocks";
 import { Loading } from "./common";
 import { CorpusPanel } from "./Corpus";
+import { EquipmentLibraryPanel } from "./EquipmentLibrary";
 import s from "./Knowledge.module.css";
 import { Screen } from "./Screen";
 
@@ -25,6 +26,7 @@ const TABS = [
   { id: "cabos", label: "Dicionário de cabos" },
   { id: "lexico", label: "Léxico de tipologias" },
   { id: "blocos", label: "Biblioteca de blocos" },
+  { id: "equipamentos", label: "Biblioteca de equipamentos" },
   { id: "corpus", label: "Corpus regulamentar" },
   { id: "arquivo", label: "Arquivo TUU" },
 ] as const;
@@ -97,6 +99,7 @@ export function KnowledgeScreen() {
         {current === "cabos" ? <CablesPanel /> : null}
         {current === "lexico" ? <LexiconPanel /> : null}
         {current === "blocos" ? <BlocksPanel /> : null}
+        {current === "equipamentos" ? <EquipmentLibraryPanel /> : null}
         {current === "corpus" ? <CorpusPanel /> : null}
         {current === "arquivo" ? (
           <EmptyState

@@ -145,7 +145,10 @@ Decisões da Fase 5 (28 set 2026; as do plano aprovado pelo utilizador, o resto 
 - [A CONFIRMAR] NUM-01 só no texto do agente; REF-01 no texto humano é aviso com pedido ao curador; REF-02 «por
   confirmar pelo curador» é uma informação por peça (nada é citável enquanto D7 estiver pendente).
 - [A CONFIRMAR] COE-01: referência = ficha-base, ou a fonte da ficha (Tabela, depois MQT/LPU) quando não tem valor;
-  crítico se diverge a MDJ ou o CTE, aviso se só o MQT/LPU; luminárias por comparar (trabalho futuro).
+  crítico se diverge a MDJ ou o CTE, aviso se só o MQT/LPU. Luminárias (6 out 2026): por **tipo** (o CTE lista os tipos
+  sem quantidades): tipos L#/SNC da lista do CTE/MDJ (secções de iluminação, não de comandos) contra os artigos do
+  MQT/LPU (designação «L1», «L8 / L7», «L1 - Luminária…»); referência = MQT, depois LPU; variantes contam como o tipo
+  (L5.1, L5.2 → L5); aviso; linha «Tipos de luminárias» na matriz. R1 e R2 coerentes (sem alertas novos).
 - [A CONFIRMAR] COE-04: forma mais curta = igual (nome curto na capa, obra abreviada na carimbadura); dois ou mais
   campos diferentes ou vazios → «reaproveitada de outro projeto» (C7); técnico comparado entre peças, leitura
   «Confirmar com o perfil do técnico» (C3).
@@ -364,6 +367,6 @@ Decisões da Fase 0:
   Antes do uso real da Fase 6: a verificação manual (docs/fase6-verificacao-manual.md), modelos .docx TUU vazios (hoje o
   pacote de R1) e dos formulários, a convenção de nomes confirmada pela TUU, o curador (D7) para haver conjunto oficial.
   Trabalho futuro da Fase 6: PDF assinado,
-  integração mais funda com o TUU Maestro (D9). Trabalho futuro da Fase 5: luminárias na COE-01, citações com locator
+  integração mais funda com o TUU Maestro (D9). Trabalho futuro da Fase 5: citações com locator
   nas peças humanas, COE-02 por data de desenho (carimbadura), extração assistida por LLM para o que fica «não comparável».
   Continuam pendentes D7 (curador), D8 (esqueletos), D5 (dados reais no LLM; agora também a Groq) e D6 (Entra ID).

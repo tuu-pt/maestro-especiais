@@ -10,8 +10,8 @@ pytestmark = pytest.mark.usefixtures("inline_ingestion")
 __all__ = ["audited"]
 
 ROWS = ["Requerente", "Obra", "Localização (concelho)", "Tipo de utilização",
-        "Potência a alimentar", "N.º de quadros", "N.º de carregadores VE", "Cabos principais",
-        "Potência FV", "Dados do técnico"]  # fmt: skip
+        "Potência a alimentar", "N.º de quadros", "N.º de carregadores VE",
+        "Tipos de luminárias", "Cabos principais", "Potência FV", "Dados do técnico"]  # fmt: skip
 
 
 def row(state: dict[str, Any], label: str) -> dict[str, Any]:

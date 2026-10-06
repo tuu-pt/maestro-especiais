@@ -27,9 +27,12 @@ from app.validation.extract.documents import file_date
 from app.validation.extract.text import (
     BOARD_NAMES,
     CABLE,
+    LUMINAIRE_CODE,
     QTY_BOARDS,
     QTY_EV,
     QTY_PV_MODULES,
+    luminaire_codes,
+    luminaire_fact,
     personal,
 )
 from app.validation.normalize import shown_number
@@ -53,6 +56,10 @@ _NOT_EV_ARTICLE = re.compile(
     r"(?:pedestal|suporte|coluna|base|cabo|tomada|sinaletica)"
 )
 _PV_ARTICLE = re.compile(r"\bmodulos? fotovolt")
+# "L1" (R1, under «aparelhos de iluminação»), "L8 / L7", "L1 - Luminária …", "SNC - Luminária" (R2)
+_LUMINAIRE_ARTICLE = re.compile(
+    rf"^\s*({LUMINAIRE_CODE}(?:\s*/\s*{LUMINAIRE_CODE})*)\s*(?:$|[-\u2013\u2014]\s*lumin)", re.I
+)
 
 
 def pieces(db: Session, project: Project, revision: FichaRevision) -> list[Piece | None]:
@@ -179,6 +186,15 @@ def read_bom(sources: Sources, piece: Piece) -> PieceData:
                               shown=shown_number(total),
                               note="; ".join(f"{line.code or ''} {line.quantity} {line.unit or ''}"
                                              for line in lines)))  # fmt: skip
+    lit = [(line, m) for line in reading.lines if line.kind == "article" and line.designation
+           and (m := _LUMINAIRE_ARTICLE.match(line.designation))]  # fmt: skip
+    if lit:
+        facts.append(luminaire_fact(
+            [c for _, m in lit for c in luminaire_codes(m.group(1))], piece.ref,
+            {"cell": ", ".join(line.source_ref for line, _ in lit)},
+            "; ".join(f"{line.code or ''} {line.quantity} {line.unit or ''}".strip()
+                      for line, _ in lit),
+        ))  # fmt: skip
     for line in reading.lines:
         if line.kind == "article" and line.designation:
             for d in cables.find(line.designation):

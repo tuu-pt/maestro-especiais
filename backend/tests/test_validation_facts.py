@@ -15,6 +15,7 @@ from app.validation.extract import files as file_pieces
 from app.validation.extract.text import (
     BOARD_NAMES,
     CABLE,
+    LUMINAIRE_TYPES,
     POWER,
     POWER_EXISTING,
     QTY_BOARDS,
@@ -184,3 +185,15 @@ def test_extractors_are_registered_for_every_kind_of_piece() -> None:
         assert f"file:{kind}" in EXTRACTORS
     assert {"assembled", "existing"} <= set(EXTRACTORS)
     assert Path(__file__).exists()
+
+
+@needs_fixtures
+def test_the_luminaire_types_of_the_cte_and_of_the_bill_of_quantities() -> None:
+    r1 = ["L1", "L7", "L8", "L9", "L14", "L15"]
+    assert values("R1", "CTE", LUMINAIRE_TYPES) == values("R1", "MQT", LUMINAIRE_TYPES) == [r1]
+    assert facts_of("R1")["MQT"][LUMINAIRE_TYPES][0].display() == "L1, L8, L7, L9, L14, L15"
+    r2 = ["L1", "L2", "L3", "L4", "L5", "L6", "L7", "L8", "L9", "L10", "L11", "SNC"]
+    assert values("R2", "CTE", LUMINAIRE_TYPES) == values("R2", "LPU", LUMINAIRE_TYPES) == [r2]
+    lpu = facts_of("R2")["LPU"][LUMINAIRE_TYPES][0]
+    assert "L5.1, L5.2" in lpu.display() and "104 m" in (lpu.note or "")  # variants of L5
+    assert values("R1", "MDJ", LUMINAIRE_TYPES) == values("R2", "MDJ", LUMINAIRE_TYPES) == []

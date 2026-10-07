@@ -100,8 +100,10 @@ Depois de mudar o `.env`: `docker compose up -d backend worker` (o `restart` nã
 
 ## 7. O que falta
 
-**Próximo trabalho (Claude): Fase 7 · Equipamentos** — ver «Próximo» no `CLAUDE.md`. Rever antes os
-[A CONFIRMAR] das Fases 5 e 6 e fazer a verificação manual da Fase 6 (`docs/fase6-verificacao-manual.md`).
+**Próximo trabalho:** a Fase 7 (equipamentos) está implementada e fecha com as fichas técnicas de R1, que a equipa
+coloca em `data/fixtures/fichas-tecnicas/`; a seguir, a Fase 8 (piloto), que depende de D5, D6 e D7. Ver «Próximo»
+no `CLAUDE.md`. Rever antes os [A CONFIRMAR] das Fases 5 a 7 e fazer a verificação manual da Fase 6
+(`docs/fase6-verificacao-manual.md`).
 
 **Decisões pendentes:** D4 (alojamento: cloud UE ou VPS da TUU), D5 (termos da Gemini API e agora
 da Groq), D6 (Entra ID), D7 (curador), D8 (esqueletos com os técnicos), D10 (Flash-Lite e a
@@ -143,6 +145,7 @@ morada da capa da MDJ de R1 (≠ ficha eletrotécnica, `docs/fase4-diff-R1.md`);
 
 ## 9. Primeira mensagem sugerida na conta nova
 
-> Lê o `CLAUDE.md`, o `docs/CONTINUAR.md` e a SPEC (secções 7, 9, 10.F e 14). Confirma que a stack
-> arranca (`make up`, `make seed-library`, `make test`). Depois propõe o plano da Fase 7 (equipamentos),
-> uma tarefa por commit, e espera pela minha aprovação antes de implementar.
+> Lê o `CLAUDE.md`, o `docs/CONTINUAR.md` e a SPEC (secções 7.6, 9, 10.F e 14). Confirma que a stack
+> arranca (`make up`, `make seed-library`, `make test`). Se já houver fichas técnicas em
+> `data/fixtures/fichas-tecnicas/`, propõe o plano para fechar a Fase 7 com elas, uma tarefa por commit, e espera
+> pela minha aprovação antes de implementar.

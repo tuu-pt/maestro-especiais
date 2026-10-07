@@ -202,6 +202,30 @@ Decisões da Fase 6 (6 out 2026; as oito do plano aprovadas pelo utilizador, o r
   fixtures de R1/R2 trazem nomes de pessoas em `docProps/core.xml` (a assinalar à equipa; não passam para a exportação).
 - O worker também tem `DEV_AUTH` em desenvolvimento (resolve o perfil do técnico nas exportações e na guarda do LLM).
 
+Decisões da Fase 7 (7 out 2026; as quatro primeiras aprovadas pelo utilizador, o resto [A CONFIRMAR]):
+- Fichas técnicas: a equipa coloca os PDF dos fabricantes (públicos, sem anonimização) em `data/fixtures/fichas-tecnicas/`;
+  até lá os testes escrevem PDFs pequenos (backend/tests/pdfs.py) e o critério da Fase 7 (R1 com fichas verificadas)
+  fica pendente.
+- Parâmetros lidos por padrões, sem LLM (app/equipment/params.py), no CTE e nas fichas; tudo `extracted` até o curador
+  rever; só os revistos decidem a EQP-01.
+- Requisitos propostos a partir do texto do CTE; aprovados com o bloco (aprovar um bloco CTE aprova os seus requisitos
+  propostos) ou um a um pelo curador.
+- A ilustração de um só projeto passa a ser do equipamento da linha de referência acima dela; entra no CTE quando o
+  redator ou o técnico confirma ou escolhe esse equipamento no ecrã F (sem escolha, continua omitida).
+- [A CONFIRMAR] categorias (lista fechada em app/equipment/__init__.py, pela chave do bloco); um equipamento por linha
+  que nomeia um fabricante (lista de marcas em app/equipment/cte.py, ou «da marca X») e um modelo ou uma referência com
+  dígitos; as linhas abaixo são características dele, as de antes do primeiro, do bloco inteiro; identidade =
+  fabricante + referência + modelo + código + nome (R1 e R2 com a mesma linha dão um só equipamento).
+- [A CONFIRMAR] comparação: IP por dígito (um X na ficha para um dígito exigido = «não comparável»), IK por número,
+  Euroclasse por ordem; potência e temperatura de cor iguais; os outros mínimos `>=`. Requisitos `>=class`/`>=`/`=`.
+- [A CONFIRMAR] slot = entrada do bloco que nomeia o equipamento, com o do projeto de onde a entrada vem; trocar só
+  por um da mesma categoria, com justificação (≥ 10); quantidade do MQT/LPU: luminárias pelo código, o resto pelo
+  artigo ligado à chave da ficha (`eq.*`).
+- [A CONFIRMAR] EQP-01 crítico só com um parâmetro revisto que falha; aviso para confirmar os lidos; informação para o
+  que a ficha não diz. EQP-02: `EQUIPMENT_DATASHEET_MAX_AGE_YEARS` (3), ficha sem data = informação. EQP-03 uma vez por
+  equipamento. Categoria «Fichas técnicas», ação `open_equipment` (ecrã F).
+- Chave nova `eq.aparelhagem_serie` (estava na SPEC 7.2), sem leitor.
+
 ## Comandos
 - make setup                 # .venv + dependências Python + npm ci + Chromium do Playwright
 - make env                   # gera .env local com segredos aleatórios de desenvolvimento
@@ -265,9 +289,19 @@ Decisões da Fase 0:
     o histórico do Git fica como está. Também passam por placeholder no que for enviado ao LLM.
 
 ## Estado atual
-- Fase: 6 **implementada** (6 out 2026). Fases 0, 1 e 2 concluídas; a 3 está implementada e à espera do curador (D7):
+- Fase: 7 **implementada** (7 out 2026). Fases 0, 1 e 2 concluídas; a 3 está implementada e à espera do curador (D7):
   fecha quando os blocos estiverem aprovados. Até lá, as secções montadas dizem «bloco não aprovado» e só sai o
-  rascunho (o conjunto oficial exige os blocos aprovados). As 4 e 5 estão implementadas.
+  rascunho (o conjunto oficial exige os blocos aprovados). As 4, 5 e 6 estão implementadas. A 7 fecha quando houver
+  fichas técnicas dos equipamentos de R1 (a equipa) e o curador as rever.
+- Feito na Fase 7:
+  - biblioteca de equipamentos (0017): 77 equipamentos, 81 parâmetros do CTE e 87 requisitos propostos de R1/R2 por
+    `make seed-library`; secção «Equipamentos» em docs/revisao-curador.md;
+  - fichas técnicas no S3, leitura por padrões com a página, data e língua; API do curador (rever, corrigir,
+    acrescentar, aprovar); slots do CTE montado com alternativas, quantidade e ilustração; EQP-01/02/03;
+  - ecrã F (verificação parâmetro a parâmetro, alternativas, escolher com justificação) e separador «Biblioteca de
+    equipamentos» no ecrã G.
+- Melhorias de 6 out 2026 (ramo `melhorias`): índice gerado sem `updateFields` (LibreOffice), luminárias na COE-01,
+  COE-02 pela data da carimbadura.
 - Feito na Fase 6:
   - valores manuais na ficha-base; técnico responsável, aprovação com as condições reais e revisões (0015);
   - DiffView e diff entre revisões; ecrã H (condições com razão e ligação, responsável, data do cabeçalho, aprovar,
@@ -303,6 +337,10 @@ Decisões da Fase 0:
   - formulários (0012): perfil do técnico cifrado, FE, Identificação e Termo; `GET /projects/{id}/forms[/{kind}]`;
   - docs/fase4-diff-R1.md: MDJ 225/268 entradas iguais, CTE 172/242, **zero defeitos**; C1 repetida pelo agente e C2
     não repetida (a deteção é da Fase 5); C3 resolvida pelo perfil.
+- Verificado (7 out 2026, Fase 7 e melhorias, Windows 11 + Docker Desktop): `make lint` e `make pii-check` limpos;
+  pytest 763 em contentor (`make test-docker`, com o LibreOffice); Vitest 86; Playwright 91 (+ percursos opcionais);
+  percurso RUN_EQUIPMENT_JOURNEY verde contra a stack (portinhola de R1 «Cumpre» com a ficha revista, os outros 31
+  equipamentos «Sem ficha», a imagem do espelho escolhido no rascunho do CTE); Anexo C 14/14 sem alterações nos casos.
 - Verificado (6 out 2026, Fase 6, Windows 11 + Docker Desktop): `make lint` e `make pii-check` limpos; pytest 695 (8
   saltados: os do LibreOffice, que passam no contentor com `make test-docker`: .docx, formulários e conjunto, PDF
   incluído); Vitest 77; Playwright 85 (+ percursos opcionais); percurso RUN_EXPORT_JOURNEY verde contra a stack (R1
@@ -319,6 +357,8 @@ Decisões da Fase 0:
   Percurso RUN_R1_EDITOR_JOURNEY verde, com o Gemini em 503 «high demand» respondido pela alternativa Groq.
   A lista branca da NUM-01 aceita «16 A a 250 V» como «16A-250V» (28 set 2026).
 - [A CONFIRMAR] pela equipa:
+  - Fase 7: as decisões acima, cada equipamento e requisito de docs/revisao-curador.md (nomes de linhas longas, o
+    detetor 360º/180º de R1, os requisitos do bloco aplicados a todos os seus equipamentos) e as fichas técnicas de R1;
   - Fase 6: as decisões acima, em especial a convenção de nomes, os modelos derivados de R1, a verificação manual
     no Word/Excel e os nomes de pessoas em `docProps/core.xml` das fixtures de R1/R2;
   - Fase 5: as decisões acima e os «outros alertas reais» de docs/fase5-anexo-c.md, em especial: R2 com poder de corte
@@ -343,7 +383,9 @@ Decisões da Fase 0:
   Gemini faz o percurso falhar com a mensagem «o LLM falhou»). Percurso da Fase 5: `make up`, `make seed-library` e
   `RUN_AUDIT_JOURNEY=1 npm run e2e` (cria um projeto E2E-AUD-… com o R2 completo). Percurso da Fase 6: `make up`,
   `make seed-library` e `RUN_EXPORT_JOURNEY=1 npm run e2e` (R1-E2E-EXP-…, sem LLM; aprova **todos** os blocos: repor a BD
-  antes de voltar a correr qualquer percurso). O percurso do curador corre em
+  antes de voltar a correr qualquer percurso). Percurso da Fase 7: `make up`, `make seed-library` e
+  `RUN_EQUIPMENT_JOURNEY=1 npm run e2e` (R1-E2E-EQP-…; acrescenta uma ficha técnica à portinhola e aprova o bloco da
+  entrada de energia: repor a BD depois). O percurso do curador corre em
   último: aprova a INTRODUÇÃO, que o R1 no editor espera «não aprovado» (senão, repor a BD entre os dois). Depois de mudar dependências do
   backend: `docker compose build backend worker`. Depois de atualizar para a Fase 5: `docker compose up -d backend worker`
   (as migrações 0013/0014 correm no arranque do backend e o worker passa a ouvir a fila `validation`).
@@ -366,7 +408,9 @@ Decisões da Fase 0:
   - os valores da tabela de pseudónimos de execuções anteriores também respeitam o `allow:` dos overrides; foi assim que
     a freguesia de R1 (tomada por morada pelo mapa antigo) voltou a ficar real em 25 set 2026;
   - os PDF são gravados com o `/ID` da origem (`no_new_id`): uma nova execução só muda os PDF cujo conteúdo muda.
-- Próximo: Fase 7 (equipamentos: biblioteca semeada a partir dos CTE, fichas técnicas, requisitos, regras EQP-*).
+- Próximo: Fase 8 (piloto: três projetos reais de eletricidade, SPEC 14), que depende de D5, D6 e D7 e de a equipa rever
+  as Fases 3–7. Para fechar a 7: as fichas
+  técnicas de R1 em `data/fixtures/fichas-tecnicas/` e um teste `RUN_R1_DATASHEETS` que as liga e verifica.
   Antes do uso real da Fase 6: a verificação manual (docs/fase6-verificacao-manual.md), modelos .docx TUU vazios (hoje o
   pacote de R1) e dos formulários, a convenção de nomes confirmada pela TUU, o curador (D7) para haver conjunto oficial.
   Trabalho futuro da Fase 6: PDF assinado,

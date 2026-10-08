@@ -682,11 +682,11 @@ No fim de cada fase: testes a passar, um commit por tarefa e `CLAUDE.md` atualiz
 | D1 | Stack do backend | Python (FastAPI) | Equipa técnica |
 | D2 | Base de dados | PostgreSQL + pgvector | Equipa técnica |
 | D3 | Embeddings | ✅ Decidido: modelo de embeddings do Gemini | — |
-| D4 | Alojamento | Cloud na UE para o piloto | Direção |
+| D4 | Alojamento | Cloud na UE para o piloto. **8 out 2026: por agora, só no PC do utilizador** | Direção |
 | D5 | Termos de tratamento de dados da Gemini API | Confirmar a aplicação das regras de serviço pago no EEE; ponderar plano pago no piloto. **✅ 8 out 2026: aceite (Gemini, Groq e Claude); o LLM fica ligado por omissão** | Direção |
 | D6 | Autenticação | Microsoft Entra ID, se aplicável. **8 out 2026: até lá, contas com email e password (`make create-user`), cookie de sessão assinado** | TI |
-| D7 | Curador do corpus, blocos e dicionários | Um técnico sénior de eletricidade, ~2 h/mês | Coordenação |
-| D8 | Esqueletos e blocos obrigatórios (CNT-01) | Validar a secção 8.3 com a equipa | Técnicos |
+| D7 | Curador do corpus, blocos e dicionários | Um técnico sénior de eletricidade, ~2 h/mês. **8 out 2026: provisório, as propostas dão-se como boas e corrigem-se nos testes; aprovar continua a ser humano** | Coordenação |
+| D8 | Esqueletos e blocos obrigatórios (CNT-01) | Validar a secção 8.3 com a equipa. **8 out 2026: aceites como estão; corrigem-se nos testes** | Técnicos |
 | D9 | Integração com o TUU Maestro | Endpoint de exportação no MVP | Equipa TUU Maestro |
 | D10 | LLM | ✅ Decidido: Gemini Flash (quota gratuita) no desenvolvimento; desde 8 out 2026 também Groq e Claude, principal escolhido pelo admin | — |
 | D11 | Especialidade do MVP | ✅ Decidido: instalações elétricas (ITED na Fase 9) | — |

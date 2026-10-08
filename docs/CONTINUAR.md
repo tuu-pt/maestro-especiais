@@ -111,8 +111,9 @@ coloca em `data/fixtures/fichas-tecnicas/`; a seguir, a Fase 8 (piloto), que dep
 no `CLAUDE.md`. Rever antes os [A CONFIRMAR] das Fases 5 a 7 e fazer a verificação manual da Fase 6
 (`docs/fase6-verificacao-manual.md`).
 
-**Decisões pendentes:** D4 (alojamento: cloud UE ou VPS da TUU), D6 (Entra ID), D7 (curador), D8 (esqueletos com os técnicos), D10 (Flash-Lite; o modelo do Claude
-por definir).
+**Decisões (8 out 2026, utilizador):** D4 só no PC do utilizador por agora; D6 contas com password até haver
+instruções da TI; D7 e D8 dados como bons e corrigidos na fase de testes (aprovar blocos continua a ser humano);
+modelo do Claude por definir quando for preciso.
 
 **Ações da equipa:** rever os códigos postais «NNNN – NNN» (com travessão) que o anonimizador pode
 não ter apanhado nas fixtures (Identificação de R1, FE de R2) e voltar a anonimizar; confirmar a

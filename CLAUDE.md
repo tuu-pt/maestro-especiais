@@ -288,13 +288,13 @@ Seguem a recomendação da secção 16 da SPEC enquanto a equipa não decidir o 
 | D1 | Backend Python (FastAPI) | Recomendação seguida |
 | D2 | PostgreSQL 16 + pgvector | Recomendação seguida |
 | D3 | Embeddings Gemini | ✅ Decidido |
-| D4 | Alojamento cloud na UE | Recomendação seguida; por agora só ambiente local |
+| D4 | Alojamento cloud na UE | ✅ Por agora (8 out 2026, decisão do utilizador): só no PC do utilizador; o alojamento decide-se depois |
 | D5 | Termos da Gemini API | ✅ Aceite (8 out 2026, comunicado pelo utilizador): texto de projetos reais pode ir à Google, à Groq e à Anthropic, sempre sem valores nem dados pessoais (marcadores e guarda de privacidade); LLM ligado por omissão, o admin desliga por projeto |
-| D6 | Autenticação Entra ID, se aplicável | Por decidir com a TI. Até lá (8 out 2026): contas com email e password, como no Registo de Temas Estratégicos |
-| D7 | Curador | A designar (coordenação) |
-| D8 | Esqueletos da secção 8.3 | Seguidos tal como estão, a validar com os técnicos |
+| D6 | Autenticação Entra ID, se aplicável | ✅ Por agora (8 out 2026, decisão do utilizador): contas com email e password, como no Registo de Temas Estratégicos, até haver instruções da TI |
+| D7 | Curador | ✅ Provisório (8 out 2026, decisão do utilizador): as propostas da biblioteca dão-se como boas para o piloto e corrigem-se na fase de testes. A aprovação na aplicação continua a ser um ato humano registado (papel Curador); o agente não aprova |
+| D8 | Esqueletos da secção 8.3 | ✅ Aceites como estão (8 out 2026, decisão do utilizador); corrigem-se na fase de testes se for preciso |
 | D9 | Integração TUU Maestro | Endpoint de exportação no MVP |
-| D10 | Gemini Flash | ✅ Alargada (8 out 2026): Gemini, Groq e Claude, principal escolhido pelo admin; Flash-Lite pela quota [A CONFIRMAR]; modelo do Claude por definir |
+| D10 | Gemini Flash | ✅ Alargada (8 out 2026): Gemini, Groq e Claude, principal escolhido pelo admin; Flash-Lite pela quota [A CONFIRMAR]; modelo do Claude por definir pelo utilizador quando for preciso (fica assim) |
 | D11 | MVP em eletricidade | ✅ Decidido |
 | D12 | Leitura de DWG | Adiada |
 | D13 | Severidade da CAL-01 | Aviso |
@@ -447,13 +447,13 @@ Decisões da Fase 0:
   - os valores da tabela de pseudónimos de execuções anteriores também respeitam o `allow:` dos overrides; foi assim que
     a freguesia de R1 (tomada por morada pelo mapa antigo) voltou a ficar real em 25 set 2026;
   - os PDF são gravados com o `/ID` da origem (`no_new_id`): uma nova execução só muda os PDF cujo conteúdo muda.
-- Próximo: Fase 8 (piloto: três projetos reais de eletricidade, SPEC 14), que depende de D6 e D7
-  e de a equipa rever
-  as Fases 3–7. Para fechar a 7: as 12 fichas de R1 que faltam (lista em data/fixtures/fichas-tecnicas/R1/fichas.json;
+- Próximo: Fase 8 (piloto: três projetos reais de eletricidade, SPEC 14). Decisões de 8 out 2026 (utilizador): D4 só
+  no PC dele, D6 contas com password, D7 e D8 dados como bons e corrigidos nos testes, modelo do Claude mais tarde.
+  Falta a equipa rever as Fases 3–7 e um humano com o papel Curador aprovar os blocos na aplicação. Para fechar a 7: as 12 fichas de R1 que faltam (lista em data/fixtures/fichas-tecnicas/R1/fichas.json;
   pô-las na pasta e acrescentar a entrada) e a revisão do curador.
   Antes do uso real da Fase 6: a verificação manual (docs/fase6-verificacao-manual.md), modelos .docx TUU vazios (hoje o
   pacote de R1) e dos formulários, a convenção de nomes confirmada pela TUU, o curador (D7) para haver conjunto oficial.
   Trabalho futuro da Fase 6: PDF assinado,
   integração mais funda com o TUU Maestro (D9). Trabalho futuro da Fase 5: citações com locator
   nas peças humanas, extração assistida por LLM para o que fica «não comparável».
-  Continuam pendentes D7 (curador), D8 (esqueletos), D6 (Entra ID) e o modelo do Claude (3.º fornecedor).
+  Sem decisões pendentes que bloqueiem o piloto; D6 e D4 revêem-se quando houver instruções da TI ou da direção.

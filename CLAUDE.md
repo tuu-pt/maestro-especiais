@@ -98,6 +98,11 @@ Decisões da Fase 3 (25 set 2026; aprovadas pelo utilizador, o resto [A CONFIRMA
   RegulationDoc com `review_status` e `citable` só com o documento confirmado e em vigor; `record()` com `project_id=None`
   nos eventos da biblioteca; o cabeçalho (técnico, data, revisão) fica no pacote e terá de ser paramétrico na Fase 4.
 - Tudo o que o curador tem de rever: docs/revisao-curador.md (gerado por `make curator-review`).
+- «Aprovar todas as propostas» (8 out 2026, pedido do utilizador com a D7 provisória): só o papel Curador, no ecrã G
+  (Biblioteca), com justificação ≥ 10 caracteres, para o MDJ, o CTE ou os dois (`POST /library/blocks/approve-all`);
+  cada bloco fica aprovado em nome de quem carrega, com um evento por bloco e um de resumo; os requisitos do CTE são
+  aprovados com o bloco; rejeitados ficam como estão; uma regra de ativação inválida fica por aprovar. O agente não
+  carrega no botão.
 
 Decisões da Fase 4 (28 set 2026; as quatro primeiras aprovadas pelo utilizador, o resto [A CONFIRMAR]):
 - Guarda de privacidade antes de cada pedido ao LLM: valores `personal_data` da ficha, campos pessoais dos perfis,

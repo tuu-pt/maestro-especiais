@@ -257,6 +257,12 @@ export type KnowledgeKind = "cable-designations" | "cable-equivalences" | "typol
 
 export type BlockMode = "fixed" | "parametric" | "adaptive";
 
+export type ApproveAllResult = {
+  approved: number;
+  requirements_approved: number;
+  skipped: { key: string; title: string; doc_type: "MDJ" | "CTE"; why: string }[];
+};
+
 export type BlockSummary = {
   id: string;
   key: string;

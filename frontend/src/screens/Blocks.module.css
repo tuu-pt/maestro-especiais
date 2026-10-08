@@ -250,3 +250,12 @@
   display: grid;
   gap: 6px;
 }
+.approveAll {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 10px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+}

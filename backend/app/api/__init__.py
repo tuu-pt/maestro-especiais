@@ -18,6 +18,7 @@ from app.api import (
     project_equipment,
     projects,
     review,
+    settings,
     validation,
 )
 
@@ -38,3 +39,4 @@ api_router.include_router(review.router)
 api_router.include_router(exports.router)
 api_router.include_router(equipment.router)
 api_router.include_router(project_equipment.router)
+api_router.include_router(settings.router)

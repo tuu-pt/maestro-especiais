@@ -6,7 +6,8 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     """Runtime configuration, read from environment variables only."""
 
-    model_config = SettingsConfigDict(extra="ignore")
+    # an empty variable (as .env.example leaves them) means the default, not an empty value
+    model_config = SettingsConfigDict(extra="ignore", env_ignore_empty=True)
 
     database_url: str = ""
     redis_url: str = ""
@@ -38,6 +39,23 @@ class Settings(BaseSettings):
     llm_max_retries: int = 4  # on 429/503
     llm_backoff_s: float = 2.0  # first wait, doubled at each retry
     llm_timeout_s: float = 60.0
+    # Three providers (8 Oct 2026): the main one is chosen by the admin (screen Definições; this
+    # LLM_PROVIDER is the initial value), the others follow in the order gemini, groq, claude. Each
+    # has its own models and pace; empty, the old variables above apply (LLM_MODEL_* to
+    # LLM_PROVIDER, LLM_FALLBACK_* to LLM_FALLBACK_PROVIDER). Model names only here.
+    anthropic_api_key: str = ""
+    llm_gemini_model_drafting: str = ""
+    llm_gemini_model_extraction: str = ""
+    llm_groq_model_drafting: str = ""
+    llm_groq_model_extraction: str = ""
+    llm_claude_model_drafting: str = ""
+    llm_claude_model_extraction: str = ""
+    llm_gemini_rpm: int | None = None
+    llm_gemini_rpd: int | None = None
+    llm_groq_rpm: int | None = None
+    llm_groq_rpd: int | None = None
+    llm_claude_rpm: int | None = None
+    llm_claude_rpd: int | None = None
     # Exports (Phase 6): links signed by the API (HMAC) and the service token of TUU Maestro (D9)
     export_link_secret: str = ""
     export_link_ttl_s: int = 24 * 3600

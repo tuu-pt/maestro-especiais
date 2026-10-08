@@ -130,6 +130,9 @@ def describe(action: str, payload: dict[str, Any]) -> str:
             return f"Editou «{payload.get('title', '')}»{extra}"
         case "llm.refused":
             return "Pedido ao LLM recusado: LLM desligado neste projeto"
+        case "settings.llm_primary":
+            to, why = payload.get("to", ""), payload.get("reason", "")
+            return f"Mudou o LLM principal para {to}: {why}"
         case "project.llm_allowed":
             return "Permitiu o uso do LLM" if payload.get("allowed") else "Retirou o uso do LLM"
         case "form.downloaded":

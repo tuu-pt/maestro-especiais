@@ -4,6 +4,7 @@ import { Fragment, useId, useState } from "react";
 import { useSearchParams } from "react-router";
 
 import {
+  useApproveAllBlocks,
   useBlock,
   useBlockAction,
   useBlockHistory,
@@ -100,6 +101,8 @@ export function BlocksPanel() {
     );
   }
   const shown = blocks.filter((b) => b.doc_type === docType);
+  const proposed = { MDJ: 0, CTE: 0 };
+  for (const b of blocks) if (b.status === "proposed") proposed[b.doc_type] += 1;
   const counts = (st: ReviewStatus) => shown.filter((b) => b.status === st).length;
   return (
     <div className={s.layout}>
@@ -115,6 +118,7 @@ export function BlocksPanel() {
           {shown.length} blocos · {counts("proposed")} propostos · {counts("approved")} aprovados · {counts("rejected")}{" "}
           rejeitados
         </p>
+        <ApproveAll proposed={proposed} />
         {shown.length === 0 ? (
           <p className={s.muted}>Ainda não há blocos deste documento.</p>
         ) : (
@@ -328,6 +332,98 @@ function Preview({ block }: { block: BlockDetail }) {
           <p className={s.muted}>Os dados pessoais aparecem mascarados (•••). Nada é gravado.</p>
         </div>
       ) : null}
+    </section>
+  );
+}
+
+type Scope = "both" | "MDJ" | "CTE";
+
+/** One decision of the curator for every proposed block, with a reason (audited block by block). */
+function ApproveAll({ proposed }: { proposed: { MDJ: number; CTE: number } }) {
+  const { data: me } = useMe();
+  const curator = me?.roles.some((r) => r.id === "curador") ?? false;
+  const approve = useApproveAllBlocks();
+  const [open, setOpen] = useState(false);
+  const [scope, setScope] = useState<Scope>("both");
+  const [reason, setReason] = useState("");
+  const base = useId();
+  const total = proposed.MDJ + proposed.CTE;
+  const result = approve.data;
+  if (!curator) return null;
+  if (total === 0 && !result) return null;
+  const count = scope === "both" ? total : proposed[scope];
+  const confirm = () =>
+    approve.mutate(
+      { reason, doc_type: scope === "both" ? null : scope },
+      {
+        onSuccess: () => {
+          setOpen(false);
+          setReason("");
+        },
+      },
+    );
+  return (
+    <section aria-labelledby={`${base}-h`} className={s.approveAll}>
+      <h3 id={`${base}-h`} className={s.h4}>
+        Aprovar todas as propostas
+      </h3>
+      {result ? (
+        <p role="status" className={s.muted}>
+          {result.approved} {result.approved === 1 ? "bloco aprovado" : "blocos aprovados"}
+          {result.requirements_approved ? ` (com ${result.requirements_approved} requisitos do CTE)` : ""}.
+          {result.skipped.length
+            ? ` Ficaram por aprovar: ${result.skipped.map((k) => `${k.title} (${k.doc_type}): ${k.why}`).join("; ")}.`
+            : ""}
+        </p>
+      ) : null}
+      {total === 0 ? null : open ? (
+        <div className={s.form}>
+          <label htmlFor={`${base}-scope`} className={s.label}>
+            Que blocos
+          </label>
+          <select
+            id={`${base}-scope`}
+            value={scope}
+            onChange={(e) => setScope(e.target.value as Scope)}
+            className={s.input}
+          >
+            <option value="both">MDJ e CTE ({total})</option>
+            <option value="MDJ">Só o MDJ ({proposed.MDJ})</option>
+            <option value="CTE">Só o CTE ({proposed.CTE})</option>
+          </select>
+          <label htmlFor={`${base}-reason`} className={s.label}>
+            Porquê (obrigatório, pelo menos 10 caracteres; fica na auditoria em cada bloco)
+          </label>
+          <textarea
+            id={`${base}-reason`}
+            rows={2}
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            className={s.input}
+          />
+          <p className={s.muted}>
+            É uma decisão sua como curador: cada bloco fica aprovado em seu nome, com esta justificação. Os rejeitados
+            ficam como estão; um bloco com a regra de ativação inválida não é aprovado.
+          </p>
+          {approve.error ? <ErrorNote>{approve.error.message}</ErrorNote> : null}
+          <Buttons>
+            <Button
+              variant="primary"
+              disabled={approve.isPending || count === 0 || reason.trim().length < 10}
+              onClick={confirm}
+            >
+              {`Aprovar ${count} ${count === 1 ? "bloco" : "blocos"}`}
+            </Button>
+            <Button onClick={() => setOpen(false)}>Cancelar</Button>
+          </Buttons>
+        </div>
+      ) : (
+        <Buttons>
+          <Button small onClick={() => setOpen(true)}>
+            {`Aprovar todas as propostas (${total})`}
+          </Button>
+        </Buttons>
+      )}
     </section>
   );
 }

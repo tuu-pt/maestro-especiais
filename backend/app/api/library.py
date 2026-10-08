@@ -95,6 +95,24 @@ class DecisionIn(BaseModel):
     note: str | None = Field(default=None, max_length=2000)
 
 
+class ApproveAllIn(BaseModel):
+    reason: str = Field(min_length=10, max_length=2000)  # why: it goes to the audit
+    doc_type: Literal["MDJ", "CTE"] | None = None  # None: both
+
+
+class SkippedOut(BaseModel):
+    key: str
+    title: str
+    doc_type: str
+    why: str
+
+
+class ApproveAllOut(BaseModel):
+    approved: int
+    requirements_approved: int
+    skipped: list[SkippedOut]
+
+
 class EditIn(BaseModel):
     title: str | None = Field(default=None, min_length=1, max_length=200)
     mode: Literal["fixed", "parametric", "adaptive"] | None = None
@@ -169,27 +187,69 @@ def preview_block(
     )  # fmt: skip
 
 
-@router.post("/blocks/{block_id}/review")
-def review_block(block_id: uuid.UUID, body: DecisionIn, db: DB, user: Curador) -> BlockSummary:
-    b = _block(db, block_id)
+def _decide(
+    db: Session,
+    b: TemplateBlock,
+    user: User,
+    decision: str,
+    note: str | None,
+    extra: dict[str, Any] | None = None,
+) -> int:
+    """One decision of the curator, audited; returns the CTE requirements approved with it."""
     before = b.status
-    b.status = body.decision
+    b.status = decision
     b.reviewed_by, b.reviewed_at = user.id, datetime.now(UTC)
-    b.review_note = (body.note or "").strip() or None
+    b.review_note = (note or "").strip() or None
     requirements = 0
-    if body.decision == "approved":  # the requirements of a CTE block are approved with it
+    if decision == "approved":  # the requirements of a CTE block are approved with it
         for r in db.scalars(select(Requirement).where(
                 Requirement.block_key == b.key, Requirement.status == "proposed")):  # fmt: skip
             r.status, r.reviewed_by, r.reviewed_at = "approved", user.id, b.reviewed_at
             requirements += 1
     record(
-        db, user, f"library.block_{body.decision}", "template_block", b.id,
+        db, user, f"library.block_{decision}", "template_block", b.id,
         {"key": b.key, "title": b.title, "doc_type": b.doc_type, "from": before,
-         **({"requirements_approved": requirements} if requirements else {})},
+         **({"requirements_approved": requirements} if requirements else {}), **(extra or {})},
         project_id=None,
     )  # fmt: skip
+    return requirements
+
+
+@router.post("/blocks/{block_id}/review")
+def review_block(block_id: uuid.UUID, body: DecisionIn, db: DB, user: Curador) -> BlockSummary:
+    b = _block(db, block_id)
+    _decide(db, b, user, body.decision, body.note)
     db.commit()
     return BlockSummary(**_summary(b))
+
+
+@router.post("/blocks/approve-all")
+def approve_all(body: ApproveAllIn, db: DB, user: Curador) -> ApproveAllOut:
+    """Approves every proposed block (of one document or both) in one decision of the curator.
+
+    Each block gets its own audit event, marked as part of it, plus one event for the whole
+    decision with the reason. Rejected and approved blocks are left alone; a proposed block whose
+    activation rule does not parse is skipped, since it could not be assembled.
+    """
+    query = select(TemplateBlock).where(TemplateBlock.status == "proposed")
+    if body.doc_type:
+        query = query.where(TemplateBlock.doc_type == body.doc_type)
+    reason = body.reason.strip()
+    approved, requirements, skipped = 0, 0, []
+    for b in db.scalars(query.order_by(TemplateBlock.doc_type, TemplateBlock.order)):
+        try:
+            parse(b.activation_rule or "true")
+        except RuleError as exc:
+            skipped.append(SkippedOut(key=b.key, title=b.title, doc_type=b.doc_type,
+                                      why=f"Regra de ativação inválida: {exc}"))  # fmt: skip
+            continue
+        requirements += _decide(db, b, user, "approved", reason, {"all": True})
+        approved += 1
+    record(db, user, "library.blocks_approved_all", "template_block", None,
+           {"doc_type": body.doc_type, "approved": approved, "skipped": len(skipped),
+            "requirements_approved": requirements, "reason": reason}, project_id=None)  # fmt: skip
+    db.commit()
+    return ApproveAllOut(approved=approved, requirements_approved=requirements, skipped=skipped)
 
 
 @router.patch("/blocks/{block_id}")

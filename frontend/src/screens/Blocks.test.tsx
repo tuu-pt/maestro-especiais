@@ -177,4 +177,39 @@ describe("block library (screen G)", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent("Falta a comparação depois de «sys.fv» (posição 7)");
     expect(sent[1]).toEqual({ note: "Mais simples.", activation_rule: "sys.fv" });
   });
+
+  it("lets a curator approve every proposal at once, with a reason", async () => {
+    setDevUser("curador");
+    withBlocks();
+    const sent: unknown[] = [];
+    server.use(
+      http.post(api("/library/blocks/approve-all"), async ({ request }) => {
+        sent.push(await request.json());
+        return HttpResponse.json({
+          approved: 1,
+          requirements_approved: 0,
+          skipped: [{ key: "ele.cte.x", title: "Cabos", doc_type: "CTE", why: "Regra de ativação inválida: x" }],
+        });
+      }),
+    );
+    renderAt("/conhecimento?separador=blocos");
+
+    await userEvent.click(await screen.findByRole("button", { name: "Aprovar todas as propostas (2)" }));
+    const go = screen.getByRole("button", { name: "Aprovar 2 blocos" });
+    expect(go).toBeDisabled(); // a reason first
+    await userEvent.type(screen.getByLabelText(/^Porquê \(obrigatório, pelo menos 10/), "Piloto: dadas como boas.");
+    await userEvent.selectOptions(screen.getByLabelText("Que blocos"), "MDJ");
+    await userEvent.click(screen.getByRole("button", { name: "Aprovar 1 bloco" }));
+
+    expect(await screen.findByRole("status")).toHaveTextContent("1 bloco aprovado. Ficaram por aprovar: Cabos (CTE)");
+    expect(sent).toEqual([{ reason: "Piloto: dadas como boas.", doc_type: "MDJ" }]);
+  });
+
+  it("does not offer it to whoever is not a curator", async () => {
+    withBlocks();
+    renderAt("/conhecimento?separador=blocos");
+
+    await screen.findByRole("list", { name: "Blocos do MDJ" });
+    expect(screen.queryByRole("button", { name: /Aprovar todas as propostas/ })).not.toBeInTheDocument();
+  });
 });

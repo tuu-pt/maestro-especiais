@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { ApiError, postJson, request } from "./client";
 import type {
+  ApproveAllResult,
   AuditEntry,
   BlockDetail,
   BlockEdit,
@@ -253,6 +254,19 @@ export function useBlockAction(id: string) {
             body: JSON.stringify(action.edit),
           })
         : postJson<BlockSummary>(`/library/blocks/${id}/review`, action),
+    onSuccess: () => {
+      void client.invalidateQueries({ queryKey: ["library"] });
+      void client.invalidateQueries({ queryKey: keys.activity });
+    },
+  });
+}
+
+/** «Aprovar todas as propostas»: one decision of the curator, with a reason (audited). */
+export function useApproveAllBlocks() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { reason: string; doc_type: "MDJ" | "CTE" | null }) =>
+      postJson<ApproveAllResult>("/library/blocks/approve-all", body),
     onSuccess: () => {
       void client.invalidateQueries({ queryKey: ["library"] });
       void client.invalidateQueries({ queryKey: keys.activity });

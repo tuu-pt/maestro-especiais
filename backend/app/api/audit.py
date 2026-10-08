@@ -99,6 +99,11 @@ def describe(action: str, payload: dict[str, Any]) -> str:
         case "library.block_approved" | "library.block_rejected":
             verb = "Aprovou" if action.endswith("approved") else "Rejeitou"
             return f"{verb} o bloco «{payload.get('title', '')}» ({payload.get('doc_type', '')})"
+        case "library.blocks_approved_all":
+            which = payload.get("doc_type") or "MDJ e CTE"
+            n = payload.get("approved", 0)
+            blocks = f"{n} bloco{'s' if n != 1 else ''}"
+            return f"Aprovou todas as propostas ({blocks}, {which}): {payload.get('reason', '')}"
         case "library.block_edited":
             what = ", ".join(EDIT_LABELS_PT.get(k, k) for k in payload.get("changed") or {})
             return f"Editou o bloco «{payload.get('title', '')}»: {what}"

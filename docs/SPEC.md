@@ -238,7 +238,9 @@ Nomes em inglês. Todas as tabelas têm `id` (UUID), `created_at`, `updated_at` 
 
 - **TemplateBlock**: `key` (ex.: `ele.mdj.dimensionamento_eletrico.quedas_de_tensao`: slug do título de nível 1 e, se houver, do nível 2), `doc_type` (MDJ | CTE), `specialty`, `kind` (cover | index | block | signature), `level` (1 = faixa de título numa tabela de **1 linha e 2 células** com texto; 2 = estilo «heading 2», `Ttulo2` no Word em português), `title`, `order`, `mode` (fixed | parametric | adaptive), `activation_rule` (texto na linguagem de 8.3) e `activation_ast` (a árvore JSON que se avalia), `body_template` (lista de parágrafos `{mode, project, units, text, ooxml, keys, single_source, note}`: `text` e `ooxml` com `{{v:…}}` nos fixos e paramétricos, vazios nos adaptativos), `locked_ooxml` (o bloco inteiro, quando nenhum parágrafo é adaptativo), `ooxml_rels` (por projeto: as relações usadas; imagens no S3 por SHA-256), `required_keys[]`, `equipment_slots[]` (CTE: `{entry, reasons, projects}`), `archive_refs[]` (`arc:<projeto>:<key>`), `projects[]` (onde foi encontrado), `source_refs[]` (secções de origem), `notes[]` (para o curador), `version`, `status` (proposed | approved | rejected) e `reviewed_by` (o `approved_by` quando aprovado). Um bloco nunca guarda dados do projeto nem pessoais.
 - **SourceDocument**, **SourceSection** (Fase 3): cada MDJ/CTE de referência partido em secções (capa, índice, blocos, assinatura), cada secção com os seus elementos do corpo em OOXML tal como estão (`ooxml`), as relações que usa (`rels`) e a evidência para o curador (`units`: texto com marcadores e dados pessoais mascarados). O pacote do documento (o .docx com o corpo vazio: estilos, numeração, tema, cabeçalhos) fica no S3 por SHA-256; pacote + fragmentos reconstituem o documento (teste de ida e volta). O cabeçalho tem o técnico, a data e a revisão: fica no pacote; no rascunho da Fase 4, o nome do técnico e o mês/ano passam a marcadores (`tec.nome`, `doc.data`).
-- **Document**: `project_id`, `type` (MDJ | CTE | FICHA_ELE | IDENTIFICACAO | TERMO), `specialty`, `template_id`, `ficha_revision_id`, `status` (draft | in_review | approved), `responsible_user_id`.
+- **Document**: `project_id`, `type` (MDJ | CTE | FICHA_ELE | IDENTIFICACAO | TERMO), `specialty`, `template_id`, `ficha_revision_id`, `status` (draft | in_review | approved), `responsible_user_id` (Fase 6: o **técnico responsável atribuído**, por omissão quem confirmou a ficha-base; um técnico ou o admin reatribui com justificação), `origin` (assembled | existing), `revision` (n: ficheiro `V<n>`, cabeçalho `R<nn>`, interface «rev. A, B…»), `approved_by/at`, `header_date` (mês/ano do cabeçalho, só se o técnico o escrever, P8).
+- **DocumentRevision** (Fase 6): cada aprovação de uma peça: `number`, `approved_by/at`, `ficha_revision_id`, `header_date`, instantâneo das secções (`section_id`, `order`, `title`, versão atual, ativa) e, quando reaberta, `reopened_by/at` e `reopen_reason`. Estados da peça: `draft` → `in_review` (pedido de revisão da Fase 5, bloqueado com críticos) → `approved` (só o técnico atribuído, com todas as condições) → reaberta como revisão n+1 (`draft`). Numa peça aprovada, nenhuma secção muda (HTTP 409 «reabra»).
+- **Export** (Fase 6): rascunho ou conjunto oficial, `status` (queued | running | done | failed), ficheiros (`name`, `piece`, `revision`, `sha256`, `size`, chave S3 sem o nome do ficheiro), `manifest`, .zip (nome, chave, SHA-256).
 - **Section** (Fase 4): `document_id`, `block_id`, `block_key`, `block_version` e `block_status` (o estado do bloco quando foi montado: «bloco não aprovado» enquanto o curador não aprovar), `order`, `title`, `level`, `kind`, `mode`, `active` e `active_reason` (resultado da regra de ativação e a razão em português), `activation_override` (quem ativou ou desativou, com justificação), `status` (todo | generated | reviewed | alert) e `status_note`, `missing_keys[]`, `locked` e `unlocked` (bloco fixo desbloqueado com justificação), `equipment_slots[]` (vazios, marcados «Fase 7»), `current_version`, `reviewed_by/at`.
 - **SectionVersion**: `section_id`, `number`, `content` (JSON TipTap), `status` (current | proposed | rejected | superseded: o texto do agente chega como **proposta** e só passa a atual quando uma pessoa a aceita no diff), `author_type` (system | agent | human), `llm_call_id`, `request` (pedido em linguagem natural), `missing_data[]`, `assumptions[]`, `issues[]` (NUM-01, REF-01), `created_by`.
 - **Conteúdo TipTap**: nós `locked` (fixos, com a entrada do bloco; o OOXML vem do bloco), `pending` (adaptativo por gerar) e `paragraph`; marcas `value` (`key`, `anchor`; os valores pessoais aparecem mascarados), `generated` (texto do agente) e `citation`. Um valor da ficha editado à mão pede confirmação e fica marcado para a COE-01 (Fase 5).
@@ -404,6 +406,12 @@ Regras de pós-processamento:
 - **Modelos** (`backend/app/forms/templates/`): derivados dos formulários de R1 nas fixtures por `make form-templates`, com os valores do projeto apagados (células do mapa, técnico, data, resultados em cache das fórmulas, textos partilhados sem uso, ligações `mailto:`) [A CONFIRMAR até a TUU ter modelos vazios]. `make pii-check` também os verifica.
 - API: `GET /projects/{id}/forms` (o que falta preencher à mão) e `GET /projects/{id}/forms/{kind}` (ficheiro; auditoria), só com a ficha-base confirmada. O perfil é o do técnico que confirmou a ficha-base (`GET/PUT /me/profile`, papel técnico).
 - Os dados pessoais do técnico e do requerente só são inseridos neste passo, no backend, e nunca passam pelo LLM.
+- **Na exportação (Fase 6)**, cada formulário só muda o que foi preenchido: na ficha eletrotécnica, só o XML da
+  folha (as restantes partes, incluindo `vbaProject.bin`, `styles.xml`, `workbook.xml` e as validações de dados, ficam
+  iguais byte a byte ao modelo; o fluxo comprimido do zip pode mudar, o conteúdo não); na identificação e no termo, só
+  `word/document.xml`. No rascunho, a marca «RASCUNHO — não aprovado» vai no cabeçalho de impressão da folha
+  (`<headerFooter>`) e nos cabeçalhos dos .docx. Nomes: `<CÓDIGO>_FichaEletrotecnica_<FASE>_ELE_V<n>.xlsm`,
+  `<CÓDIGO>_IdentificacaoProjeto_…docx`, `<CÓDIGO>_TermoResponsabilidade_…docx` [A CONFIRMAR com a TUU].
 
 ---
 
@@ -495,11 +503,20 @@ Os ecrãs seguem o layout, os estados e as interações do mock-up, adaptados a 
 - ✅ Só um curador pode aprovar blocos, equivalências de cabos e o estado `citable` de um documento.
 
 ### H · Revisão e exportação
-- Diff entre a proposta do agente e a edição do técnico.
-- Cartão de aprovação com as condições (blocos revistos, sem críticos, ficha-base confirmada).
+- Diff entre a proposta do agente e a edição do técnico, e da peça inteira entre uma revisão aprovada e o estado atual
+  (secção a secção, com navegação pelas secções alteradas): componente `DiffView` (palavra a palavra, «A → B», número de
+  alterações, «Alteração anterior/seguinte» pelo teclado, inserido/removido dito aos leitores de ecrã, dois temas).
+- Cartão de aprovação com as condições reais (Fase 6, `app/review`): peça montada na aplicação; ficha-base confirmada e
+  a mesma da peça; todas as secções ativas revistas; todos os blocos usados aprovados pelo curador (estado atual do
+  bloco); validação sem alertas críticos. Cada condição falhada diz porquê, lista as secções e liga para onde se resolve.
+- Técnico responsável (reatribuir com justificação), data do cabeçalho (opcional, só o técnico, P8), «Reabrir» com
+  justificação e histórico de revisões (rev. A · V0 · R00, quem aprovou, porque se reabriu).
 - Registo de auditoria cronológico que distingue o sistema, o agente e as pessoas.
 - ✅ "Aprovar" só fica ativo quando todas as condições estão cumpridas.
 - Exportação do **conjunto do projeto**: MDJ e CTE (`.docx`), ficha eletrotécnica (`.xlsm`), identificação e termo (`.docx`), com os nomes de ficheiro da convenção TUU (ex.: `<CÓDIGO>_MDJ_PE_ELE_V<n>.docx`).
+  O **oficial** exige o MDJ e o CTE aprovados com todas as condições; até lá, só o **rascunho**, com a marca
+  «RASCUNHO — não aprovado» em todas as páginas e no nome dos ficheiros (`<CÓDIGO>_MDJ_RASCUNHO-nao-aprovado.docx`).
+  Lista das exportações anteriores, com o estado e a descarga.
 - ✅ Na exportação, as etiquetas internas são removidas, os blocos `fixed` saem com o OOXML original e os formulários saem sem data nem assinatura.
 
 ---
@@ -507,9 +524,26 @@ Os ecrãs seguem o layout, os estados e as interações do mock-up, adaptados a 
 ## 11. Exportação
 
 - Os modelos TUU (`.docx`) mantêm os estilos atuais: títulos de nível 1 como faixa numa tabela de 1 célula, `Heading 2`, `Estilo1`, `List Paragraph` e `Caption` ("Imagens meramente ilustrativas").
-- A montagem junta blocos com `docxcompose`/`python-docx`, preservando o OOXML dos blocos fixos (fórmulas e imagens).
-- A capa e o bloco de assinatura usam os campos da ficha-base e do perfil do técnico.
-- Cada ficheiro exportado fica guardado com a versão e aparece no registo de auditoria.
+- A montagem junta os fragmentos OOXML dos blocos sobre o pacote do modelo (`app/assembly/docx.py`; até haver modelos
+  TUU vazios, o pacote do MDJ/CTE de R1 [A CONFIRMAR]), preservando o OOXML dos blocos fixos (fórmulas e imagens).
+  Uma entrada editada à mão sai como texto com o estilo do parágrafo de origem; os valores editados no texto
+  adaptativo ficam editados; só os IDs repetidos (`wp:docPr`, marcadores) mudam.
+- A capa e o bloco de assinatura usam os campos da ficha-base e do perfil do técnico. O cabeçalho é paramétrico:
+  técnico do perfil, data só se o técnico a escreveu (P8), revisão `R<nn>`.
+- Propriedades do documento: autor, «último a alterar» e empresa = TUU; título `<CÓDIGO> · <peça>`; nunca nomes de
+  pessoas. Nada de `{{v:…}}`, marcas do editor nem `[falta: …]` no oficial (a exportação recusa e diz que valores
+  faltam, só pelas etiquetas).
+- **Verificações automáticas** (`app/export/checks.py`), em cada exportação e nos testes: pacote (tipos de conteúdo,
+  relações), IDs únicos, abre com o python-docx, estilos usados existem no modelo, imagens/fórmulas/tabelas iguais às
+  secções de origem, LibreOffice converte (headless, na imagem do backend); .xlsm: todas as partes exceto a folha iguais
+  ao modelo e releitura igual à ficha-base. O que só um humano vê está em `docs/fase6-verificacao-manual.md`.
+- **Conjunto** (`app/export/bundle.py`, fila RQ `export`): .zip com os cinco ficheiros, PDF opcional de cada .docx
+  (LibreOffice) e `manifesto.json` (peças, revisões, versões, quem aprovou e quando, avisos ignorados com
+  justificação, o que falta preencher à mão, verificações, SHA-256). Cada ficheiro fica no S3 com o seu SHA-256
+  (`projects/<id>/exports/<export>/<sha256>`) e a exportação aparece no registo de auditoria. Descarga: rascunho pelo
+  redator e pelo técnico; oficial também pelo admin; nunca pelo curador.
+- **TUU Maestro (D9)**: `GET /api/integration/projects/{code}/export` com `X-Service-Token` devolve o manifesto do último
+  conjunto oficial e links assinados pela própria API (HMAC, `EXPORT_LINK_SECRET`, 24 h). Sem integração mais funda.
 
 ---
 
@@ -576,7 +610,7 @@ No fim de cada fase: testes a passar, um commit por tarefa e `CLAUDE.md` atualiz
 | **3 · Biblioteca de blocos e conhecimento** · implementada (25 set 2026), à espera do curador (D7) | Extração de blocos a partir dos MDJ/CTE de R1 e R2, aprovação pelo curador, corpus regulamentar, dicionário de cabos, léxico de tipologias. Feito: 42 blocos do MDJ e 53 do CTE propostos, com OOXML, evidência e regras; dicionário, léxico e corpus (só referências) propostos; ecrã do curador | Os esqueletos da secção 8.3 estão completos com blocos aprovados e regras de ativação (a aprovação é do curador: `docs/revisao-curador.md`) |
 | **4 · Montagem e redação** · implementada (28 set 2026) | Montagem `fixed`/`parametric`, redação `adaptive`, editor TipTap com blocos protegidos, pré-preenchimento dos formulários. Feito: montagem com a biblioteca proposta («bloco não aprovado»), rascunho .docx, camada de LLM com D5, guarda de privacidade e ritmo, propostas do agente em diff, ecrã D, perfil do técnico cifrado, FE/Identificação/Termo; `docs/fase4-diff-R1.md` sem defeitos | O MDJ e o CTE de R1 são montados a partir da ficha-base, e a diferença para o original aprovado é só texto adaptativo e correções de incoerências |
 | **5 · Validação** · implementada (28 set 2026) | Regras da secção 9 e matriz de coerência do projeto. Feito: motor em worker com revalidação das peças alteradas, peças existentes (modo auditoria), extração de factos sem LLM, 16 regras (EQP-* na Fase 7), ecrã E com matriz, bloqueio do envio para revisão, painel; `docs/fase5-anexo-c.md` | Todos os casos do Anexo C são detetados, com a leitura provável correta (14/14 em R1 e R2 carregados como auditoria; controlos sem alertas) |
-| **6 · Revisão e exportação** | Diff, aprovação, exportação do conjunto do projeto | O conjunto de R1 exporta e abre no Word/Excel com os estilos e macros intactos |
+| **6 · Revisão e exportação** · implementada (6 out 2026) | Diff, aprovação, exportação do conjunto do projeto. Feito: técnico responsável atribuído, aprovação com as condições reais e revisões (rev. A → B, V0 → V1), DiffView e diff entre revisões, valores manuais na ficha-base, .docx oficial e rascunho com marca de água, formulários com os pacotes intactos, conjunto .zip com manifesto, PDF por LibreOffice, endpoint D9, ecrã H; verificações de fidelidade automáticas | O conjunto de R1 exporta e abre no Word/Excel com os estilos e macros intactos |
 | **7 · Equipamentos** | Biblioteca semeada a partir dos CTE, fichas técnicas, requisitos, regras EQP | Os equipamentos de referência de R1 têm ficha técnica associada e verificada |
 | **8 · Piloto** | Três projetos reais de eletricidade feitos no Maestro Especiais | Tempos medidos e comparados com o processo atual |
 | **9 · Especialidades seguintes** | ITED, depois SCIE/segurança | Biblioteca de blocos e ficha-base da nova especialidade aprovadas |

@@ -184,6 +184,41 @@ describe("ficha do projeto", () => {
     await waitFor(() => expect(confirmed).toBe("r1"));
   });
 
+  it("lets a técnico add a value no source gives, with a note", async () => {
+    setDevUser("tecnico");
+    let sent: unknown = null;
+    const missing = [{ key: "id.obra.designacao", label: "Designação da obra", group: "Identificação", unit: null, numeric: false }];
+    serve(fichaWith([value({})], { missing_keys: missing }));
+    server.use(
+      http.post(api("/projects/p1/ficha/values"), async ({ request }) => {
+        sent = await request.json();
+        return HttpResponse.json(value({ key: "id.obra.designacao" }), { status: 201 });
+      }),
+    );
+    renderAt("/projetos/p1/ficha");
+
+    const card = (await screen.findByRole("heading", { name: "Valores em falta" })).closest("section")!;
+    await userEvent.selectOptions(within(card).getByLabelText("Campo"), "id.obra.designacao");
+    await userEvent.type(within(card).getByLabelText("Valor"), "Moradia em Coimbra");
+    const add = within(card).getByRole("button", { name: "Acrescentar à ficha-base" });
+    expect(add).toBeDisabled(); // the note is required
+    await userEvent.type(within(card).getByLabelText("De onde vem o valor (fica registado)"), "Do cliente.");
+    await userEvent.click(add);
+
+    await waitFor(() =>
+      expect(sent).toEqual({ key: "id.obra.designacao", value: "Moradia em Coimbra", note: "Do cliente." }),
+    );
+  });
+
+  it("does not offer manual values to a redator", async () => {
+    setDevUser("redator");
+    const missing = [{ key: "id.local.cp", label: "Código postal", group: "Identificação", unit: null, numeric: false }];
+    serve(fichaWith([value({})], { missing_keys: missing }));
+    renderAt("/projetos/p1/ficha");
+    await screen.findByRole("button", { name: "Confirmar revisão A" });
+    expect(screen.queryByRole("heading", { name: "Valores em falta" })).not.toBeInTheDocument();
+  });
+
   it("highlights circuits that fail a CAL-01 comparison without computing anything", async () => {
     serve(fichaWith([value({})], { circuits: [circuit({}), circuit({ id: "c2", origin: "Q.E.G.", destination: "Q.P.1", cal01: { ib_in_iz: "ok", i2_iz145: "ok" } })] }));
     renderAt("/projetos/p1/ficha");

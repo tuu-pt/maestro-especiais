@@ -163,6 +163,33 @@ Decisões da Fase 5 (28 set 2026; as do plano aprovado pelo utilizador, o resto 
 - Testes: o Playwright passa os ficheiros de R2 como conteúdo (não como caminhos): alguns Chromium
   descartam caminhos com «ç» sem erro.
 
+Decisões da Fase 6 (6 out 2026; as oito do plano aprovadas pelo utilizador, o resto [A CONFIRMAR]):
+- Técnico responsável por peça: por omissão quem confirmou a ficha-base; um técnico ou o admin reatribui com
+  justificação. Só ele aprova (`POST /documents/{id}/approve`), e só em `in_review` com todas as condições de
+  `app/review` (peça montada, ficha-base confirmada e a mesma da peça, secções ativas revistas, blocos aprovados pelo
+  curador no estado **atual** do bloco, validação sem críticos). Reabrir (justificação) cria a revisão n+1 (0015).
+- Valores manuais na ficha-base (`POST /projects/{id}/ficha/values`, técnico): só Identificação, Imóvel e Alimentação,
+  numa revisão em rascunho a reconfirmar; um valor lido de uma fonte corrige-se pelo conflito. Resolve o R1 (obra, CP).
+- Revisões: um contador n por peça → ficheiro `V<n>`, cabeçalho `R<nn>`, interface «rev. A, B…».
+- Nomes [A CONFIRMAR com a TUU]: `<CÓDIGO>_<PEÇA>_<FASE>_ELE_V<n>` (PE = execução, PL = licenciamento), formulários
+  `FichaEletrotecnica`, `IdentificacaoProjeto`, `TermoResponsabilidade`, sem acentos; rascunho `_RASCUNHO-nao-aprovado`.
+- Marca de água «RASCUNHO — não aprovado»: forma VML diagonal em todos os cabeçalhos dos .docx; no .xlsm, no cabeçalho
+  de impressão da folha (`<headerFooter>`, dentro do XML da folha).
+- Peças existentes (auditoria) não se aprovam nem se exportam; só se validam.
+- LibreOffice (writer/calc nogui, MPL) na imagem do backend, no `make test-docker` (`SKIP_LIBREOFFICE=1` para saltar) e
+  na CI: PDF opcional e verificação de conversão; no Windows sem `soffice`, os testes dele são saltados.
+- D9: links assinados pela API (HMAC, `EXPORT_LINK_SECRET`, 24 h) e `X-Service-Token` (`MAESTRO_SERVICE_TOKEN`);
+  `make env-update` acrescenta-os a um `.env` existente.
+- [A CONFIRMAR] «byte a byte» = conteúdo de cada parte do pacote, mesma ordem e datas no zip (o fluxo comprimido pode
+  mudar); a FE só muda o XML da folha, a identificação e o termo só `word/document.xml` (+ cabeçalhos no rascunho).
+- [A CONFIRMAR] o índice sai com `updateFields`: o Word pergunta se atualiza os campos (não é reparação).
+- [A CONFIRMAR] uma entrada editada à mão sai como texto com o estilo do parágrafo de origem; os IDs repetidos de
+  imagens e marcadores (fragmentos de R1 e R2) recebem IDs novos, só os repetidos.
+- [A CONFIRMAR] descarga: rascunho → redator e técnico; oficial → também o admin; nunca o curador. Pedir o oficial: técnico.
+- [A CONFIRMAR] propriedades do .docx: autor, «último a alterar» e empresa = TUU; título `<CÓDIGO> · <peça>`. As
+  fixtures de R1/R2 trazem nomes de pessoas em `docProps/core.xml` (a assinalar à equipa; não passam para a exportação).
+- O worker também tem `DEV_AUTH` em desenvolvimento (resolve o perfil do técnico nas exportações e na guarda do LLM).
+
 ## Comandos
 - make setup                 # .venv + dependências Python + npm ci + Chromium do Playwright
 - make env                   # gera .env local com segredos aleatórios de desenvolvimento
@@ -226,9 +253,17 @@ Decisões da Fase 0:
     o histórico do Git fica como está. Também passam por placeholder no que for enviado ao LLM.
 
 ## Estado atual
-- Fase: 5 **implementada** (28 set 2026). Fases 0, 1 e 2 concluídas; a 3 está implementada e à espera do curador (D7):
-  fecha quando os blocos estiverem aprovados. Até lá, as secções montadas dizem «bloco não aprovado». A 4 está
-  implementada.
+- Fase: 6 **implementada** (6 out 2026). Fases 0, 1 e 2 concluídas; a 3 está implementada e à espera do curador (D7):
+  fecha quando os blocos estiverem aprovados. Até lá, as secções montadas dizem «bloco não aprovado» e só sai o
+  rascunho (o conjunto oficial exige os blocos aprovados). As 4 e 5 estão implementadas.
+- Feito na Fase 6:
+  - valores manuais na ficha-base; técnico responsável, aprovação com as condições reais e revisões (0015);
+  - DiffView e diff entre revisões; ecrã H (condições com razão e ligação, responsável, data do cabeçalho, aprovar,
+    reabrir, histórico, exportações);
+  - .docx oficial e rascunho (marca de água) sobre o construtor da Fase 4; formulários só com as partes preenchidas
+    alteradas; conjunto .zip com manifesto, PDF opcional, S3 com SHA-256, fila `export` (0016); endpoint D9;
+  - verificações de fidelidade automáticas (`app/export/checks.py`) e docs/fase6-verificacao-manual.md (o que se
+    confirma à mão no Word e no Excel).
 - Feito na Fase 5:
   - motor de validação em worker com revalidação das peças alteradas (0013), peças existentes em modo auditoria (0014),
     extração de factos de todas as peças sem LLM, 16 regras da secção 9;
@@ -256,6 +291,11 @@ Decisões da Fase 0:
   - formulários (0012): perfil do técnico cifrado, FE, Identificação e Termo; `GET /projects/{id}/forms[/{kind}]`;
   - docs/fase4-diff-R1.md: MDJ 225/268 entradas iguais, CTE 172/242, **zero defeitos**; C1 repetida pelo agente e C2
     não repetida (a deteção é da Fase 5); C3 resolvida pelo perfil.
+- Verificado (6 out 2026, Fase 6, Windows 11 + Docker Desktop): `make lint` e `make pii-check` limpos; pytest 695 (8
+  saltados: os do LibreOffice, que passam no contentor com `make test-docker`: .docx, formulários e conjunto, PDF
+  incluído); Vitest 77; Playwright 85 (+ percursos opcionais); percurso RUN_EXPORT_JOURNEY verde contra a stack (R1
+  revisto, aprovado e exportado; .zip com os nomes oficiais). O percurso encontrou e corrigiu: o worker sem `DEV_AUTH`
+  (o técnico de desenvolvimento sem perfil nas exportações) e uma recusa que não dizia que valores faltavam.
 - Verificado (28 set 2026, Fase 5): pytest (suite completa) verde, Vitest 65, Playwright 79 (+ percursos opcionais), `make lint` e
   `make pii-check` limpos; `make anexo-c-report` 14/14; percurso RUN_AUDIT_JOURNEY verde contra a stack (R2 completo com a
   MDJ e o CTE existentes, validação no worker, aviso ignorado, envio bloqueado), capturas em claro, escuro e telemóvel.
@@ -267,6 +307,8 @@ Decisões da Fase 0:
   Percurso RUN_R1_EDITOR_JOURNEY verde, com o Gemini em 503 «high demand» respondido pela alternativa Groq.
   A lista branca da NUM-01 aceita «16 A a 250 V» como «16A-250V» (28 set 2026).
 - [A CONFIRMAR] pela equipa:
+  - Fase 6: as decisões acima, em especial a convenção de nomes, os modelos derivados de R1, a verificação manual
+    no Word/Excel e os nomes de pessoas em `docProps/core.xml` das fixtures de R1/R2;
   - Fase 5: as decisões acima e os «outros alertas reais» de docs/fase5-anexo-c.md, em especial: R2 com poder de corte
     de 3 kA na Tabela contra o mínimo de 6 kA da MDJ (12 troços); o título da obra nas peças desenhadas de R2
     («Requalificação e modernização…») diferente da LPU; o CTE de R2 com 16 quadros contra 14 da Tabela; R1 com a rua da
@@ -287,7 +329,9 @@ Decisões da Fase 0:
   repor com `docker compose down -v`). Percurso da Fase 4: `make up`, `make seed-library` e
   `RUN_R1_EDITOR_JOURNEY=1 npm run e2e` (cria um projeto R1-E2E-… e chama o Gemini duas vezes; um 503 persistente do
   Gemini faz o percurso falhar com a mensagem «o LLM falhou»). Percurso da Fase 5: `make up`, `make seed-library` e
-  `RUN_AUDIT_JOURNEY=1 npm run e2e` (cria um projeto E2E-AUD-… com o R2 completo). O percurso do curador corre em
+  `RUN_AUDIT_JOURNEY=1 npm run e2e` (cria um projeto E2E-AUD-… com o R2 completo). Percurso da Fase 6: `make up`,
+  `make seed-library` e `RUN_EXPORT_JOURNEY=1 npm run e2e` (R1-E2E-EXP-…, sem LLM; aprova **todos** os blocos: repor a BD
+  antes de voltar a correr qualquer percurso). O percurso do curador corre em
   último: aprova a INTRODUÇÃO, que o R1 no editor espera «não aprovado» (senão, repor a BD entre os dois). Depois de mudar dependências do
   backend: `docker compose build backend worker`. Depois de atualizar para a Fase 5: `docker compose up -d backend worker`
   (as migrações 0013/0014 correm no arranque do backend e o worker passa a ouvir a fila `validation`).
@@ -310,10 +354,10 @@ Decisões da Fase 0:
   - os valores da tabela de pseudónimos de execuções anteriores também respeitam o `allow:` dos overrides; foi assim que
     a freguesia de R1 (tomada por morada pelo mapa antigo) voltou a ficar real em 25 set 2026;
   - os PDF são gravados com o `/ID` da origem (`no_new_id`): uma nova execução só muda os PDF cujo conteúdo muda.
-- Próximo: Fase 6 (revisão e exportação): diff proposta/edição, cartão de aprovação (secções revistas + sem críticos
-  + ficha-base confirmada; o bloqueio da Fase 5 já existe), exportação do conjunto com os nomes TUU e os formulários sem
-  data nem assinatura. Falta para a Fase 6: modelos .docx TUU vazios (hoje o pacote de R1), exportação oficial só com
-  blocos aprovados (depende de D7), estado `approved` dos documentos, e decidir se as peças existentes (auditoria) se
-  exportam ou só se validam. Trabalho futuro da Fase 5: luminárias na COE-01, citações com locator nas peças humanas,
-  COE-02 por data de desenho (carimbadura), extração assistida por LLM para o que fica «não comparável».
-  Continuam pendentes D7 (curador), D8 (esqueletos), D5 (dados reais no LLM) e D6 (Entra ID).
+- Próximo: Fase 7 (equipamentos: biblioteca semeada a partir dos CTE, fichas técnicas, requisitos, regras EQP-*).
+  Antes do uso real da Fase 6: a verificação manual (docs/fase6-verificacao-manual.md), modelos .docx TUU vazios (hoje o
+  pacote de R1) e dos formulários, a convenção de nomes confirmada pela TUU, o curador (D7) para haver conjunto oficial.
+  Trabalho futuro da Fase 6: o índice gerado sem `updateFields` (LibreOffice a atualizar os campos), PDF assinado,
+  integração mais funda com o TUU Maestro (D9). Trabalho futuro da Fase 5: luminárias na COE-01, citações com locator
+  nas peças humanas, COE-02 por data de desenho (carimbadura), extração assistida por LLM para o que fica «não comparável».
+  Continuam pendentes D7 (curador), D8 (esqueletos), D5 (dados reais no LLM; agora também a Groq) e D6 (Entra ID).

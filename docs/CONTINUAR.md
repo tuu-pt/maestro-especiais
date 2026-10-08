@@ -1,7 +1,7 @@
 # Continuar o Maestro Especiais noutra conta
 
 Guia para retomar o projeto numa conta nova (do Claude e/ou do GitHub) sem perder contexto.
-Escrito a 28 set 2026, no fim da Fase 4. A fonte de verdade continua a ser `CLAUDE.md` (regras e
+Escrito a 28 set 2026 (Fase 4), atualizado a 6 out 2026 (Fase 6). A fonte de verdade continua a ser `CLAUDE.md` (regras e
 estado) e `docs/SPEC.md` (especificação); este ficheiro diz o que **não** vem com o repositório e
 como arrancar.
 
@@ -58,7 +58,8 @@ LLM_FALLBACK_PROVIDER=groq
 LLM_FALLBACK_MODEL_DRAFTING=openai/gpt-oss-120b
 LLM_FALLBACK_MODEL_EXTRACTION=openai/gpt-oss-120b
 LLM_FALLBACK_RPM=2
-# PROFILE_ENCRYPTION_KEY, POSTGRES_*, REDIS_*, S3_* são gerados pelo make env
+# PROFILE_ENCRYPTION_KEY, EXPORT_LINK_SECRET, MAESTRO_SERVICE_TOKEN, POSTGRES_*, REDIS_*, S3_* são gerados
+# pelo make env (num .env existente: make env-update)
 ```
 
 Num `.env` que já existe, `make env-update` acrescenta as variáveis novas sem mexer nas outras.
@@ -90,11 +91,17 @@ Depois de mudar o `.env`: `docker compose up -d backend worker` (o `restart` nã
 - Verificada num PC Windows 11 com Docker Desktop (28 set 2026, ramo `fase5`): lint, pytest 664 (em contentor,
   `make test-docker`), Vitest 66, Playwright 79, `pii-check`, Anexo C 14/14 sem diferenças e os quatro
   percursos contra a stack (auditoria, R2, curador, R1 no editor com o Gemini real).
+- **6 implementada** (6 out 2026, ramo `fase6`): valores manuais na ficha-base, técnico responsável e aprovação com
+  as condições reais, revisões (rev. A → B, V0 → V1), DiffView, exportação do .docx oficial e do rascunho com marca
+  de água, formulários com os pacotes intactos, conjunto .zip com manifesto e PDF (LibreOffice na imagem), endpoint D9,
+  ecrã H. Depois de atualizar: `docker compose build backend worker` (LibreOffice), `make env-update`
+  (`EXPORT_LINK_SECRET`, `MAESTRO_SERVICE_TOKEN`) e `docker compose up -d backend worker` (migrações 0015/0016, fila
+  `export`). Confirmar à mão no Word e no Excel: `docs/fase6-verificacao-manual.md`.
 
 ## 7. O que falta
 
-**Próximo trabalho (Claude): Fase 6 · Revisão e exportação** — ver «Próximo» no `CLAUDE.md`. Rever antes
-os [A CONFIRMAR] da Fase 5 e os «outros alertas reais» de `docs/fase5-anexo-c.md`.
+**Próximo trabalho (Claude): Fase 7 · Equipamentos** — ver «Próximo» no `CLAUDE.md`. Rever antes os
+[A CONFIRMAR] das Fases 5 e 6 e fazer a verificação manual da Fase 6 (`docs/fase6-verificacao-manual.md`).
 
 **Decisões pendentes:** D4 (alojamento: cloud UE ou VPS da TUU), D5 (termos da Gemini API e agora
 da Groq), D6 (Entra ID), D7 (curador), D8 (esqueletos com os técnicos), D10 (Flash-Lite e a
@@ -136,6 +143,6 @@ morada da capa da MDJ de R1 (≠ ficha eletrotécnica, `docs/fase4-diff-R1.md`);
 
 ## 9. Primeira mensagem sugerida na conta nova
 
-> Lê o `CLAUDE.md`, o `docs/CONTINUAR.md` e a SPEC (secções 10.H, 11 e 14). Confirma que a stack
-> arranca (`make up`, `make seed-library`, `make test`). Depois propõe o plano da Fase 6 (revisão e
-> exportação), uma tarefa por commit, e espera pela minha aprovação antes de implementar.
+> Lê o `CLAUDE.md`, o `docs/CONTINUAR.md` e a SPEC (secções 7, 9, 10.F e 14). Confirma que a stack
+> arranca (`make up`, `make seed-library`, `make test`). Depois propõe o plano da Fase 7 (equipamentos),
+> uma tarefa por commit, e espera pela minha aprovação antes de implementar.

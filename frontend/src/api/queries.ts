@@ -17,6 +17,9 @@ import type {
   KnowledgeKind,
   Project,
   ProjectFile,
+  Approval,
+  DocumentDiff,
+  ProjectExport,
   ProjectDocument,
   ProjectForm,
   ProjectIn,
@@ -140,6 +143,15 @@ export function useResolveConflict(projectId: string) {
         manual_value: args.manual ?? null,
         note: args.note,
       }),
+    onSuccess: () => refresh(projectId),
+  });
+}
+
+export function useAddManualValue(projectId: string) {
+  const refresh = useRefreshProject();
+  return useMutation({
+    mutationFn: (body: { key: string; value: string; note: string }) =>
+      postJson<FichaValue>(`/projects/${projectId}/ficha/values`, body),
     onSuccess: () => refresh(projectId),
   });
 }
@@ -273,6 +285,82 @@ export const useForms = (projectId: string, enabled: boolean) =>
     queryFn: () => request<ProjectForm[]>(`/projects/${projectId}/forms`),
     enabled,
   });
+
+export const useDocumentDiff = (documentId: string | undefined, base: number | null, against: number | null) =>
+  useQuery({
+    queryKey: ["documents", documentId, "diff", base, against],
+    queryFn: () =>
+      request<DocumentDiff>(
+        `/documents/${documentId}/diff?base=${base}${against === null ? "" : `&against=${against}`}`,
+      ),
+    enabled: Boolean(documentId) && base !== null,
+  });
+
+// ---------------------------------------------------------------- review and export (Phase 6)
+
+export const useApproval = (documentId: string | undefined) =>
+  useQuery({
+    queryKey: ["documents", documentId, "approval"],
+    queryFn: () => request<Approval>(`/documents/${documentId}/approval`),
+    enabled: Boolean(documentId),
+  });
+
+function patchJson<T>(path: string, body: unknown): Promise<T> {
+  return request<T>(path, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+}
+
+export function useApprovalActions(documentId: string, projectId: string) {
+  const client = useQueryClient();
+  const onSuccess = (data: Approval) => {
+    client.setQueryData(["documents", documentId, "approval"], data);
+    void client.invalidateQueries({ queryKey: keys.documents(projectId) });
+    void client.invalidateQueries({ queryKey: keys.document(documentId) });
+    void client.invalidateQueries({ queryKey: keys.audit(projectId) });
+  };
+  return {
+    approve: useMutation({ mutationFn: () => postJson<Approval>(`/documents/${documentId}/approve`), onSuccess }),
+    reopen: useMutation({
+      mutationFn: (reason: string) => postJson<Approval>(`/documents/${documentId}/reopen`, { reason }),
+      onSuccess,
+    }),
+    assign: useMutation({
+      mutationFn: (body: { user_id: string; reason: string }) =>
+        patchJson<Approval>(`/documents/${documentId}/responsible`, body),
+      onSuccess,
+    }),
+    header: useMutation({
+      mutationFn: (header_date: string | null) =>
+        patchJson<Approval>(`/documents/${documentId}/header`, { header_date }),
+      onSuccess,
+    }),
+  };
+}
+
+export const useExports = (projectId: string | undefined) =>
+  useQuery({
+    queryKey: ["projects", projectId, "exports"],
+    queryFn: () => request<ProjectExport[]>(`/projects/${projectId}/exports`),
+    enabled: Boolean(projectId),
+    // follow an export while the worker builds it
+    refetchInterval: (query) =>
+      (query.state.data ?? []).some((e) => e.status === "queued" || e.status === "running") ? 1500 : false,
+  });
+
+export function useCreateExport(projectId: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { kind: "draft" | "official"; pdf: boolean }) =>
+      postJson<ProjectExport>(`/projects/${projectId}/exports`, body),
+    onSuccess: () => {
+      void client.invalidateQueries({ queryKey: ["projects", projectId, "exports"] });
+      void client.invalidateQueries({ queryKey: keys.audit(projectId) });
+    },
+  });
+}
 
 export const useDocuments = (projectId: string | undefined) =>
   useQuery({

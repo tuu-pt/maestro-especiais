@@ -30,7 +30,7 @@ BUILDING = {"R1": "Moradia unifamiliar", "R2": "Biblioteca"}
 
 def _stale(path: Path) -> bool:
     """Old versions and signed or duplicated copies are not the pieces of the project."""
-    return any(w in str(path).lower() for w in ("/old/", "signed", "(1)"))
+    return any(w in path.as_posix().lower() for w in ("/old/", "signed", "(1)"))  # also on Windows
 
 
 def audit_files(code: str) -> list[Path]:

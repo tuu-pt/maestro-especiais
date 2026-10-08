@@ -17,6 +17,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from app.api.documents import ensure_editable
 from app.audit import record
 from app.auth import User, require_role
 from app.db import get_session
@@ -65,6 +66,7 @@ def _writable(db: Session, section_id: uuid.UUID) -> Section:
     section = _section(db, section_id)
     if section.document.origin == "existing":
         raise HTTPException(status.HTTP_409_CONFLICT, READ_ONLY)
+    ensure_editable(section.document)
     return section
 
 
@@ -106,6 +108,7 @@ def activation(section_id: uuid.UUID, body: ActivationIn, db: DB, user: Writer) 
 @router.post("/sections/{section_id}/review")
 def review(section_id: uuid.UUID, body: ReviewIn, db: DB, user: Writer) -> dict[str, Any]:
     section = _section(db, section_id)
+    ensure_editable(section.document)
     note = section.status_note or ""
     if section.missing_keys and section.status == "todo" and note.startswith("Falta dado"):
         raise HTTPException(status.HTTP_409_CONFLICT, f"Não pode ser revista: {note}")

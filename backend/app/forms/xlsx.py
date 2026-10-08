@@ -3,6 +3,10 @@
 openpyxl would rewrite the whole workbook and lose what it does not support (the data validation
 extension with the DGEG lists, ActiveX controls). Here only the edited cells change: VBA, styles,
 validations and drawings stay byte for byte.
+
+Only the parts that were changed are written again ("dirty"); reading a part (e.g. the workbook
+to find a sheet) does not change it. Every other part keeps its content, its place and its date
+in the zip; its compressed stream may differ (zlib), never its bytes once unzipped (Phase 6).
 """
 
 import io
@@ -46,11 +50,17 @@ class Workbook:
             self.infos = z.infolist()
             self.parts = {i.filename: z.read(i.filename) for i in self.infos}
         self._trees: dict[str, Any] = {}
+        self._dirty: set[str] = set()
 
     def tree(self, part: str) -> Any:
         if part not in self._trees:
             self._trees[part] = etree.fromstring(self.parts[part])
         return self._trees[part]
+
+    def touch(self, part: str) -> Any:
+        """The tree of a part about to change: it will be written again."""
+        self._dirty.add(part)
+        return self.tree(part)
 
     def sheet_part(self, name: str) -> str:
         book = self.tree("xl/workbook.xml")
@@ -67,7 +77,7 @@ class Workbook:
         return [p for p in self.parts if re.fullmatch(r"xl/worksheets/sheet\d+\.xml", p)]
 
     def cell(self, part: str, ref: str, create: bool = False) -> Any:
-        sheet_data = self.tree(part).find(q("sheetData"))
+        sheet_data = (self.touch(part) if create else self.tree(part)).find(q("sheetData"))
         col, row_n = _split(ref)
         row = None
         for r in sheet_data.iter(q("row")):
@@ -102,6 +112,7 @@ class Workbook:
         c = self.cell(part, ref, create=value is not None)
         if c is None:
             return
+        self.touch(part)
         formula = c.find(q("f")) if keep_formula else None
         for child in list(c):
             if child is not formula:
@@ -131,6 +142,7 @@ class Workbook:
         links = sheet.find(q("hyperlinks"))
         if links is None:
             return
+        self.touch(part)
         dropped = set()
         for link in list(links):
             if link.get("ref") in refs:
@@ -141,33 +153,66 @@ class Workbook:
         rels_part = posixpath.join(posixpath.dirname(part), "_rels",
                                    posixpath.basename(part) + ".rels")  # fmt: skip
         if dropped and rels_part in self.parts:
-            rels = self.tree(rels_part)
+            rels = self.touch(rels_part)
             for rel in list(rels):
                 if rel.get("Id") in dropped:
                     rels.remove(rel)
 
     def clear_cached_results(self, part: str) -> None:
         """Formula cells keep the formula and lose the result computed for another project."""
-        for c in self.tree(part).iter(q("c")):
+        for c in self.touch(part).iter(q("c")):
             if c.find(q("f")) is not None:
                 for v in c.findall(q("v")):
                     c.remove(v)
                 c.attrib.pop("t", None)
 
     def recalculate_on_open(self) -> None:
+        """Excel recalculates the formulas when the file opens (only written if not yet set)."""
         book = self.tree("xl/workbook.xml")
         calc = book.find(q("calcPr"))
+        if calc is not None and calc.get("fullCalcOnLoad") in ("1", "true"):
+            return
+        book = self.touch("xl/workbook.xml")
         if calc is None:
             calc = etree.SubElement(book, q("calcPr"))
         calc.set("fullCalcOnLoad", "1")
+
+    def print_header(self, part: str, text: str) -> None:
+        """A text in the centre of the printed header of every page (the draft's watermark).
+
+        It lives in the sheet XML (<headerFooter>), placed where the schema wants it.
+        """
+        sheet = self.touch(part)
+        header = sheet.find(q("headerFooter"))
+        if header is None:
+            header = etree.Element(q("headerFooter"))
+            before = next((sheet.find(q(t)) for t in reversed(_BEFORE_HEADER)
+                           if sheet.find(q(t)) is not None), None)  # fmt: skip
+            if before is not None:
+                before.addnext(header)
+            else:
+                after = next((sheet.find(q(t)) for t in _AFTER_HEADER
+                              if sheet.find(q(t)) is not None), None)  # fmt: skip
+                if after is not None:
+                    after.addprevious(header)
+                else:
+                    sheet.append(header)
+        for tag in ("oddHeader", "firstHeader", "evenHeader"):
+            el = header.find(q(tag))
+            if el is None and tag != "oddHeader":
+                continue
+            if el is None:
+                el = etree.Element(q(tag))
+                header.insert(0, el)
+            el.text = f'&C&"-,Bold"&16{text}'
 
     def prune_shared_strings(self) -> None:
         """Drop the shared strings no cell uses (the values of the project a template came from)."""
         if SST not in self.parts:
             return
-        sst = self.tree(SST)
+        sst = self.touch(SST)
         items = sst.findall(q("si"))
-        cells = [c for p in self.sheet_parts() for c in self.tree(p).iter(q("c"))
+        cells = [c for p in self.sheet_parts() for c in self.touch(p).iter(q("c"))
                  if c.get("t") == "s"]  # fmt: skip
         used = sorted({int(c.findtext(q("v"))) for c in cells})
         new_index = {old: new for new, old in enumerate(used)}
@@ -181,12 +226,25 @@ class Workbook:
         sst.set("uniqueCount", str(len(used)))
 
     def to_bytes(self) -> bytes:
-        for part, tree in self._trees.items():
-            self.parts[part] = etree.tostring(
-                tree, xml_declaration=True, encoding="UTF-8", standalone=True
-            )
-        out = io.BytesIO()
-        with zipfile.ZipFile(out, "w") as z:
-            for info in self.infos:
-                z.writestr(info, self.parts[info.filename], compress_type=zipfile.ZIP_DEFLATED)
-        return out.getvalue()
+        changed = {
+            part: etree.tostring(self._trees[part], xml_declaration=True, encoding="UTF-8",
+                                 standalone=True)
+            for part in self._dirty
+        }  # fmt: skip
+        return replace_parts(self.infos, {**self.parts, **changed})
+
+
+# CT_Worksheet: what comes before and after <headerFooter>
+_BEFORE_HEADER = ("printOptions", "pageMargins", "pageSetup")
+_AFTER_HEADER = ("rowBreaks", "colBreaks", "customProperties", "cellWatches", "ignoredErrors",
+                 "smartTags", "drawing", "legacyDrawing", "legacyDrawingHF", "drawingHF", "picture",
+                 "oleObjects", "controls", "webPublishItems", "tableParts", "extLst")  # fmt: skip
+
+
+def replace_parts(infos: list[zipfile.ZipInfo], parts: dict[str, bytes]) -> bytes:
+    """A package with the same entries, in the same order and with the same dates."""
+    out = io.BytesIO()
+    with zipfile.ZipFile(out, "w") as z:
+        for info in infos:
+            z.writestr(info, parts[info.filename], compress_type=info.compress_type)
+    return out.getvalue()

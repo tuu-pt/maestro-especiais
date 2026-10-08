@@ -14,9 +14,9 @@ from app.api.projects import get_project
 from app.audit import record
 from app.auth import CurrentUser, User, require_role
 from app.db import get_session
-from app.ingest.base import to_number
+from app.ingest.base import json_number, to_number
 from app.ingest.circuit_sheet import compare_sheet, drop_open_conflicts
-from app.ingest.consolidate import latest_revision, open_conflict
+from app.ingest.consolidate import draft_revision, latest_revision, open_conflict
 from app.ingest.drawings import index_check
 from app.ingest.keys import GROUPS, KEYS
 from app.models import (
@@ -144,6 +144,18 @@ class BomItemOut(BaseModel):
     link_rule: str | None
 
 
+# Facts a técnico knows that no source may give; lists, systems and drawings come from a source
+MANUAL_GROUPS = ("Identificação", "Imóvel", "Alimentação")
+
+
+class MissingKeyOut(BaseModel):
+    key: str
+    label: str
+    group: str
+    unit: str | None
+    numeric: bool
+
+
 class LinkKeyOut(BaseModel):
     key: str
     label: str
@@ -172,6 +184,7 @@ class FichaOut(BaseModel):
     open_conflicts: int
     can_confirm: bool
     cal01_note: str
+    missing_keys: list[MissingKeyOut]  # keys a técnico may add by hand (Phase 6)
 
 
 def _file_names(db: Session, ids: set[uuid.UUID]) -> dict[str, str]:
@@ -324,6 +337,12 @@ def read_ficha(project_id: uuid.UUID, db: DB, _: CurrentUser) -> FichaOut:
         open_conflicts=open_count,
         can_confirm=bool(current and current.status == "draft" and values and not open_count),
         cal01_note=cal_01.PENDING_NOTE,
+        missing_keys=[
+            MissingKeyOut(key=k, label=i.label_pt, group=i.group, unit=i.unit, numeric=i.numeric)
+            for k, i in KEYS.items()
+            if i.group in MANUAL_GROUPS
+            and not any(v.key == k and v.value not in (None, "", []) for v in values)
+        ],
     )
 
 
@@ -427,6 +446,64 @@ def resolve(
            {"key": value.key, **choice}, project_id=value.revision.project_id)  # fmt: skip
     db.commit()
     return _value_out(value, _names_for(db, [value]))
+
+
+class ManualValueIn(BaseModel):
+    key: str = Field(description="A key of SPEC 7.2")
+    value: Any
+    note: str = Field(min_length=3, max_length=2000, description="Where the value comes from")
+
+
+@router.post("/projects/{project_id}/ficha/values", status_code=status.HTTP_201_CREATED)
+def add_manual_value(project_id: uuid.UUID, body: ManualValueIn, db: DB, user: Tecnico) -> ValueOut:
+    """A value no source gives (e.g. the designation of the work in R1), written by the técnico.
+
+    It goes into the draft revision (a new one after a confirmation), to be confirmed again. A value
+    read from a source is corrected through its conflict, never here.
+    """
+    project = get_project(db, project_id)
+    if body.key not in KEYS:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "Chave desconhecida (SPEC 7.2).")
+    meta = KEYS[body.key]
+    if meta.group not in MANUAL_GROUPS:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_CONTENT, "Este campo só vem das fontes do projeto."
+        )
+    value: Any = body.value.strip() if isinstance(body.value, str) else body.value
+    if meta.numeric:
+        number = to_number(value)
+        if number is None:
+            raise HTTPException(
+                status.HTTP_422_UNPROCESSABLE_CONTENT, "O valor tem de ser um número."
+            )
+        value = json_number(number)
+    if value in (None, "", []):
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "Indique um valor.")
+    revision = draft_revision(db, project.id, user.id)
+    existing = next((v for v in revision.values if v.key == body.key), None)
+    if (
+        existing is not None
+        and existing.source_type != "manual"
+        and existing.value not in (None, "", [])
+    ):
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "Este valor vem de uma fonte do projeto: corrige-se pela fonte ou pelo conflito.",
+        )
+    if existing is None:
+        existing = FichaValue(
+            revision_id=revision.id, key=body.key, group=meta.group, label_pt=meta.label_pt,
+            unit=meta.unit, personal_data=meta.personal, status="pending", source_type="manual",
+        )  # fmt: skip
+        db.add(existing)
+    existing.value, existing.status = value, "pending"
+    existing.source_type, existing.source_file_id = "manual", None
+    existing.source_ref = f"Introduzido à mão: {body.note.strip()}"[:160]
+    # The note may name people and the value may be personal: neither goes to the audit.
+    record(db, user, "ficha.manual_value", "ficha_value", existing.id,
+           {"key": body.key, "revision": revision.label}, project_id=project.id)  # fmt: skip
+    db.commit()
+    return _value_out(existing, _names_for(db, [existing]))
 
 
 @router.post("/ficha/revisions/{revision_id}/confirm")

@@ -140,8 +140,34 @@ def describe(action: str, payload: dict[str, Any]) -> str:
             return f"Descarregou {title} pré-preenchido"
         case "profile.updated":
             return "Atualizou o perfil de técnico"
+        case "export.requested":
+            kind = "o conjunto oficial" if payload.get("kind") == "official" else "um rascunho"
+            return f"Pediu a exportação de {kind} ({payload.get('version', '')})"
+        case "export.done":
+            kind = "Conjunto oficial" if payload.get("kind") == "official" else "Rascunho"
+            files, version = payload.get("files", 0), payload.get("version", "")
+            return f"{kind} exportado ({files} ficheiros, {version})"
+        case "export.failed":
+            return "A exportação falhou"
+        case "export.downloaded":
+            via = " por link assinado" if payload.get("via") == "link" else ""
+            return f"Descarregou {payload.get('file', 'a exportação')}{via}"
+        case "export.integration_read":
+            return f"O TUU Maestro leu o conjunto oficial ({payload.get('version', '')})"
+        case "document.approved":
+            return f"Aprovou o {payload.get('type', '')} (rev. {payload.get('revision', '')})"
+        case "document.reopened":
+            return (f"Reabriu o {payload.get('type', '')}: rev. {payload.get('from', '')} → "
+                    f"rev. {payload.get('to', '')} ({payload.get('reason', '')})")  # fmt: skip
+        case "document.responsible_assigned":
+            return f"Atribuiu o técnico responsável do {payload.get('type', '')}"
+        case "document.header_date":
+            what = "Escreveu" if payload.get("set") else "Apagou"
+            return f"{what} a data do cabeçalho do {payload.get('type', '')}"
         case "document.draft_downloaded":
             return f"Descarregou o rascunho do {payload.get('type', '')}"
+        case "ficha.manual_value":
+            return f"Acrescentou à mão o valor «{label}» (rev. {payload.get('revision', '')})"
         case "ficha.confirmed":
             return f"Confirmou a ficha-base rev. {payload.get('label', '')}"
         case "validation.requested":

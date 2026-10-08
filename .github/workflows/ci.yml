@@ -39,6 +39,10 @@ jobs:
             backend/pyproject.toml
             tools/requirements.txt
       - run: pip install -e "backend[dev]" -r tools/requirements.txt
+      - name: LibreOffice (verificação de fidelidade das peças exportadas)
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq --no-install-recommends libreoffice-writer-nogui libreoffice-calc-nogui fonts-dejavu-core
       - run: ruff check backend tools
       - run: ruff format --check backend tools
       - run: mypy backend/app backend/tests

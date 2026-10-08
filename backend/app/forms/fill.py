@@ -6,10 +6,15 @@ cannot justify. Whatever stays empty is listed, so the technician knows what is 
 
 The templates are the R1 forms with the values of the project cleared (app.forms.derive)
 [A CONFIRMAR: until the TUU has its own empty templates].
+
+Phase 6: only the parts that change are written again, the rest of each package is the
+template's byte for byte (the sheet XML of the ficha eletrotécnica; word/document.xml of the
+identification and the term, plus their headers in a draft, which carries a watermark).
 """
 
 import io
 import re
+import zipfile
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from importlib import resources
@@ -17,9 +22,10 @@ from typing import Any
 
 import docx
 from docx.table import _Cell
+from lxml import etree
 
 from app.assembly.values import ValueSource, format_value
-from app.forms.xlsx import Workbook
+from app.forms.xlsx import Workbook, replace_parts
 from app.ingest.ficha_eletrotecnica import cell_maps
 from app.ingest.keys import KEYS
 from app.library.facts import DOC_KEYS
@@ -125,7 +131,7 @@ def _cell_value(value: Any) -> Any:
     return value
 
 
-def fill_fe(values: ValueSource) -> Filled:
+def fill_fe(values: ValueSource, watermark: str | None = None) -> Filled:
     book = Workbook(template(FORMS["ficha_eletrotecnica"].template))
     part = book.sheet_part(FE_SHEET)
     cells = {**cell_maps()[FE_VERSION].cells, **FE_TECHNICIAN}
@@ -136,6 +142,8 @@ def fill_fe(values: ValueSource) -> Filled:
         if value is None:
             missing.append(f"{label(key)} ({ref})")
     book.recalculate_on_open()
+    if watermark:
+        book.print_header(part, watermark)
     return Filled(book.to_bytes(), missing + [f"{v} ({k})" for k, v in FE_BY_HAND.items()])
 
 
@@ -205,8 +213,27 @@ def clear_dates(document: Any) -> None:
                             r.text = ""
 
 
-def fill_docx(kind: str, values: ValueSource) -> Filled:
-    document = docx.Document(io.BytesIO(template(FORMS[kind].template)))
+def _save_parts(original: bytes, document: Any, watermark: str | None) -> bytes:
+    """Only word/document.xml (and, with a watermark, the headers) of the template change."""
+    from app.assembly.docx import watermark as add_watermark
+
+    with zipfile.ZipFile(io.BytesIO(original)) as z:
+        infos = z.infolist()
+        parts = {i.filename: z.read(i.filename) for i in infos}
+    parts["word/document.xml"] = etree.tostring(document.element, xml_declaration=True,
+                                                encoding="UTF-8", standalone=True)  # fmt: skip
+    if watermark:
+        for name in [n for n in parts if re.fullmatch(r"word/header\d*\.xml", n)]:
+            root = etree.fromstring(parts[name])
+            add_watermark(root, watermark)
+            parts[name] = etree.tostring(root, xml_declaration=True, encoding="UTF-8",
+                                         standalone=True)  # fmt: skip
+    return replace_parts(infos, parts)
+
+
+def fill_docx(kind: str, values: ValueSource, watermark: str | None = None) -> Filled:
+    original = template(FORMS[kind].template)
+    document = docx.Document(io.BytesIO(original))
     fields, ticks = DOCX_FIELDS[kind], DOCX_TICKS[kind]
     by_hand: list[str] = []
     for table in document.tables:
@@ -230,17 +257,15 @@ def fill_docx(kind: str, values: ValueSource) -> Filled:
         by_hand.append("4. Tipo de instalação (nova ou existente, por linha)")
     by_hand.append("Data e assinatura do técnico responsável")
     clear_dates(document)
-    out = io.BytesIO()
-    document.save(out)
-    return Filled(out.getvalue(), by_hand)
+    return Filled(_save_parts(original, document, watermark), by_hand)
 
 
-FILLERS: dict[str, Callable[[ValueSource], Filled]] = {
+FILLERS: dict[str, Callable[[ValueSource, str | None], Filled]] = {
     "ficha_eletrotecnica": fill_fe,
-    "identificacao": lambda v: fill_docx("identificacao", v),
-    "termo": lambda v: fill_docx("termo", v),
+    "identificacao": lambda v, mark: fill_docx("identificacao", v, mark),
+    "termo": lambda v, mark: fill_docx("termo", v, mark),
 }
 
 
-def fill(kind: str, values: ValueSource) -> Filled:
-    return FILLERS[kind](values)
+def fill(kind: str, values: ValueSource, watermark: str | None = None) -> Filled:
+    return FILLERS[kind](values, watermark)

@@ -1,0 +1,189 @@
+.tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.tabs button {
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 5px 10px;
+  border: 1px solid var(--line-2);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--ink-2);
+  cursor: pointer;
+}
+.tabs button[aria-pressed="true"] {
+  background: var(--ink);
+  color: var(--paper);
+  border-color: var(--ink);
+}
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 340px);
+  gap: 14px;
+  align-items: start;
+}
+@media (max-width: 1000px) {
+  .layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.main,
+.side {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+}
+.h4 {
+  margin: 12px 0 6px;
+  font-size: 13px;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+.label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink-2);
+  margin: 6px 0 4px;
+}
+.input {
+  width: 100%;
+  font: inherit;
+  font-size: 13px;
+  padding: 6px 8px;
+  border: 1px solid var(--line-2);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--ink);
+}
+.muted {
+  color: var(--ink-3);
+  font-size: 12.5px;
+  margin: 6px 0;
+  overflow-wrap: anywhere;
+}
+.changed ul {
+  list-style: none;
+  margin: 0 0 6px;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.changed button {
+  font: inherit;
+  font-size: 12px;
+  padding: 3px 8px;
+  border: 1px solid var(--line-2);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--ink-2);
+  cursor: pointer;
+  text-align: left;
+}
+.changed button[aria-current="true"] {
+  border-color: var(--ink);
+  color: var(--ink);
+  box-shadow: inset 3px 0 0 var(--ink);
+}
+.conditions {
+  list-style: none;
+  margin: 0 0 8px;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+  font-size: 13px;
+}
+.conditions > li {
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr);
+  gap: 8px;
+  color: var(--ink-2);
+  overflow-wrap: anywhere;
+}
+.ok::before {
+  content: "✓";
+  color: var(--ok);
+  font-weight: 700;
+}
+.missing::before {
+  content: "!";
+  color: var(--warn);
+  font-weight: 700;
+}
+.reason {
+  color: var(--ink);
+}
+.fix {
+  font-weight: 600;
+  color: var(--info);
+}
+.items {
+  font-size: 12px;
+  margin-top: 4px;
+}
+.items ul {
+  margin: 4px 0 0;
+  padding-left: 18px;
+}
+.form {
+  display: grid;
+  gap: 4px;
+  margin-top: 8px;
+}
+.inline {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+.who {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin: 0 0 8px;
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+.avatar {
+  flex: none;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--ink);
+  color: var(--paper);
+  font-weight: 700;
+  font-size: 12px;
+}
+.check {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  font-size: 13px;
+  margin: 6px 0;
+}
+.exports {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+.exports > li {
+  display: grid;
+  gap: 6px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  min-width: 0;
+}
+.exportHead {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}

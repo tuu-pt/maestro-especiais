@@ -227,6 +227,18 @@ describe("assisted editor (screen D)", () => {
     await expect.poll(() => who).toBe("redator");
   });
 
+  it("makes an approved document read-only until it is reopened", async () => {
+    const approved = { ...mdj(), status: "approved" as const, revision_label: "A" };
+    withProject([approved]);
+    server.use(http.get(api("/documents/d1"), () => HttpResponse.json(approved)));
+    renderAt("/projetos/p1/documentos?doc=MDJ&seccao=s-supply");
+
+    expect(await screen.findByText(/Aprovada \(rev\. A\): só leitura\./)).toBeInTheDocument();
+    await screen.findByRole("region", { name: "Proposta do agente" });
+    expect(screen.queryByRole("button", { name: "Editar" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Aceitar proposta" })).not.toBeInTheDocument();
+  });
+
   it("gives no editing to a curator", async () => {
     setDevUser("curador");
     withProject();

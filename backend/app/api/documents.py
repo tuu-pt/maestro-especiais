@@ -11,14 +11,13 @@ from sqlalchemy.orm import Session
 
 from app.api.projects import get_project
 from app.assembly.assemble import AssemblyError, assemble, confirmed_revision, export_readiness
-from app.assembly.docx import draft_docx
-from app.assembly.values import ValueSource
 from app.audit import record
 from app.auth import CurrentUser, User, require_role
 from app.config import Settings, get_settings
 from app.db import get_session
 from app.models import Document, FichaRevision, Project
 from app.profiles import revision_profile
+from app.review import revision_label
 from app.storage import ObjectStore, get_store
 
 router = APIRouter(tags=["documentos"])
@@ -71,7 +70,9 @@ class DocumentOut(BaseModel):
     type: str
     origin: str  # assembled | existing (read-only, Phase 5)
     source_file_id: uuid.UUID | None = None
-    status: str
+    status: str  # draft | in_review | approved
+    revision_label: str = "A"  # rev. A, B… (Phase 6)
+    responsible_user_id: str | None = None
     ficha_revision: str
     created_at: datetime
     counts: dict[str, int]
@@ -113,9 +114,19 @@ def _out(db: Session, d: Document, with_sections: bool = True) -> DocumentOut:
     return DocumentOut(
         id=d.id, project_id=d.project_id, type=d.type, origin=d.origin,
         source_file_id=d.source_file_id, status=d.status,
+        revision_label=revision_label(d.revision), responsible_user_id=d.responsible_user_id,
         ficha_revision=revision.label if revision else "", created_at=d.created_at,
         counts=counts, sections=sections,
     )  # fmt: skip
+
+
+APPROVED = "Peça aprovada: reabra-a para a alterar (cria a revisão seguinte)."
+
+
+def ensure_editable(document: Document) -> None:
+    """Every action that changes a section of an approved document is refused (Phase 6)."""
+    if document.status == "approved":
+        raise HTTPException(status.HTTP_409_CONFLICT, APPROVED)
 
 
 def get_document(db: Session, document_id: uuid.UUID) -> Document:
@@ -162,24 +173,26 @@ def read_document(document_id: uuid.UUID, db: DB, _: CurrentUser) -> DocumentOut
 
 @router.get("/documents/{document_id}/export-check")
 def export_check(document_id: uuid.UUID, db: DB, _: CurrentUser) -> dict[str, Any]:
-    problems = export_readiness(get_document(db, document_id))
+    problems = export_readiness(db, get_document(db, document_id))
     return {"ready": not problems, "problems": problems}
 
 
 @router.get("/documents/{document_id}/draft.docx")
 def draft(document_id: uuid.UUID, db: DB, store: Store, user: Writer, settings: Config) -> Response:
+    """The draft .docx: watermark "RASCUNHO — não aprovado" and never the official name."""
+    from app.export import ExportRefused
+    from app.export.docx import export_docx
+
     document = get_document(db, document_id)
-    revision = db.get(FichaRevision, document.ficha_revision_id)
-    assert revision is not None
     try:
-        values = ValueSource.load(db, revision, revision_profile(db, settings, revision))
-        data = draft_docx(db, store, document, values)
+        exported = export_docx(db, store, settings, document, official=False)
+    except ExportRefused as exc:
+        raise HTTPException(status.HTTP_409_CONFLICT, str(exc)) from exc
     except ValueError as exc:
         raise HTTPException(status.HTTP_409_CONFLICT, str(exc)) from exc
-    project = db.get(Project, document.project_id)
     record(db, user, "document.draft_downloaded", "document", document.id, {"type": document.type},
            project_id=document.project_id)  # fmt: skip
     db.commit()
-    name = f"{project.code if project else 'PROJETO'}_{document.type}_rascunho.docx"
-    return Response(data, media_type=DOCX,
+    name = exported.name
+    return Response(exported.data, media_type=DOCX,
                     headers={"Content-Disposition": f'attachment; filename="{name}"'})  # fmt: skip

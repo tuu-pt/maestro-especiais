@@ -1,10 +1,9 @@
 /** Screen D · Editor assistido: the MDJ and the CTE assembled from the ficha-base, section by section. */
 
-import { diffWords } from "diff";
 import { useId, useState } from "react";
 import { useSearchParams } from "react-router";
 
-import { ApiError, download } from "../api/client";
+import { ApiError } from "../api/client";
 import { useProjectEvents } from "../api/events";
 import {
   useAssemble,
@@ -21,6 +20,8 @@ import {
 } from "../api/queries";
 import type { DocSection, ProjectDocument, SectionContent, SectionEvent } from "../api/types";
 import { useActiveProject } from "../app/activeProject";
+import { DiffView } from "../components/DiffView";
+import { DownloadButton } from "../components/DownloadButton";
 import { BlockModeBadge, Button, Buttons, Chip, EmptyState, ErrorNote, Pill, type Tone } from "../components/ui";
 import { generatedParagraphs, hasPending } from "../lib/content";
 import { Checklist, Loading, NoProject } from "./common";
@@ -59,6 +60,7 @@ export function EditorScreen() {
 function useCanWrite(doc?: ProjectDocument): boolean {
   const { data: me } = useMe();
   if (doc?.origin === "existing") return false; // a piece made by hand is only audited here
+  if (doc?.status === "approved") return false; // reopened in screen H, as the next revision
   return me?.roles.some((r) => r.id === "redator" || r.id === "tecnico") ?? false;
 }
 
@@ -160,29 +162,6 @@ function ProjectEditor({ projectId }: { projectId: string }) {
   );
 }
 
-function DownloadButton({ path, filename, children }: { path: string; filename: string; children: string }) {
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  return (
-    <>
-      <Button
-        small
-        disabled={busy}
-        onClick={() => {
-          setBusy(true);
-          setError(null);
-          download(path, filename)
-            .catch((e: unknown) => setError(e instanceof Error ? e.message : "Erro ao descarregar."))
-            .finally(() => setBusy(false));
-        }}
-      >
-        {children}
-      </Button>
-      {error ? <ErrorNote>{error}</ErrorNote> : null}
-    </>
-  );
-}
-
 /** The DGEG forms, filled from the ficha-base and the technician's profile (SPEC 8.5). */
 function FormsPanel({ projectId }: { projectId: string }) {
   const { data: forms = [], error } = useForms(projectId, true);
@@ -275,7 +254,7 @@ function DocumentEditor({ documentId, projectId }: { documentId: string; project
               Gerar texto adaptativo ({toDraft} {toDraft === 1 ? "secção" : "secções"})
             </Button>
           ) : null}
-          <DownloadButton path={`/documents/${doc.id}/draft.docx`} filename={`${doc.type}_rascunho.docx`}>
+          <DownloadButton path={`/documents/${doc.id}/draft.docx`} filename={`${doc.type}_RASCUNHO-nao-aprovado.docx`}>
             Rascunho .docx
           </DownloadButton>
           {generate.error ? <ErrorNote>{generate.error.message}</ErrorNote> : null}
@@ -304,6 +283,12 @@ function Summary({ doc }: { doc: ProjectDocument }) {
         <>
           <strong>Peça existente, carregada para auditoria: só leitura.</strong> Os dados pessoais aparecem
           mascarados; a validação compara-os no servidor.{" "}
+        </>
+      ) : null}
+      {doc.status === "approved" ? (
+        <>
+          <strong>Aprovada (rev. {doc.revision_label ?? "A"}): só leitura.</strong> Para alterar, reabra-a no ecrã de
+          revisão (cria a revisão seguinte).{" "}
         </>
       ) : null}
       {doc.type} · ficha-base rev. {doc.ficha_revision} · {c.sections ?? 0} secções: {c.reviewed ?? 0} revistas,{" "}
@@ -582,9 +567,12 @@ function SidePanel({
             Proposta do agente · versão {proposal.number}
             {proposal.request ? <span className={s.muted}> · «{proposal.request}»</span> : null}
           </h4>
-          <Diff
+          <DiffView
             before={current ? generatedParagraphs(current.content).join("\n") : ""}
             after={generatedParagraphs(proposal.content).join("\n")}
+            beforeLabel={current ? `versão ${current.number}` : "sem texto"}
+            afterLabel={`proposta (versão ${proposal.number})`}
+            label="Diferenças entre o texto atual e a proposta"
           />
           {proposal.issues.length ? (
             <p className={s.note}>
@@ -647,22 +635,5 @@ function SidePanel({
         </section>
       ) : null}
     </div>
-  );
-}
-
-function Diff({ before, after }: { before: string; after: string }) {
-  const parts = diffWords(before, after);
-  return (
-    <p className={s.diff} aria-label="Diferenças entre o texto atual e a proposta">
-      {parts.map((p, i) =>
-        p.added ? (
-          <ins key={i}>{p.value}</ins>
-        ) : p.removed ? (
-          <del key={i}>{p.value}</del>
-        ) : (
-          <span key={i}>{p.value}</span>
-        ),
-      )}
-    </p>
   );
 }

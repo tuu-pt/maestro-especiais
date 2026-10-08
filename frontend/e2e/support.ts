@@ -32,6 +32,7 @@ export async function mockApi(page: Page, extra: Extra = {}): Promise<void> {
       "/knowledge/cables": { designations: [], equivalences: [] },
       "/knowledge/typologies": [],
       "/library/blocks": [],
+      "/settings/llm": { primary: "gemini", order: [], providers: [] },
       "/knowledge/regulations": [],
       "/health": { status: "ok", services: { database: { status: "ok" }, redis: { status: "ok" } } },
     };

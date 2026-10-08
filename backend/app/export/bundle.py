@@ -53,10 +53,10 @@ FORM_FILES = (("FichaEletrotecnica", "ficha_eletrotecnica", "xlsm", XLSM),
 FE_SHEET_PART = "xl/worksheets/sheet1.xml"
 
 
-def _name(user_id: str | None) -> str | None:
-    from app.api.review import user_name
+def _name(db: Session, user_id: str | None) -> str | None:
+    from app.accounts import name_of
 
-    return user_name(user_id)
+    return name_of(db, user_id)
 
 
 def pieces(db: Session, project_id: uuid.UUID) -> list[Document]:
@@ -114,7 +114,7 @@ def _ignored(db: Session, project_id: uuid.UUID) -> list[dict[str, Any]]:
     if run is None:
         return []
     return [{"rule": i.rule_id, "severity": i.severity, "piece": i.location.get("piece"),
-             "reason": i.ignored_reason, "by": _name(i.resolved_by),
+             "reason": i.ignored_reason, "by": _name(db, i.resolved_by),
              "at": i.resolved_at.isoformat(timespec="seconds") if i.resolved_at else None}
             for i in run.issues if i.status == "ignored"]  # fmt: skip
 
@@ -180,12 +180,13 @@ def manifest(db: Session, export: Export, files: list[dict[str, Any]], problems:
         "tipo": "oficial" if export.kind == "official" else "rascunho",
         "versao": export.version,
         "criado_em": datetime.now(UTC).isoformat(timespec="seconds"),
-        "criado_por": _name(export.created_by),
+        "criado_por": _name(db, export.created_by),
         "ficha_base": f"rev. {revision.label}" if revision else None,
         "pecas": [
             {"tipo": d.type, "revisao": revision_label(d.revision),
              "versao": file_version(d.revision), "estado": d.status,
-             "responsavel": _name(d.responsible_user_id), "aprovada_por": _name(d.approved_by),
+             "responsavel": _name(db, d.responsible_user_id),
+             "aprovada_por": _name(db, d.approved_by),
              "aprovada_em": d.approved_at.isoformat(timespec="seconds") if d.approved_at else None,
              "cabecalho_data": d.header_date}
             for d in pieces(db, export.project_id)

@@ -43,6 +43,8 @@ make e2e
 ```
 
 Interface em http://localhost:5173 (utilizador de desenvolvimento escolhido no topo).
+Contas reais (email e password, sem `DEV_AUTH`): `make create-user EMAIL=nome@tuu.pt NAME="Nome" ROLES=admin`
+(pede a password; nunca a escrever no chat) e `make users` para as listar; a página de entrada é `/entrar`.
 
 ## 4. O `.env` a preencher
 
@@ -58,11 +60,15 @@ LLM_FALLBACK_PROVIDER=groq
 LLM_FALLBACK_MODEL_DRAFTING=openai/gpt-oss-120b
 LLM_FALLBACK_MODEL_EXTRACTION=openai/gpt-oss-120b
 LLM_FALLBACK_RPM=2
+ANTHROPIC_API_KEY=              # https://console.anthropic.com (3.º fornecedor; com LLM_CLAUDE_MODEL_*)
+# LLM_<GEMINI|GROQ|CLAUDE>_MODEL_*, _RPM, _RPD: vazias, valem as de cima. O principal escolhe-se no
+# ecrã Definições (admin); os outros entram por ordem quando ele falha.
 # PROFILE_ENCRYPTION_KEY, EXPORT_LINK_SECRET, MAESTRO_SERVICE_TOKEN, POSTGRES_*, REDIS_*, S3_* são gerados
 # pelo make env (num .env existente: make env-update)
 ```
 
-Num `.env` que já existe, `make env-update` acrescenta as variáveis novas sem mexer nas outras.
+Num `.env` que já existe, `make env-update` acrescenta as variáveis novas sem mexer nas outras
+(desde 8 out 2026: `SESSION_SECRET`, `SESSION_TTL_HOURS`, `SESSION_COOKIE_SECURE`).
 Depois de mudar o `.env`: `docker compose up -d backend worker` (o `restart` não relê o `.env`).
 
 ## 5. Regras de trabalho (resumo; as completas estão no `CLAUDE.md`)
@@ -70,8 +76,8 @@ Depois de mudar o `.env`: `docker compose up -d backend worker` (o `restart` nã
 - Nunca ler, listar nem abrir `data/private/`; nunca correr `make anonymize` nem `tools/anonymize.py`
   (é a equipa que o faz). O `.claude/settings.json` do repositório bloqueia `data/private/`.
 - O agente não decide nem calcula; o LLM nunca escreve números, nomes nem valores (`{{v:chave}}`).
-- Dados pessoais nunca vão ao LLM nem aos logs. **D5 pendente**: só dados de `data/fixtures` vão
-  ao LLM (`Project.llm_allowed`, ligado só pelo admin).
+- Dados pessoais nunca vão ao LLM nem aos logs. D5: desde 8 out 2026 o LLM está **ligado por omissão**
+  (`Project.llm_allowed`, D5 aceite); o admin desliga-o por projeto. Fornecedores: Gemini, Groq e Claude.
 - Interface em PT-PT; código, tabelas, endpoints e commits em inglês.
 - Uma tarefa, um commit, com testes. **Push só com autorização explícita.**
 - Decisões por confirmar seguem a recomendação e ficam registadas como [A CONFIRMAR] no `CLAUDE.md`.
@@ -100,12 +106,13 @@ Depois de mudar o `.env`: `docker compose up -d backend worker` (o `restart` nã
 
 ## 7. O que falta
 
-**Próximo trabalho (Claude): Fase 7 · Equipamentos** — ver «Próximo» no `CLAUDE.md`. Rever antes os
-[A CONFIRMAR] das Fases 5 e 6 e fazer a verificação manual da Fase 6 (`docs/fase6-verificacao-manual.md`).
+**Próximo trabalho:** a Fase 7 (equipamentos) está implementada e fecha com as fichas técnicas de R1, que a equipa
+coloca em `data/fixtures/fichas-tecnicas/`; a seguir, a Fase 8 (piloto), que depende de D5, D6 e D7. Ver «Próximo»
+no `CLAUDE.md`. Rever antes os [A CONFIRMAR] das Fases 5 a 7 e fazer a verificação manual da Fase 6
+(`docs/fase6-verificacao-manual.md`).
 
-**Decisões pendentes:** D4 (alojamento: cloud UE ou VPS da TUU), D5 (termos da Gemini API e agora
-da Groq), D6 (Entra ID), D7 (curador), D8 (esqueletos com os técnicos), D10 (Flash-Lite e a
-alternativa Groq em vez do Flash).
+**Decisões pendentes:** D4 (alojamento: cloud UE ou VPS da TUU), D6 (Entra ID), D7 (curador), D8 (esqueletos com os técnicos), D10 (Flash-Lite; o modelo do Claude
+por definir).
 
 **Ações da equipa:** rever os códigos postais «NNNN – NNN» (com travessão) que o anonimizador pode
 não ter apanhado nas fixtures (Identificação de R1, FE de R2) e voltar a anonimizar; confirmar a
@@ -143,6 +150,7 @@ morada da capa da MDJ de R1 (≠ ficha eletrotécnica, `docs/fase4-diff-R1.md`);
 
 ## 9. Primeira mensagem sugerida na conta nova
 
-> Lê o `CLAUDE.md`, o `docs/CONTINUAR.md` e a SPEC (secções 7, 9, 10.F e 14). Confirma que a stack
-> arranca (`make up`, `make seed-library`, `make test`). Depois propõe o plano da Fase 7 (equipamentos),
-> uma tarefa por commit, e espera pela minha aprovação antes de implementar.
+> Lê o `CLAUDE.md`, o `docs/CONTINUAR.md` e a SPEC (secções 7.6, 9, 10.F e 14). Confirma que a stack
+> arranca (`make up`, `make seed-library`, `make test`). Se já houver fichas técnicas em
+> `data/fixtures/fichas-tecnicas/`, propõe o plano para fechar a Fase 7 com elas, uma tarefa por commit, e espera
+> pela minha aprovação antes de implementar.

@@ -21,8 +21,9 @@ from sqlalchemy.orm import Session
 from app.audit import record
 from app.config import Settings, get_settings
 from app.drafting.draft import DraftRefused, adaptive_entries, draft_section
-from app.llm.client import LlmClient, LlmFailed, LlmPaused, make_provider
+from app.llm.client import Link, LlmClient, LlmFailed, LlmPaused, make_provider
 from app.llm.guard import PrivacyBlocked
+from app.llm.providers import chain
 from app.llm.ratelimit import RedisRateLimiter
 from app.models import Document, Section, TemplateBlock
 from app.progress import Publish, redis_publisher
@@ -96,16 +97,17 @@ def draft_document(db: Session, client: LlmClient, publish: Publish, document_id
 # ---------------------------------------------------------------- RQ
 
 
-def _client(settings: Settings, connection: redis.Redis) -> LlmClient:
-    limiter = RedisRateLimiter(connection, settings.llm_rpm, settings.llm_rpd)
-    client = LlmClient(make_provider(settings), limiter, settings, sleep=time.sleep)
-    if settings.llm_fallback_provider:
-        client.fallback = make_provider(settings, settings.llm_fallback_provider)
-        client.fallback_limiter = RedisRateLimiter(
-            connection, settings.llm_fallback_rpm, settings.llm_fallback_rpd,
-            prefix=f"llm:{settings.llm_fallback_provider}",
-        )  # fmt: skip
-    return client
+def _client(settings: Settings, connection: redis.Redis, db: Session) -> LlmClient:
+    """The chain of providers of this moment: the main one chosen by the admin, then the
+    others that have a key and a model (read at each job: a change needs no restart)."""
+    links = [Link(make_provider(settings, c.name),
+                  RedisRateLimiter(connection, c.rpm, c.rpd, prefix=f"llm:{c.name}"), c.models)
+             for c in chain(db, settings)]  # fmt: skip
+    if not links:  # nothing configured: the main provider says what is missing
+        limiter = RedisRateLimiter(connection, settings.llm_rpm, settings.llm_rpd)
+        return LlmClient(make_provider(settings), limiter, settings, sleep=time.sleep)
+    return LlmClient(links[0].provider, links[0].limiter, settings, sleep=time.sleep,
+                     links=links)  # fmt: skip
 
 
 def _session(settings: Settings) -> Session:
@@ -118,7 +120,7 @@ def document_job(document_id: str) -> None:
     settings = get_settings()
     connection = redis.Redis.from_url(settings.redis_url)
     with _session(settings) as db:
-        draft_document(db, _client(settings, connection), redis_publisher(connection),
+        draft_document(db, _client(settings, connection, db), redis_publisher(connection),
                        uuid.UUID(document_id))  # fmt: skip
 
 
@@ -128,7 +130,7 @@ def section_job(section_id: str, request: str | None) -> None:
     with _session(settings) as db:
         section = db.get(Section, uuid.UUID(section_id))
         if section is not None:
-            run_one(db, _client(settings, connection), redis_publisher(connection), section,
+            run_one(db, _client(settings, connection, db), redis_publisher(connection), section,
                     section.document.project_id, request)  # fmt: skip
 
 

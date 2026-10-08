@@ -14,13 +14,20 @@ import type {
   DevUser,
   Ficha,
   FichaValue,
+  LlmSettings,
   KnowledgeKind,
   Project,
   ProjectFile,
   Approval,
   DocumentDiff,
+  EquipmentCategory,
+  EquipmentDetail,
+  EquipmentParamInfo,
+  EquipmentSlotDetail,
+  EquipmentSummary,
   ProjectExport,
   ProjectDocument,
+  ProjectEquipment,
   ProjectForm,
   ProjectIn,
   Regulation,
@@ -58,7 +65,13 @@ export const keys = {
   validation: (projectId: string) => ["projects", projectId, "validation"] as const,
 };
 
-export const useMe = () => useQuery({ queryKey: keys.me, queryFn: () => request<User>("/me") });
+export const useMe = () =>
+  useQuery({
+    queryKey: keys.me,
+    queryFn: () => request<User>("/me"),
+    // not signed in: straight to the login page, no retry
+    retry: (count, error) => !(error instanceof ApiError && error.status === 401) && count < 1,
+  });
 
 export const useDevUsers = () =>
   useQuery({
@@ -503,5 +516,129 @@ export function useRequestReview(projectId: string) {
       refresh();
       void client.invalidateQueries({ queryKey: keys.documents(projectId) });
     },
+  });
+}
+
+// ---------------------------------------------------------------- equipment (Phase 7)
+
+export const useProjectEquipment = (projectId: string | undefined) =>
+  useQuery({
+    queryKey: ["projects", projectId, "equipment"],
+    queryFn: () => request<ProjectEquipment>(`/projects/${projectId}/equipment`),
+    enabled: Boolean(projectId),
+  });
+
+export const useEquipmentSlot = (slotId: string | undefined) =>
+  useQuery({
+    queryKey: ["project-equipment", slotId],
+    queryFn: () => request<EquipmentSlotDetail>(`/project-equipment/${slotId}`),
+    enabled: Boolean(slotId),
+  });
+
+export function useChooseEquipment(projectId: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: ({ slotId, equipmentId, reason }: { slotId: string; equipmentId: string; reason?: string }) =>
+      put<EquipmentSlotDetail>(`/project-equipment/${slotId}`, { equipment_id: equipmentId, reason }),
+    onSuccess: (data) => {
+      client.setQueryData(["project-equipment", data.id], data);
+      void client.invalidateQueries({ queryKey: ["projects", projectId, "equipment"] });
+      void client.invalidateQueries({ queryKey: keys.audit(projectId) });
+    },
+  });
+}
+
+export const useEquipmentLibrary = (category?: string) =>
+  useQuery({
+    queryKey: ["library", "equipment", category ?? "all"],
+    queryFn: () =>
+      request<EquipmentSummary[]>(`/equipment${category ? `?category=${encodeURIComponent(category)}` : ""}`),
+  });
+
+export const useEquipmentCategories = () =>
+  useQuery({ queryKey: ["library", "equipment-categories"], queryFn: () => request<EquipmentCategory[]>("/equipment/categories") });
+
+export const useEquipmentParams = () =>
+  useQuery({ queryKey: ["library", "equipment-params"], queryFn: () => request<EquipmentParamInfo[]>("/equipment/params") });
+
+export const useEquipment = (id: string | undefined) =>
+  useQuery({
+    queryKey: ["library", "equipment", "item", id],
+    queryFn: () => request<EquipmentDetail>(`/equipment/${id}`),
+    enabled: Boolean(id),
+  });
+
+/** What the curator does with an item of the library; every action refreshes it and the lists. */
+export function useEquipmentActions(id: string) {
+  const client = useQueryClient();
+  const onSuccess = (data: EquipmentDetail) => {
+    client.setQueryData(["library", "equipment", "item", id], data);
+    void client.invalidateQueries({ queryKey: ["library", "equipment"] });
+    void client.invalidateQueries({ queryKey: ["projects"] });
+    void client.invalidateQueries({ queryKey: keys.activity });
+  };
+  return {
+    upload: useMutation({
+      mutationFn: (file: File) => {
+        const form = new FormData();
+        form.append("file", file);
+        return request<EquipmentDetail>(`/equipment/${id}/datasheets`, { method: "POST", body: form });
+      },
+      onSuccess,
+    }),
+    reviewParam: useMutation({
+      mutationFn: ({ paramId, value, page }: { paramId: string; value?: string; page?: number }) =>
+        patchJson<EquipmentDetail>(`/equipment/params/${paramId}`, { value: value || null, page: page ?? null }),
+      onSuccess,
+    }),
+    addParam: useMutation({
+      mutationFn: (body: { name: string; value: string; page?: number }) =>
+        postJson<EquipmentDetail>(`/equipment/${id}/params`, body),
+      onSuccess,
+    }),
+    issueDate: useMutation({
+      mutationFn: ({ datasheetId, date }: { datasheetId: string; date: string }) =>
+        patchJson<EquipmentDetail>(`/equipment/datasheets/${datasheetId}`, { issue_date: date }),
+      onSuccess,
+    }),
+    review: useMutation({
+      mutationFn: (body: { decision: "approved" | "rejected"; note: string }) =>
+        postJson<EquipmentDetail>(`/equipment/${id}/review`, body),
+      onSuccess,
+    }),
+  };
+}
+
+// ---------------------------------------------------------------- LLM providers (screen Definições)
+
+export const useLlmSettings = () =>
+  useQuery({ queryKey: ["settings", "llm"], queryFn: () => request<LlmSettings>("/settings/llm") });
+
+export function useSetPrimaryLlm() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { primary: string; reason: string }) => put<LlmSettings>("/settings/llm", body),
+    onSuccess: (data) => {
+      client.setQueryData(["settings", "llm"], data);
+      void client.invalidateQueries({ queryKey: keys.activity });
+    },
+  });
+}
+
+// ---------------------------------------------------------------- signing in (until D6)
+
+export function useLogin() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { email: string; password: string }) => postJson<User>("/auth/login", body),
+    onSuccess: () => client.clear(),
+  });
+}
+
+export function useLogout() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: () => postJson<{ ended: boolean }>("/auth/logout"),
+    onSuccess: () => client.clear(),
   });
 }

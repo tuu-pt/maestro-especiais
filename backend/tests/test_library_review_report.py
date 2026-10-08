@@ -6,6 +6,7 @@ from pathlib import Path
 import pytest
 from sqlalchemy.orm import Session
 
+from app.equipment.seed import seed_equipment
 from app.knowledge.seed import seed_knowledge
 from app.library import privacy
 from app.library.review_report import report
@@ -24,6 +25,7 @@ def text(db: Session, store: ObjectStore) -> str:
     seed_knowledge(db, FIXTURES)
     seed_sources(db, store, FIXTURES, ("R1", "R2"))
     seed_blocks(db, FIXTURES, ("R1", "R2"))
+    seed_equipment(db)
     return report(db)
 
 
@@ -32,7 +34,7 @@ def test_it_covers_everything_the_curator_reviews(text: str) -> None:
         "## Decisões de método [A CONFIRMAR]", "## Biblioteca de blocos · MDJ",
         "## Biblioteca de blocos · CTE", "## Regras de ativação: diferenças esperadas",
         "## Dicionário de cabos", "## Léxico de tipologias (regra TIP-01)",
-        "## Corpus regulamentar (Anexo D)",
+        "## Corpus regulamentar (Anexo D)", "## Equipamentos (Fase 7)",
     ):  # fmt: skip
         assert heading in text
     assert "**Nada está aprovado**" in text
@@ -42,6 +44,9 @@ def test_it_covers_everything_the_curator_reviews(text: str) -> None:
     assert "«apartamento» (proposto): encontrado" in text
     assert "Paramétrico com evidência de um só projeto: `{{v:ele.potencia_alimentar_kva}}`" in text
     assert "| Despacho n.º 1/2018 da DGEG |" in text and "**não citado**" in text
+    row = "| Portinhola | Portinhola PBT Tri | Quitérios | +32470 | sim | — | R1 | proposto |"
+    assert row in text
+    assert "icc_ka >= 25 kA (do bloco)" in text
 
 
 def test_it_keeps_no_personal_data(text: str) -> None:

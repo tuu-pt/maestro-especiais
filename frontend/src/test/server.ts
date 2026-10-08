@@ -36,6 +36,7 @@ export const defaultHandlers = [
   http.get(api("/knowledge/typologies"), () => HttpResponse.json([])),
   http.get(api("/library/blocks"), () => HttpResponse.json([])),
   http.get(api("/knowledge/regulations"), () => HttpResponse.json([])),
+  http.get(api("/settings/llm"), () => HttpResponse.json({ primary: "gemini", order: [], providers: [] })),
   http.get(api("/health"), () =>
     HttpResponse.json({ status: "ok", services: { database: { status: "ok" } } }),
   ),

@@ -1,7 +1,4 @@
-"""The rules of SPEC 9, one per module; each module exports RULE (Phase 5).
-
-EQP-01 to EQP-03 need the equipment library and come with Phase 7.
-"""
+"""The rules of SPEC 9, one per module; each module exports RULE (Phase 5; EQP-* in Phase 7)."""
 
 import importlib
 import pkgutil

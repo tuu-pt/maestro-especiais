@@ -6,7 +6,8 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     """Runtime configuration, read from environment variables only."""
 
-    model_config = SettingsConfigDict(extra="ignore")
+    # an empty variable (as .env.example leaves them) means the default, not an empty value
+    model_config = SettingsConfigDict(extra="ignore", env_ignore_empty=True)
 
     database_url: str = ""
     redis_url: str = ""
@@ -19,6 +20,11 @@ class Settings(BaseSettings):
     s3_create_bucket: bool = False
     # Development only: simulated users chosen with the X-Dev-User header. OIDC replaces it (D6).
     dev_auth: bool = False
+    # Accounts with an email and a password (app/accounts.py): HMAC key of the session cookie
+    # (make env generates one), how long a session lasts, and https-only cookies (off for http)
+    session_secret: str = ""
+    session_ttl_hours: int = 12
+    session_cookie_secure: bool = True
     max_upload_bytes: int = 200 * 1024 * 1024
     # LLM (SPEC 6.1): model names only here, from the environment; fake for tests and offline
     llm_provider: str = "gemini"  # gemini | groq | fake
@@ -38,9 +44,27 @@ class Settings(BaseSettings):
     llm_max_retries: int = 4  # on 429/503
     llm_backoff_s: float = 2.0  # first wait, doubled at each retry
     llm_timeout_s: float = 60.0
+    # Three providers (8 Oct 2026): the main one is chosen by the admin (screen Definições; this
+    # LLM_PROVIDER is the initial value), the others follow in the order gemini, groq, claude. Each
+    # has its own models and pace; empty, the old variables above apply (LLM_MODEL_* to
+    # LLM_PROVIDER, LLM_FALLBACK_* to LLM_FALLBACK_PROVIDER). Model names only here.
+    anthropic_api_key: str = ""
+    llm_gemini_model_drafting: str = ""
+    llm_gemini_model_extraction: str = ""
+    llm_groq_model_drafting: str = ""
+    llm_groq_model_extraction: str = ""
+    llm_claude_model_drafting: str = ""
+    llm_claude_model_extraction: str = ""
+    llm_gemini_rpm: int | None = None
+    llm_gemini_rpd: int | None = None
+    llm_groq_rpm: int | None = None
+    llm_groq_rpd: int | None = None
+    llm_claude_rpm: int | None = None
+    llm_claude_rpd: int | None = None
     # Exports (Phase 6): links signed by the API (HMAC) and the service token of TUU Maestro (D9)
     export_link_secret: str = ""
     export_link_ttl_s: int = 24 * 3600
+    equipment_datasheet_max_age_years: int = 3  # EQP-02 (SPEC 9)
     maestro_service_token: str = ""
     # Fernet key for the technicians' profiles (make env generates one)
     profile_encryption_key: str = ""

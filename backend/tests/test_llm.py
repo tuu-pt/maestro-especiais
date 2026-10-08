@@ -15,7 +15,7 @@ from sqlalchemy.orm import Session
 
 from app.config import Settings
 from app.llm.blocked import names_in, seed_blocked_terms
-from app.llm.client import LlmClient, LlmFailed, LlmNotAllowed, make_provider
+from app.llm.client import Link, LlmClient, LlmFailed, LlmNotAllowed, LlmPaused, make_provider
 from app.llm.fake import FakeProvider
 from app.llm.gemini import GeminiProvider
 from app.llm.guard import PrivacyBlocked, PrivacyGuard, terms_for
@@ -61,7 +61,7 @@ def test_a_project_without_llm_allowed_never_reaches_the_provider(db: Session) -
     fake = FakeProvider(['{"text": "x"}'])
     c, _ = client(fake)
 
-    with pytest.raises(LlmNotAllowed, match="D5 pendente"):
+    with pytest.raises(LlmNotAllowed, match="LLM desligado"):
         ask(c, db, project(db, allowed=False))
 
     assert fake.sent == []
@@ -303,13 +303,13 @@ def test_a_503_that_stays_goes_to_the_fallback(db: Session) -> None:
     assert other.sent[0][0] == "Sistema"  # the same request, after the guard
 
 
-def test_a_quota_429_does_not_switch_provider(db: Session) -> None:
-    other = Alternative(['{"text": "não devia"}'])
+def test_a_quota_429_that_stays_also_goes_to_the_next(db: Session) -> None:
+    other = Alternative(['{"text": "da alternativa"}'])
     c, _ = with_fallback(FakeProvider([ProviderError("quota", 429)] * 2), other)
 
-    with pytest.raises(LlmFailed):
-        ask(c, db, project(db))
-    assert other.sent == []
+    answer, call = ask(c, db, project(db))
+
+    assert answer.text == "da alternativa" and call.provider == "alternativo"
 
 
 def test_the_second_attempt_of_the_validation_stays_on_the_fallback(db: Session) -> None:
@@ -326,7 +326,7 @@ def test_the_second_attempt_of_the_validation_stays_on_the_fallback(db: Session)
 def test_both_down_fails_with_our_message(db: Session) -> None:
     c, _ = with_fallback(FakeProvider([ProviderError("sobrecarga", 503)] * 2),
                          Alternative([ProviderError("também", 503)] * 2))  # fmt: skip
-    with pytest.raises(LlmFailed, match="também o alternativo"):
+    with pytest.raises(LlmFailed, match="nem os alternativos"):
         ask(c, db, project(db))
 
 
@@ -338,3 +338,56 @@ def test_the_wait_follows_the_retry_after_of_the_provider(db: Session) -> None:
     ask(c, db, project(db))
 
     assert waits == [42.0]
+
+
+# ---------------------------------------------------------------- the chain of three providers
+
+
+class Named(FakeProvider):
+    def __init__(self, name: str, answers: list[object]) -> None:
+        super().__init__(answers)  # type: ignore[arg-type]
+        self.name = name
+
+
+def three(*providers: FakeProvider, day: int = 100) -> LlmClient:
+    def link(p: FakeProvider) -> Link:
+        limiter = MemoryRateLimiter(rpm=100, rpd=day, sleep=lambda s: None)
+        return Link(p, limiter, {"drafting": f"modelo-{p.name}", "extraction": ""})
+
+    links = [link(p) for p in providers]
+    return LlmClient(links[0].provider, links[0].limiter, FALLBACK, sleep=lambda s: None,
+                     links=links)  # fmt: skip
+
+
+def test_down_the_chain_until_one_answers(db: Session) -> None:
+    gemini = Named("gemini", [ProviderError("sobrecarga", 503)] * 2)
+    groq = Named("groq", [ProviderError("sem ligação", 503)] * 2)
+    claude = Named("claude", ['{"text": "do terceiro"}'])
+
+    answer, call = ask(three(gemini, groq, claude), db, project(db))
+
+    assert answer.text == "do terceiro"
+    assert (call.provider, call.model, call.attempts) == ("claude", "modelo-claude", 5)
+
+
+def test_a_provider_whose_day_is_used_up_hands_over(db: Session) -> None:
+    gemini = Named("gemini", ['{"text": "não chega"}'])
+    groq = Named("groq", ['{"text": "do segundo"}'])
+    c = three(gemini, groq, day=0)  # no request left today on any of them
+    c.chain()[1].limiter = MemoryRateLimiter(rpm=100, rpd=100, sleep=lambda s: None)
+
+    answer, _ = ask(c, db, project(db))
+
+    assert answer.text == "do segundo" and gemini.sent == []
+
+
+def test_every_day_used_up_pauses(db: Session) -> None:
+    with pytest.raises(LlmPaused):
+        ask(three(Named("gemini", []), Named("groq", []), day=0), db, project(db))
+
+
+def test_a_provider_without_a_model_for_the_purpose_is_left_out(db: Session) -> None:
+    c = three(Named("gemini", []), Named("groq", []))
+    with pytest.raises(LlmFailed, match="Sem modelo"):
+        c.generate(db, project=project(db), purpose="extraction", prompt_version="v1",
+                   system="S", messages=[Message("user", "x")], schema=Answer)  # fmt: skip

@@ -32,6 +32,8 @@ BACKEND = Path(__file__).resolve().parents[1]
 def pytest_addoption(parser: pytest.Parser) -> None:
     parser.addoption("--annex-c-report", default=None,
                      help="write the Annex C report of Phase 5 to this path")  # fmt: skip
+    parser.addoption("--fichas-report", default=None,
+                     help="write the datasheets report of R1 (Phase 7) here")  # fmt: skip
 
 
 def alembic_config(url: str) -> Config:

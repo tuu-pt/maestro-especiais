@@ -176,8 +176,9 @@ def assemble(
             status, note = "generated", None
         if built.omitted and active:
             where = ", ".join(sorted(set(built.omitted)))
-            extra = (f"Imagem de um só projeto de referência ({where}) não incluída: provavelmente "
-                     "um equipamento desse projeto (escolha na Fase 7).")  # fmt: skip
+            extra = (f"Imagem de um só projeto de referência ({where}) não incluída: é o "
+                     "equipamento desse projeto; para a incluir, escolha o equipamento no ecrã "
+                     "Equipamentos.")  # fmt: skip
             note = f"{note} {extra}" if note else extra
         slots = [{**s, "phase": 7, "equipment": None} for s in block.equipment_slots]
         document.sections.append(Section(
@@ -192,6 +193,9 @@ def assemble(
         ))  # fmt: skip
     db.add(document)
     db.flush()
+    from app.equipment.project import attach
+
+    attach(db, document)  # the reference equipment of each slot of a CTE (Phase 7)
     return document
 
 

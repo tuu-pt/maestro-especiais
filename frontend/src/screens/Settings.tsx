@@ -4,6 +4,7 @@ import { fetchHealth, type HealthResponse } from "../api/health";
 import { useMe } from "../api/queries";
 import { Card, Pill } from "../components/ui";
 import c from "./common.module.css";
+import { LlmCard } from "./LlmSettings";
 import { Screen } from "./Screen";
 
 const SERVICE_LABELS: Record<string, string> = {
@@ -60,6 +61,7 @@ export function SettingsScreen() {
     >
       <div className={c.grid2}>
         <ServicesCard />
+        <LlmCard />
         <Card title="Utilizador atual">
           {me ? (
             <p>
@@ -69,8 +71,10 @@ export function SettingsScreen() {
             <p>—</p>
           )}
           <p className={c.loading}>
-            Em desenvolvimento, o utilizador escolhe-se na barra superior. O início de sessão da
-            empresa (OIDC) fica para a decisão D6.
+            {me?.session === "account"
+              ? "Sessão iniciada com email e password. As contas criam-se com make create-user (administrador)."
+              : "Em desenvolvimento, o utilizador escolhe-se na barra superior; as contas com password entram em /entrar."}{" "}
+            O início de sessão da empresa (SSO) fica para a decisão D6.
           </p>
         </Card>
       </div>

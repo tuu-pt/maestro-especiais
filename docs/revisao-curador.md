@@ -429,3 +429,108 @@ Só referências: título, âmbito e onde R1/R2 as citam. Tudo por confirmar e n
 | NP EN 50102 | norma | Graus de proteção contra impactos mecânicos (códigos IK). (só título e âmbito: direitos de autor) | 2 vez(es): R1 · MDJ, R2 · MDJ | proposto | não |
 | NP EN 60529 | norma | Graus de proteção dos invólucros (códigos IP). (só título e âmbito: direitos de autor) | 2 vez(es): R1 · MDJ, R2 · MDJ | proposto | não |
 | NP EN 61386 | norma | Sistemas de tubos para instalações elétricas. (só título e âmbito: direitos de autor) | 4 vez(es): R1 · CTE, R2 · CTE | proposto | não |
+
+## Equipamentos (Fase 7)
+
+77 equipamentos de referência propostos dos CTE de R1 e R2; 20 com ficha técnica (data/fixtures/fichas-tecnicas). Os parâmetros lidos ficam por rever no ecrã G (EQP-01 só usa os revistos); a verificação de R1 com as fichas está em docs/fase7-fichas-R1.md.
+
+| Categoria | Equipamento | Fabricante | Modelo / referência | «ou equivalente» | Ficha | Onde | Estado |
+|---|---|---|---|---|---|---|---|
+| Aparelhagem (interruptores e tomadas) | Aparelhagem | Hager | BERKER Q3 | sim | — | R2 | proposto |
+| Aparelhagem (interruptores e tomadas) | Aparelhagem | EFAPEL | SIZA | **não** | — | R1 | proposto |
+| Aparelhagem (interruptores e tomadas) | Botão de Pressão KNX 2 teclas/4 funções | Hager | Berker Q3 Branco mate · 80040001 | sim | — | R2 | proposto |
+| Aparelhagem (interruptores e tomadas) | Botão de Pressão KNX 4 teclas/8 funções | Hager | Berker Q3 Branco mate · 80040001 | sim | — | R2 | proposto |
+| Aparelhagem (interruptores e tomadas) | Comutador de escada simples | EFAPEL | SIZA · 45070 S | sim | efapel_siza_interruptores.pdf | R1 | proposto |
+| Aparelhagem (interruptores e tomadas) | Interruptor unipolar | EFAPEL | SIZA · 45011 S | sim | efapel_siza_interruptores.pdf | R1 | proposto |
+| Aparelhagem (interruptores e tomadas) | Tomada Estanque Schuko com obturador | EFAPEL | Estanque 48 · 48132 C | sim | efapel_estanque48.pdf | R1 | proposto |
+| Aparelhagem (interruptores e tomadas) | Tomada SCHUKO com proteção contra contato aumentada Q.1/Q.3 branco polar | Hager | 47236089 | sim | — | R2 | proposto |
+| Aparelhagem (interruptores e tomadas) | Tomada SCHUKO embutida com tampa basculante Q.x polar branco | Hager | 47516089 | sim | — | R2 | proposto |
+| Aparelhagem (interruptores e tomadas) | Tomada Schuko Lig | EFAPEL | SIZA · 45126 S | sim | efapel_siza_tomadas.pdf | R1 | proposto |
+| Audiovisual | • Controlo DMX | CHAMSYS | QuickQ 10 | sim | — | R2 | proposto |
+| Audiovisual | Dois postos compostos por um beltpack Audio-Technica ATW-T1401 e microfone de cabeça Headset miniatura Audio-Technica BP | Audio-Technica | ATW-T1401 | **não** | — | R2 | proposto |
+| Audiovisual | Flexibilidade de Captação | Audio-Technica | Audio-Technica SYSTEM 20PRO | sim | — | R2 | proposto |
+| Audiovisual | • Luz de Fundo/Ambiente | CENTOLIGHT | MOODLINER 1812WP | sim | — | R2 | proposto |
+| Audiovisual | • Luz de Palco | CENTOLIGHT | SCENIC 100W | sim | — | R2 | proposto |
+| Audiovisual | Microfone Gooseneck com base sem fios Audio-Technica ATW-T1407 e microfone Audio-Technica ATUC-M43H ideal para colocação | Audio-Technica | ATW-T1407 | **não** | — | R2 | proposto |
+| Audiovisual | • Processamento | Visual Productions | DALICORE | sim | — | R2 | proposto |
+| Audiovisual | Receptor digital de microfones wireless Audio-Technica ATW-R1440 | Audio-Technica | ATW-R1440 | **não** | — | R2 | proposto |
+| Audiovisual | Um microfone de mão Audio-Technica ATW-T1402 para oradores móveis ou apresentadores | Audio-Technica | ATW-T1402 | **não** | — | R2 | proposto |
+| Audiovisual | Visualização | EPSON | EB-L690SE | sim | — | R2 | proposto |
+| Caixa | Caixa para contador trifásico | Quitérios | +302 | sim | — | R1 | proposto |
+| Caixa | Caixas de aparelhagem fundas | JSL | 317N | sim | jsl_caixa_317N_319N.pdf | R1, R2 | proposto |
+| Caixa | Caixas de aparelhagem fundas | JSL | 406 | sim | jsl_caixa_404_406_407_408.pdf | R1, R2 | proposto |
+| Caixa | Caixas de derivação | JSL | 315 | sim | jsl_caixa_315.pdf | R1, R2 | proposto |
+| Caixa | Caixas de derivação estanques | JSL | J80-M | sim | jsl_caixa_J80-M.pdf | R1, R2 | proposto |
+| Carregador de veículos elétricos | Carregamento de Veículos Elétricos | MOREK | MEV07DREWN6T2 | sim | — | R2 | proposto |
+| Contador de energia | Contador de Energia | Honeywell | AS3000 | sim | — | R2 | proposto |
+| Detetor de movimento | Detetor de movimento Standard 360º encastrar | Hager | EE805A | sim | — | R2 | proposto |
+| Detetor de movimento | Detetores de movimento de 180º | PERRY | 1SP SP010 | sim | perry_1SP_SP010.pdf | R1 | proposto |
+| Detetor de movimento | Detetores de movimento de 360º | PERRY | 1SP SP020 | sim | perry_1SP_SP020.pdf | R1 | proposto |
+| Espelho | Espelhos duplo | EFAPEL | SIZA · 43920 T BR | sim | efapel_siza_espelhos_dimensoes.pdf | R1 | proposto |
+| Espelho | Espelhos quadruplo | EFAPEL | SIZA · 43940 T BR | sim | efapel_siza_espelhos_dimensoes.pdf | R1 | proposto |
+| Espelho | Espelhos simples | EFAPEL | SIZA · 43910 T BR | sim | efapel_siza_espelhos_dimensoes.pdf | R1 | proposto |
+| Estrutura fotovoltaica | Estrutura | SUNFER | 29.1H | sim | — | R2 | proposto |
+| Iluminação de segurança | Blocos de iluminação de emergência LED | Legrand | BS · X-Light 180 | sim | — | R2 | proposto |
+| Inversor | Inversor | Huawei | SUN2000-20KTL-M5 | sim | — | R2 | proposto |
+| KNX | Acoplador de linha KNX | Hager | TYFS130 · TYFS130 | sim | — | R2 | proposto |
+| KNX | Atuador BIN 10 canais KNX | Hager | TYA610C · TYA610C | sim | — | R2 | proposto |
+| KNX | Atuador BIN 4 canais KNX | Hager | TYA604C · TYA604C | sim | — | R2 | proposto |
+| KNX | Atuador BIN 8 canais KNX | Hager | TYA608C · TYA608C | sim | — | R2 | proposto |
+| KNX | Detetor de movimento corredor 360º encastrar | Hager | KNX TXD505 | sim | — | R2 | proposto |
+| KNX | Detetor de presença mini 360º encastrar | Hager | KNX TXD501 | sim | — | R2 | proposto |
+| KNX | Detetor de presença Standard 360º encastrar | Hager | KNX TXD503 | sim | — | R2 | proposto |
+| KNX | Fonte de alimentação KNX | Hager | TYFS110 · TYFS110 | sim | — | R2 | proposto |
+| KNX | Gateway DALI/KNX | Hager | TYFS672D · TYFS672D | sim | — | R2 | proposto |
+| KNX | Servidor KNX | Hager | TJAS471 · TJAS471 | sim | — | R2 | proposto |
+| Luminária | Downlight compacto para aplicação encastrada | Climar | L1 · TALLES 30 RO IN Recessed | sim | — | R1 | proposto |
+| Luminária | Luminária suspensa de teto | Tromilux | L10 · 4556 DALI | sim | — | R2 | proposto |
+| Luminária | Luminária de parede saliente | Tromilux | L11 · 2076 ON/OFF | sim | — | R2 | proposto |
+| Luminária | Aplique de parede exterior | Tromilux | L14 · 2525 | sim | — | R1 | proposto |
+| Luminária | Aplique de parede exterior | Tromilux | L15 · 2522 | sim | — | R1 | proposto |
+| Luminária | Luminária de encastrar no teto | Tromilux | L1/L5 · 4526 DALI | sim | — | R2 | proposto |
+| Luminária | Luminária Suspensa de teto | Tromilux | L2 · 4556 DALI | sim | — | R2 | proposto |
+| Luminária | Luminária Saliente de Parede | Tromilux | L3 · 4028 ON/OFF | sim | — | R2 | proposto |
+| Luminária | Luminária | Tromilux | L4 · 5550 DALI | sim | — | R2 | proposto |
+| Luminária | Luminária de encastrar com aba de remate | Tromilux | L6 · 5511 ON/OFF | sim | — | R2 | proposto |
+| Luminária | Aplique de parede saliente | Tromilux | L7 · 4004 | sim | tromilux_4004_L7.pdf | R1 | proposto |
+| Luminária | Luminária Suspensa de teto Linear | Tromilux | L7 · 4052 | sim | — | R2 | proposto |
+| Luminária | Candeeiro de parede | Indelague | L8 · Aura | sim | — | R1 | proposto |
+| Luminária | Luminária de encastrar no teto | Tromilux | L8 · 1095 | sim | — | R2 | proposto |
+| Luminária | Luminária de encastrar | Exporlux | L9 · Dot TP EN | sim | — | R1 | proposto |
+| Luminária | Luminária de encastrar no teto | Tromilux | L9 · 5511 | sim | — | R2 | proposto |
+| Luminária | Linha de luz continua saliente | Tromilux | SNC · 4010 DALI | sim | — | R2 | proposto |
+| Módulo fotovoltaico | Módulos fotovoltaicos | Trina | TSM-NEG18C.20 | sim | — | R2 | proposto |
+| Portinhola | Portinhola PBT Tri | Quitérios | +32470 | sim | — | R1 | proposto |
+| Quadro elétrico | Quadro Elétrico Geral | Quitérios | +34929 CX QUADRO (5x24) 120md P200 INT | sim | quiterios_+34929_quadro.pdf | R1 | proposto |
+| Quadro elétrico | Quadro Parcial Piso 1 | Quitérios | +344 CX QUADRO (3x20) 60md P125 INT | sim | quiterios_+344_quadro.pdf | R1 | proposto |
+| SADI | Detetores | Global Fire | ZEOS AS | sim | — | R2 | proposto |
+| SADI | Sistema de Alarme e Deteção de Incêndio (SADI) | Global Fire | GEKKO | **não** | — | R2 | proposto |
+| SADI | Sistema de Alarme e Deteção de Incêndio (SADI) | Global Fire | GFE-MCPE-A | sim | — | R2 | proposto |
+| Terras e elétrodos | Caixa de Visita com Ligador Amovível | INFOCONTROL | 4013I | sim | — | R1, R2 | proposto |
+| Terras e elétrodos | Elétrodos-250microm | INFOCONTROL | 4001Q | sim | — | R1, R2 | proposto |
+| Tubo | Tubos tipo ERM | JSL | Tubo ERM | sim | jsl_tubo_ERM.pdf | R1, R2 | proposto |
+| Tubo | Tubos tipo PEAD | Multitubos | Tubolex Normal (N) | sim | — | R1, R2 | proposto |
+| Tubo | Tubos tipo VDLH | JSL | Tubo VD FLH | sim | jsl_tubo_VD_FLH.pdf | R1, R2 | proposto |
+| Videoporteiro | Videoporteiro | Hikvision | DS-KH6320-LE1(B) | **não** | hikvision_DS-KH6320-LE1B.pdf | R1 | proposto |
+| Videoporteiro | Videoporteiro | Hikvision | DS-KV6113-WPE1(C) + DS-KABV6113-RS | **não** | hikvision_DS-KV6113-WPE1C.pdf | R1 | proposto |
+
+Requisitos propostos dos CTE (aprovados com o bloco):
+
+- `ele.cte.condicoes_tecnicas_especiais.atuador_10_canais_knx`: ip_rating >=class IP20 (da linha); power_w = 2300 W (da linha)
+- `ele.cte.condicoes_tecnicas_especiais.atuador_4_canais_knx`: ip_rating >=class IP20 (da linha); power_w = 2300 W (da linha)
+- `ele.cte.condicoes_tecnicas_especiais.atuador_8_canais_knx`: ip_rating >=class IP20 (da linha); power_w = 2300 W (da linha)
+- `ele.cte.condicoes_tecnicas_especiais.carregamento_de_veiculos_eletricos`: ik_rating >=class IK08 (da linha); ip_rating >=class IP55 (da linha); power_kw = 7,4 kW (da linha)
+- `ele.cte.condicoes_tecnicas_especiais.detetores_de_movimento`: detection_angle_deg >= 360 º (da linha); detection_angle_deg >= 180 º (da linha); detection_angle_deg >= 360 º (da linha); detection_range_m >= 14 m (da linha); detection_range_m >= 12 m (da linha); ip_rating >=class IP20 (da linha); ip_rating >=class IP44 (da linha)
+- `ele.cte.condicoes_tecnicas_especiais.entrada_de_energia`: icc_ka >= 25 kA (do bloco); ik_rating >=class IK10 (do bloco); ip_rating >=class IP55 (do bloco)
+- `ele.cte.condicoes_tecnicas_especiais.fonte_de_alimentacao_knx`: ip_rating >=class IP20 (da linha)
+- `ele.cte.condicoes_tecnicas_especiais.gateway_dali_knx`: ip_rating >=class IP20 (da linha)
+- `ele.cte.condicoes_tecnicas_especiais.iluminacao_de_palco`: power_w = 100 W (da linha)
+- `ele.cte.condicoes_tecnicas_especiais.iluminacao_normal`: color_temperature_k = 4000 K (da linha); color_temperature_k = 4000 K (da linha); color_temperature_k = 4000 K (da linha); color_temperature_k = 4000 K (da linha); color_temperature_k = 4000 K (da linha); color_temperature_k = 4000 K (da linha); color_temperature_k = 4000 K (da linha); color_temperature_k = 4000 K (da linha); color_temperature_k = 4000 K (da linha); color_temperature_k = 4000 K (da linha); color_temperature_k = 4000 K (da linha); ik_rating >=class IK02 (da linha); ik_rating >=class IK10 (da linha); ik_rating >=class IK10 (da linha); ip_rating >=class IP65 (da linha); ip_rating >=class IP40 (da linha); ip_rating >=class IP54 (da linha); ip_rating >=class IP65 (da linha); power_w = 42 W (da linha); power_w = 1,5 W (da linha); power_w = 5 W (da linha); power_w = 30 W (da linha)
+- `ele.cte.condicoes_tecnicas_especiais.iluminacao_seguranca`: autonomy_h >= 1 h (da linha); ik_rating >=class IK07 (da linha); ip_rating >=class IP42 (da linha); luminous_flux_lm >= 100 lm (da linha)
+- `ele.cte.condicoes_tecnicas_especiais.interruptores_e_tomadas`: ip_rating >=class IP44 (da linha)
+- `ele.cte.condicoes_tecnicas_especiais.inversor`: efficiency_pct >= 98,4 % (da linha); power_kw = 20 kW (da linha)
+- `ele.cte.condicoes_tecnicas_especiais.modulos_fotovoltaicos`: efficiency_pct >= 22,8 % (da linha); peak_power_wp >= 590 Wp (da linha)
+- `ele.cte.condicoes_tecnicas_especiais.quadros_eletricos`: ik_rating >=class IK02 (do bloco); ip_rating >=class IP30 (do bloco)
+- `ele.cte.condicoes_tecnicas_especiais.sensores_knx`: detection_angle_deg >= 360 º (da linha); detection_angle_deg >= 360 º (da linha); detection_angle_deg >= 360 º (da linha)
+- `ele.cte.condicoes_tecnicas_especiais.servidor_knx`: ip_rating >=class IP20 (da linha); power_w = 9,2 W (da linha)
+- `ele.cte.condicoes_tecnicas_especiais.videoporteiro`: detection_angle_deg >= 78 º (da linha); detection_angle_deg >= 131 º (da linha); ip_rating >=class IP65 (da linha)

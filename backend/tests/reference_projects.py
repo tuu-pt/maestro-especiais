@@ -10,6 +10,7 @@ import pytest
 from conftest import Api
 from sqlalchemy.orm import Session
 
+from app.equipment.seed import seed_equipment
 from app.ingest.detect import detect
 from app.knowledge.sources import unique_files
 from app.library.seed import seed_blocks
@@ -27,6 +28,7 @@ def have_fixtures() -> bool:
 def seed_library(db: Session, store: ObjectStore) -> None:
     seed_sources(db, store, FIXTURES, ("R1", "R2"))
     seed_blocks(db, FIXTURES, ("R1", "R2"))
+    seed_equipment(db)
 
 
 def files_of(code: str, kinds: tuple[str, ...] = PHASE4_KINDS) -> list[Path]:

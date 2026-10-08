@@ -5,6 +5,7 @@ from fastapi.testclient import TestClient
 
 from app.auth import User, require_role
 from app.config import Settings, get_settings
+from app.db import get_session
 
 
 def test_me_returns_the_dev_user_and_roles(api: Api) -> None:
@@ -39,6 +40,7 @@ def test_without_dev_auth_there_are_no_dev_users(app: FastAPI) -> None:
 def guarded() -> TestClient:
     app = FastAPI()
     app.dependency_overrides[get_settings] = lambda: Settings(dev_auth=True)
+    app.dependency_overrides[get_session] = lambda: None  # read only with a session cookie
 
     @app.post("/confirm")
     def confirm(user: User = Depends(require_role("tecnico"))) -> dict[str, str]:  # noqa: B008

@@ -40,6 +40,7 @@ GENERATED: dict[str, Callable[[], str]] = {
     "PROFILE_ENCRYPTION_KEY": _fernet_key,
     "EXPORT_LINK_SECRET": _token,
     "MAESTRO_SERVICE_TOKEN": _token,
+    "SESSION_SECRET": _token,
 }
 
 DEFAULTS: dict[str, str] = {

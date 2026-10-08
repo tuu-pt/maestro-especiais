@@ -9,6 +9,13 @@ from app.models.document import (
     SectionVersion,
     ValueRef,
 )
+from app.models.equipment import (
+    Datasheet,
+    Equipment,
+    EquipmentParam,
+    ProjectEquipment,
+    Requirement,
+)
 from app.models.export import Export
 from app.models.ficha import (
     BomItem,
@@ -36,9 +43,13 @@ from app.models.library import (
 from app.models.llm import BlockedTerm, LlmCall
 from app.models.profile import TechnicianProfile
 from app.models.project import Project, ProjectFile
+from app.models.setting import AppSetting
+from app.models.user import AppUser
 from app.models.validation import PieceFacts, ValidationIssue, ValidationRun
 
 __all__ = [
+    "AppSetting",
+    "AppUser",
     "ArchiveChunk",
     "ArchiveDoc",
     "AuditEvent",
@@ -50,8 +61,11 @@ __all__ = [
     "Circuit",
     "CircuitSheet",
     "Citation",
+    "Datasheet",
     "Document",
     "DocumentRevision",
+    "Equipment",
+    "EquipmentParam",
     "Export",
     "FichaConflict",
     "FichaRevision",
@@ -59,8 +73,10 @@ __all__ = [
     "LlmCall",
     "PieceFacts",
     "Project",
+    "ProjectEquipment",
     "ProjectFile",
     "RegulationDoc",
+    "Requirement",
     "Section",
     "SectionVersion",
     "SourceDocument",

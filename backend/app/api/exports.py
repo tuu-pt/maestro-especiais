@@ -56,13 +56,13 @@ class ExportOut(BaseModel):
     finished_at: datetime | None
 
 
-def _out(e: Export) -> ExportOut:
+def _out(db: Session, e: Export) -> ExportOut:
     files = [{k: f.get(k) for k in ("name", "piece", "revision", "sha256", "size", "by_hand")}
              for f in e.files]  # fmt: skip
     return ExportOut(
         id=e.id, kind=e.kind, status=e.status, message=e.message, version=e.version,
         with_pdf=e.with_pdf, zip_name=e.zip_name, zip_size=e.zip_size, zip_sha256=e.zip_sha256,
-        files=files, created_at=e.created_at, created_by_name=user_name(e.created_by),
+        files=files, created_at=e.created_at, created_by_name=user_name(db, e.created_by),
         finished_at=e.finished_at,
     )  # fmt: skip
 
@@ -94,7 +94,7 @@ def create_export(project_id: uuid.UUID, body: ExportIn, db: DB, queue: Queue, u
         export.status, export.message = "failed", "A fila de exportação não está disponível."
         db.commit()
     db.refresh(export)
-    return _out(export)
+    return _out(db, export)
 
 
 @router.get("/projects/{project_id}/exports")
@@ -102,12 +102,12 @@ def list_exports(project_id: uuid.UUID, db: DB, _: Reader) -> list[ExportOut]:
     project = get_project(db, project_id)
     rows = db.scalars(select(Export).where(Export.project_id == project.id)
                       .order_by(Export.created_at.desc()))  # fmt: skip
-    return [_out(e) for e in rows]
+    return [_out(db, e) for e in rows]
 
 
 @router.get("/exports/{export_id}")
 def read_export(export_id: uuid.UUID, db: DB, _: Reader) -> ExportOut:
-    return _out(_export(db, export_id))
+    return _out(db, _export(db, export_id))
 
 
 def _can_download(user: User, export: Export) -> None:

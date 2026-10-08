@@ -9,8 +9,9 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.accounts import names
 from app.api.projects import get_project
-from app.auth import DEV_USERS, CurrentUser
+from app.auth import CurrentUser
 from app.db import get_session
 from app.ingest.keys import KEYS
 from app.models import AuditEvent, Project
@@ -38,7 +39,6 @@ KNOWLEDGE_LABELS_PT = {
     "typologies": "a tipologia",
     "typology-terms": "o termo incompatível",
 }
-_NAMES = {u.id: u.name for u in DEV_USERS.values()}
 
 
 class AuditOut(BaseModel):
@@ -129,7 +129,14 @@ def describe(action: str, payload: dict[str, Any]) -> str:
             extra = " (valores da ficha alterados)" if payload.get("values_changed") else ""
             return f"Editou «{payload.get('title', '')}»{extra}"
         case "llm.refused":
-            return "Pedido ao LLM recusado: D5 pendente"
+            return "Pedido ao LLM recusado: LLM desligado neste projeto"
+        case "auth.login":
+            return "Iniciou sessão"
+        case "auth.logout":
+            return "Terminou a sessão"
+        case "settings.llm_primary":
+            to, why = payload.get("to", ""), payload.get("reason", "")
+            return f"Mudou o LLM principal para {to}: {why}"
         case "project.llm_allowed":
             return "Permitiu o uso do LLM" if payload.get("allowed") else "Retirou o uso do LLM"
         case "form.downloaded":
@@ -189,13 +196,13 @@ def describe(action: str, payload: dict[str, Any]) -> str:
     return action
 
 
-def _out(event: AuditEvent, codes: dict[str, str]) -> AuditOut:
+def _out(event: AuditEvent, codes: dict[str, str], known: dict[str, str]) -> AuditOut:
     project_id = event.payload.get("project_id")
     return AuditOut(
         id=event.id,
         at=event.at,
         actor_type=event.actor_type,
-        actor_name=_NAMES.get(event.actor_id or "", "Sistema")
+        actor_name=known.get(event.actor_id or "", "Sistema")
         if event.actor_type == "user"
         else "Sistema",
         action=event.action,
@@ -218,7 +225,8 @@ def project_audit(project_id: uuid.UUID, db: DB, _: CurrentUser) -> list[AuditOu
         .order_by(AuditEvent.at, AuditEvent.id)
     ).all()
     codes = {str(project.id): project.code}
-    return [_out(e, codes) for e in events]
+    known = names(db)
+    return [_out(e, codes, known) for e in events]
 
 
 @router.get("/activity")
@@ -227,4 +235,5 @@ def activity(
 ) -> list[AuditOut]:
     events = db.scalars(select(AuditEvent).order_by(AuditEvent.at.desc()).limit(limit)).all()
     codes = _codes(db)
-    return [_out(e, codes) for e in events]
+    known = names(db)
+    return [_out(e, codes, known) for e in events]

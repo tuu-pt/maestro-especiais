@@ -24,12 +24,14 @@ CATEGORIES = {
     "procurement": "Contratação",
     "content": "Conteúdo",
     "quality": "Qualidade",
+    "equipment": "Fichas técnicas",
 }
 
 # What a person can do with an issue (the screen shows the ones that apply)
 OPEN_EDITOR = "open_editor"
 OPEN_FICHA = "open_ficha"
 ASK_CURATOR = "ask_curator"
+OPEN_EQUIPMENT = "open_equipment"  # screen F (Phase 7)
 CONFIRM_SHEET = "confirm_sheet"
 IGNORE = "ignore"
 

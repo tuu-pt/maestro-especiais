@@ -167,8 +167,8 @@ class LlmClient:                      # o que a aplicação usa (Fase 4)
                  schema: type[T], section_id=None, profile=None) -> tuple[T, LlmCall]: ...
 ```
 
-`LlmClient.generate` faz, por esta ordem: verificação da D5 (`Project.llm_allowed`; sem ela, HTTP 409
-«D5 pendente», na auditoria) → guarda de privacidade → ritmo (por minuto e por dia) → repetições
+`LlmClient.generate` faz, por esta ordem: verificação da D5 (`Project.llm_allowed`, verdadeiro por omissão desde
+8 out 2026; desligado pelo admin, HTTP 409 «LLM desligado neste projeto», na auditoria) → guarda de privacidade → ritmo (por minuto e por dia) → repetições
 em 429/5xx com espera exponencial → validação Pydantic (uma repetição com o erro) → registo
 `LlmCall` **sem conteúdo** (fornecedor, modelo, finalidade, versão do prompt, tokens, ms, estado e,
 se bloqueado, o tipo e o sítio da ocorrência, nunca o valor).
@@ -193,10 +193,14 @@ EMBEDDING_DIM=768                     # tem de coincidir com a coluna pgvector
 - **Nomes de modelos nunca no código**: só na configuração. Confirmar os nomes atuais no Google AI Studio.
 - **Limites da quota gratuita**: controlo do ritmo de pedidos (por minuto e por dia, configurável), repetição com espera exponencial em 429/503 e indicação ao utilizador quando um pedido está em fila. A geração retoma a partir do último bloco concluído.
 - **Validação da saída**: resposta JSON sempre validada com Pydantic. Se falhar, repete uma vez com o erro no pedido; se voltar a falhar, o bloco fica em `todo` com a mensagem de erro.
-- **Alternativa** (Fase 4): `LLM_FALLBACK_PROVIDER` e `LLM_FALLBACK_MODEL_*` (ex.: Groq com
-  `openai/gpt-oss-120b`). Quando o principal fica indisponível (5xx depois das repetições), o mesmo
-  pedido segue para a alternativa, com ritmo próprio; um 429 (quota) não muda de fornecedor. O
-  `LlmCall` regista o fornecedor e o modelo que responderam. [A CONFIRMAR: termos da Groq, D5 e D10]
+- **Fornecedores** (8 out 2026): Gemini, Groq e Claude (Anthropic). O admin escolhe o principal no
+  ecrã Definições (`PUT /settings/llm`, com justificação, na auditoria); os outros seguem pela ordem
+  Gemini, Groq, Claude. Em qualquer falha do serviço (5xx, 429 que persiste depois das repetições,
+  sem ligação, quota do dia esgotada) o mesmo pedido, já verificado pela guarda, segue para o
+  seguinte, com ritmo próprio; a guarda e o JSON inválido não mudam de fornecedor. Um fornecedor sem
+  chave ou sem modelo fica de fora. Variáveis `ANTHROPIC_API_KEY`, `LLM_<GEMINI|GROQ|CLAUDE>_MODEL_*`,
+  `_RPM` e `_RPD`; vazias, valem `LLM_MODEL_*` (para `LLM_PROVIDER`) e `LLM_FALLBACK_*` (para
+  `LLM_FALLBACK_PROVIDER`). O `LlmCall` regista o fornecedor e o modelo que responderam.
 - **Fila**: a geração corre no worker (fila RQ `llm`), com o progresso por SSE no canal do projeto
   (`queued`, `generating`, `generated`, `failed`, `paused`).
 - **Avaliação**: `backend/tests/llm_eval/` (`RUN_LLM_EVAL=1`) com casos fixos (a partir das *fixtures* anonimizadas) e verificações automáticas (zero NUM-01, zero TIP-01, blocos obrigatórios presentes) para comparar modelos e prompts antes de os trocar.
@@ -272,6 +276,21 @@ Nomes em inglês. Todas as tabelas têm `id` (UUID), `created_at`, `updated_at` 
 - **Requirement** (do CTE): `document_id`, `block_key`, `equipment_category`, `param_name`, `operator` (= | ≥ | ≤ | in | ≥class), `value`, `unit`.
 - **ProjectEquipment**: `ficha_value_id`, `equipment_id` (modelo de referência), `or_equivalent` (bool, sempre `true` por omissão nos CTE da TUU).
 - A biblioteca inicial é semeada a partir dos equipamentos de referência dos CTE do arquivo (portinholas, quadros, tubos, caixas, aparelhagem, detetores de movimento, luminárias, módulos e inversores FV, carregadores VE, videoporteiro, elétrodos de terra), com as características que o CTE já lista.
+- **Implementado (Fase 7, 0017)**, com estas diferenças:
+  - `Equipment` também com `name` (como o CTE o descreve), `code` (tipo de luminária L1…, SNC, BS), `or_equivalent`,
+    `sources` (projeto, bloco, entrada do bloco, linha do CTE, com os dados pessoais mascarados), `image` (a ilustração
+    de um só projeto que o acompanha no CTE) e o estado de revisão do curador (proposto / aprovado / rejeitado).
+  - `EquipmentParam` com `origin` (`cte`: o que o CTE diz do modelo de referência; `datasheet`: lido da ficha técnica)
+    e o texto lido. Só os da ficha técnica **atual** contam na verificação.
+  - `Datasheet` guarda o PDF no S3 (`equipment/<id>/datasheets/<uuid>`, SHA-256), as páginas, a data de emissão (lida
+    junto de «Rev.», «edição», «data», «date», «fecha»… ou escrita pelo curador) e a língua; uma ficha nova passa a
+    atual e a anterior a `outdated`.
+  - `Requirement` pelo `block_key` do CTE (não por documento), da linha de um equipamento (`equipment_id`) ou do bloco
+    inteiro; aprovado com o bloco pelo curador; operadores `>=`, `<=`, `=`, `>=class`, `info`.
+  - `ProjectEquipment` por slot do CTE montado (secção, entrada do bloco, posição), com o equipamento de referência e o
+    escolhido, a chave da ficha-base (`eq.*`, `sys.*`), quem escolheu e porquê.
+  - Leitura sem LLM, pelos mesmos padrões no CTE e nas fichas (`app/equipment/params.py`): IP, IK, Icc (kA), W, kW,
+    Wp, lm, K, V, alcance (m), ângulo (º), eficiência (%), autonomia (h), Euroclasse CPR e dimensões (só informação).
 
 ### 7.7 Transversal
 
@@ -453,6 +472,12 @@ Implementação (Fase 5): regras determinísticas, sem LLM, sobre factos extraí
 | EQP-02 | Fichas técnicas | Ficha técnica com mais de N anos (N = 3 por omissão) | Aviso |
 | EQP-03 | Fichas técnicas | Equipamento de referência sem ficha técnica na biblioteca | Informação |
 
+- Implementado (Fase 7): EQP-01 compara cada slot do CTE montado com os requisitos **aprovados** do bloco (do bloco
+  inteiro e da linha do slot) e a ficha técnica atual do equipamento escolhido; um parâmetro revisto que falha é
+  crítico, os só lidos dão um aviso «confirmar parâmetro», o que a ficha não diz é informação. EQP-02 com
+  `EQUIPMENT_DATASHEET_MAX_AGE_YEARS` (3); uma ficha sem data é informação. EQP-03 uma vez por equipamento. As peças
+  existentes (auditoria) não têm slots: R1 e R2 do Anexo C não mudam.
+
 Cada alerta mostra o que foi encontrado, a evidência (excerto, valores comparados e origem), a leitura provável e as ações possíveis. **Nenhuma correção é aplicada sem clique humano.** "Ignorar" exige justificação.
 
 A "leitura provável" é determinística: quando só uma peça difere da ficha-base, essa peça é a suspeita; quando a peça divergente é mais recente do que a ficha, a suspeita é a ficha.
@@ -499,10 +524,18 @@ Os ecrãs seguem o layout, os estados e as interações do mock-up, adaptados a 
 - Detalhe por equipamento: parâmetro, exigido (bloco do CTE), valor da ficha (com página) e resultado; alternativas da biblioteca quando não cumpre.
 - Biblioteca semeada a partir dos CTE de referência.
 - ✅ Com `or_equivalent = true`, a verificação compara requisitos mínimos e nunca exige a marca.
+- Implementado (Fase 7): uma linha por slot do CTE montado mais recente (quantidade do MQT/LPU: luminárias pelo
+  código, o resto pelo artigo ligado à chave da ficha), modelo de referência, data da ficha e uma verificação que diz
+  porquê («IP44 < IP55», «Ficha antiga», «Sem ficha»); o slot escolhido fica no endereço (`?slot=`). O redator e o
+  técnico confirmam o modelo de referência (a sua ilustração entra no CTE) ou trocam por uma alternativa da mesma
+  categoria, com justificação, na auditoria; só leitura para o curador e num CTE aprovado. Os alertas EQP abrem aqui.
 
 ### G · Base de conhecimento
 - Corpus regulamentar, **biblioteca de blocos** (com modo, regra de ativação e versão), arquivo TUU, dicionário de cabos e léxico de tipologias.
 - ✅ Só um curador pode aprovar blocos, equivalências de cabos e o estado `citable` de um documento.
+- **Biblioteca de equipamentos** (Fase 7): por categoria, com a evidência do CTE, as fichas técnicas (carregar,
+  data), os parâmetros lidos (rever, corrigir, acrescentar à mão), a verificação contra os requisitos dos blocos e
+  aprovar/rejeitar; só o curador decide.
 
 ### H · Revisão e exportação
 - Diff entre a proposta do agente e a edição do técnico, e da peça inteira entre uma revisão aprovada e o estado atual
@@ -616,7 +649,7 @@ No fim de cada fase: testes a passar, um commit por tarefa e `CLAUDE.md` atualiz
 | **4 · Montagem e redação** · implementada (28 set 2026) | Montagem `fixed`/`parametric`, redação `adaptive`, editor TipTap com blocos protegidos, pré-preenchimento dos formulários. Feito: montagem com a biblioteca proposta («bloco não aprovado»), rascunho .docx, camada de LLM com D5, guarda de privacidade e ritmo, propostas do agente em diff, ecrã D, perfil do técnico cifrado, FE/Identificação/Termo; `docs/fase4-diff-R1.md` sem defeitos | O MDJ e o CTE de R1 são montados a partir da ficha-base, e a diferença para o original aprovado é só texto adaptativo e correções de incoerências |
 | **5 · Validação** · implementada (28 set 2026) | Regras da secção 9 e matriz de coerência do projeto. Feito: motor em worker com revalidação das peças alteradas, peças existentes (modo auditoria), extração de factos sem LLM, 16 regras (EQP-* na Fase 7), ecrã E com matriz, bloqueio do envio para revisão, painel; `docs/fase5-anexo-c.md` | Todos os casos do Anexo C são detetados, com a leitura provável correta (14/14 em R1 e R2 carregados como auditoria; controlos sem alertas) |
 | **6 · Revisão e exportação** · implementada (6 out 2026) | Diff, aprovação, exportação do conjunto do projeto. Feito: técnico responsável atribuído, aprovação com as condições reais e revisões (rev. A → B, V0 → V1), DiffView e diff entre revisões, valores manuais na ficha-base, .docx oficial e rascunho com marca de água, formulários com os pacotes intactos, conjunto .zip com manifesto, PDF por LibreOffice, endpoint D9, ecrã H; verificações de fidelidade automáticas | O conjunto de R1 exporta e abre no Word/Excel com os estilos e macros intactos |
-| **7 · Equipamentos** | Biblioteca semeada a partir dos CTE, fichas técnicas, requisitos, regras EQP | Os equipamentos de referência de R1 têm ficha técnica associada e verificada |
+| **7 · Equipamentos** · implementada (7 out 2026) | Biblioteca semeada a partir dos CTE, fichas técnicas, requisitos, regras EQP. Feito: 77 equipamentos e 87 requisitos propostos de R1/R2, leitura das fichas sem LLM, revisão do curador, slots do CTE com alternativas e ilustração, EQP-01/02/03, ecrãs F e G | Os equipamentos de referência de R1 têm ficha técnica associada e verificada: **em parte** (8 out 2026): 20 de 32 com a ficha do fabricante, nenhum falha o CTE (`docs/fase7-fichas-R1.md`); faltam 12 fichas (`data/fixtures/fichas-tecnicas/R1/fichas.json`) e a revisão do curador |
 | **8 · Piloto** | Três projetos reais de eletricidade feitos no Maestro Especiais | Tempos medidos e comparados com o processo atual |
 | **9 · Especialidades seguintes** | ITED, depois SCIE/segurança | Biblioteca de blocos e ficha-base da nova especialidade aprovadas |
 
@@ -637,7 +670,7 @@ No fim de cada fase: testes a passar, um commit por tarefa e `CLAUDE.md` atualiz
 - [ ] Confirmação do mapa de células das 09-Folhas e da Tabela de Cálculo (e se os modelos têm versões).
 - [ ] Lista do corpus regulamentar a incluir, validada por um técnico (ver Anexo D).
 - [ ] Tabela de equivalências de designações de cabos usada pela equipa.
-- [ ] Fichas técnicas dos equipamentos de referência mais usados.
+- [ ] Fichas técnicas dos equipamentos de referência mais usados (Fase 7: primeiro as de R1, em `data/fixtures/fichas-tecnicas/`, PDF dos fabricantes, sem anonimização; fecham o critério da Fase 7).
 - [ ] Outros casos de erro conhecidos, para testes de regressão.
 
 ---
@@ -650,12 +683,12 @@ No fim de cada fase: testes a passar, um commit por tarefa e `CLAUDE.md` atualiz
 | D2 | Base de dados | PostgreSQL + pgvector | Equipa técnica |
 | D3 | Embeddings | ✅ Decidido: modelo de embeddings do Gemini | — |
 | D4 | Alojamento | Cloud na UE para o piloto | Direção |
-| D5 | Termos de tratamento de dados da Gemini API | Confirmar a aplicação das regras de serviço pago no EEE; ponderar plano pago no piloto | Direção |
-| D6 | Autenticação | Microsoft Entra ID, se aplicável | TI |
+| D5 | Termos de tratamento de dados da Gemini API | Confirmar a aplicação das regras de serviço pago no EEE; ponderar plano pago no piloto. **✅ 8 out 2026: aceite (Gemini, Groq e Claude); o LLM fica ligado por omissão** | Direção |
+| D6 | Autenticação | Microsoft Entra ID, se aplicável. **8 out 2026: até lá, contas com email e password (`make create-user`), cookie de sessão assinado** | TI |
 | D7 | Curador do corpus, blocos e dicionários | Um técnico sénior de eletricidade, ~2 h/mês | Coordenação |
 | D8 | Esqueletos e blocos obrigatórios (CNT-01) | Validar a secção 8.3 com a equipa | Técnicos |
 | D9 | Integração com o TUU Maestro | Endpoint de exportação no MVP | Equipa TUU Maestro |
-| D10 | LLM | ✅ Decidido: Gemini Flash (quota gratuita) no desenvolvimento | — |
+| D10 | LLM | ✅ Decidido: Gemini Flash (quota gratuita) no desenvolvimento; desde 8 out 2026 também Groq e Claude, principal escolhido pelo admin | — |
 | D11 | Especialidade do MVP | ✅ Decidido: instalações elétricas (ITED na Fase 9) | — |
 | D12 | Leitura de DWG (fase posterior) | Avaliar conversor DWG→DXF e respetiva licença | Equipa técnica |
 | D13 | Severidade da CAL-01 | Aviso, com confirmação do projetista na folha | Técnicos |

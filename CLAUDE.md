@@ -103,7 +103,8 @@ Decisões da Fase 4 (28 set 2026; as quatro primeiras aprovadas pelo utilizador,
 - Guarda de privacidade antes de cada pedido ao LLM: valores `personal_data` da ficha, campos pessoais dos perfis,
   `BlockedTerm` (nomes da equipa; em desenvolvimento semeados das fixtures) e os padrões de app/library/privacy.py.
   Uma ocorrência bloqueia; `LlmCall` guarda o tipo e o sítio, nunca o valor nem o conteúdo.
-- D5: `Project.llm_allowed` (falso por omissão), só o admin o liga; sem ele, HTTP 409 «D5 pendente», na auditoria.
+- D5: `Project.llm_allowed`; desde 8 out 2026 **verdadeiro por omissão** (decisão do utilizador, migração 0018: só os
+  projetos novos); só o admin o desliga ou volta a ligar; desligado, HTTP 409 «LLM desligado neste projeto», na auditoria.
 - DOCX: rascunho sobre o pacote do MDJ/CTE de R1 (modelo provisório até haver modelo TUU vazio); a exportação oficial
   (Fase 6) só com blocos aprovados e secções revistas (`export_readiness`, já testada).
 - Chaves de troços e artigos: `circ.<origem_destino>.<campo>` e `bom.<código>.<campo>`; sem agregados calculados.
@@ -111,10 +112,18 @@ Decisões da Fase 4 (28 set 2026; as quatro primeiras aprovadas pelo utilizador,
   LLM_MODEL_EMBEDDING vazia (não usada). Ritmo LLM_RPM=10, LLM_RPD=200; geração no worker (fila `llm`) com retoma.
 - Alternativa (decisão do utilizador, 28 set 2026): principal Gemini `gemini-3.5-flash-lite`; quando fica indisponível
   (5xx depois das repetições, ex.: 503 «high demand» do nível gratuito), o mesmo pedido, já verificado pela guarda, vai para
-  a Groq com `openai/gpt-oss-120b` (LLM_FALLBACK_*, ritmo próprio LLM_FALLBACK_RPM=2); um 429 não muda de fornecedor.
+  a Groq com `openai/gpt-oss-120b` (LLM_FALLBACK_*, ritmo próprio LLM_FALLBACK_RPM=2).
   GroqProvider sem SDK (httpx, API compatível com OpenAI), espera o `retry-after`. Avaliação R2 (28 set): Flash-Lite 5/5;
   gpt-oss-120b 4/5 (o 5.º com chaves inventadas, que ficam «falta dado»); gemini-3.6-flash rejeitado (NUM-01 com
-  números de R2 e 20 pedidos/dia). Os termos da Groq não foram vistos: [A CONFIRMAR] com a D5, e muda a D10.
+  números de R2 e 20 pedidos/dia).
+- Três fornecedores (decisão do utilizador, 8 out 2026): Gemini, Groq e Claude (Anthropic, SDK `anthropic`, saída
+  `json_schema`), todos disponíveis. O principal escolhe-o o admin no ecrã Definições (`AppSetting` «llm.primary»,
+  migração 0019, `PUT /settings/llm` com justificação, na auditoria; sem escolha, `LLM_PROVIDER`); os outros seguem
+  pela ordem Gemini, Groq, Claude. Muda-se para o seguinte em **qualquer falha do serviço** (5xx, 429 que persiste,
+  sem ligação, quota do dia esgotada); a guarda e o JSON inválido não mudam de fornecedor; pausa só quando todos estão
+  sem quota. Um fornecedor sem chave ou sem modelo fica de fora. Variáveis próprias `LLM_<FORNECEDOR>_MODEL_*`,
+  `_RPM`, `_RPD` e `ANTHROPIC_API_KEY`; vazias, valem as antigas (`LLM_MODEL_*` para o `LLM_PROVIDER`,
+  `LLM_FALLBACK_*` para o `LLM_FALLBACK_PROVIDER`). Modelo do Claude por definir (é a 3.ª escolha).
 - Texto do agente chega sempre como versão **proposta**; aceitar/rejeitar no diff. Pedidos em linguagem natural idem.
 - NUM-01 com lista branca em backend/app/llm/whitelist.yaml; os números copiados das fontes (distâncias
   regulamentares) também são assinalados: ficam para o técnico confirmar (a regra não é relaxada).
@@ -202,6 +211,50 @@ Decisões da Fase 6 (6 out 2026; as oito do plano aprovadas pelo utilizador, o r
   fixtures de R1/R2 trazem nomes de pessoas em `docProps/core.xml` (a assinalar à equipa; não passam para a exportação).
 - O worker também tem `DEV_AUTH` em desenvolvimento (resolve o perfil do técnico nas exportações e na guarda do LLM).
 
+Início de sessão (8 out 2026, pedido do utilizador: «estilo o do Registo de Temas Estratégicos»; até à D6):
+- Contas com email e password (`AppUser`, migração 0020) criadas pelo admin com `make create-user EMAIL=… NAME="…"
+  ROLES=…` (pede a password, ≥ 10 caracteres; sem página de registo, como no Registo); `make users` lista-as.
+- Diferenças em relação ao Registo, de propósito: scrypt da biblioteca padrão (sem dependência nova); cookie
+  `maestro_session` HttpOnly, SameSite=Lax, assinado com HMAC (`SESSION_SECRET`), só com o id da conta (nome próprio,
+  para não colidir com os cookies das outras apps de apps.tuu.pt); papéis e conta ativa lidos da BD em cada pedido;
+  mudar a password termina as outras sessões; 5 passwords erradas bloqueiam 15 min; a mesma resposta para email
+  desconhecido, password errada, conta bloqueada ou desativada; nem o email nem a password vão para os logs.
+- Com `DEV_AUTH` os utilizadores de desenvolvimento continuam (cabeçalho X-Dev-User); a conta com sessão iniciada
+  ganha. Sem `DEV_AUTH`, quem não tem sessão vai para `/entrar`. A D6 (SSO) só substitui `current_user`.
+- [A CONFIRMAR] sessão de 12 h (`SESSION_TTL_HOURS`), sem restrição de domínio do email, papéis por conta (não por
+  grupos), ids `user:<uuid>` na auditoria e nos perfis dos técnicos.
+
+Decisões da Fase 7 (7 out 2026; as quatro primeiras aprovadas pelo utilizador, o resto [A CONFIRMAR]):
+- Fichas técnicas: PDF públicos dos fabricantes em `data/fixtures/fichas-tecnicas/<projeto>/`, sem anonimização, com
+  `fichas.json` (origem, data, equipamentos da biblioteca por fabricante + referência ou modelo, o que ficou sem ficha).
+  As 17 de R1 foram descarregadas dos sites oficiais em 8 out 2026 (com autorização do utilizador); `make seed-library`
+  liga-as aos equipamentos (20 ligações). Os contactos de empresas que o pii-check toma por pessoais ficam no
+  `.pii-allowlist.json` da pasta (hashes, só esses valores). Os testes que não precisam delas continuam com os PDFs
+  pequenos de backend/tests/pdfs.py.
+- Parâmetros lidos por padrões, sem LLM (app/equipment/params.py), no CTE e nas fichas; tudo `extracted` até o curador
+  rever; só os revistos decidem a EQP-01.
+- Requisitos propostos a partir do texto do CTE; aprovados com o bloco (aprovar um bloco CTE aprova os seus requisitos
+  propostos) ou um a um pelo curador.
+- A ilustração de um só projeto passa a ser do equipamento da linha de referência acima dela; entra no CTE quando o
+  redator ou o técnico confirma ou escolhe esse equipamento no ecrã F (sem escolha, continua omitida).
+- [A CONFIRMAR] categorias (lista fechada em app/equipment/__init__.py, pela chave do bloco); um equipamento por linha
+  que nomeia um fabricante (lista de marcas em app/equipment/cte.py, ou «da marca X») e um modelo ou uma referência com
+  dígitos; as linhas abaixo são características dele, as de antes do primeiro, do bloco inteiro; identidade =
+  fabricante + referência + modelo + código + nome (R1 e R2 com a mesma linha dão um só equipamento).
+- [A CONFIRMAR] comparação: IP por dígito (um X na ficha para um dígito exigido = «não comparável»), IK por número,
+  Euroclasse por ordem; potência e temperatura de cor iguais; os outros mínimos `>=`. Requisitos `>=class`/`>=`/`=`.
+  A tensão é só informação, como as dimensões (8 out 2026): nas fichas reais aparecem alimentações, gamas e correntes
+  de relés (Hikvision «Max. 30 VDC»), e o «12 V» do CTE de R1 é das fitas LED, não de todas as luminárias. Alcance de
+  deteção também em inglês e italiano («Detection distance», «rilevamento», «360° max 14 m»); data de emissão também
+  `2020.01.03`. A data no rodapé das fichas da Quitérios é a da geração do PDF e não se lê.
+- [A CONFIRMAR] slot = entrada do bloco que nomeia o equipamento, com o do projeto de onde a entrada vem; trocar só
+  por um da mesma categoria, com justificação (≥ 10); quantidade do MQT/LPU: luminárias pelo código, o resto pelo
+  artigo ligado à chave da ficha (`eq.*`).
+- [A CONFIRMAR] EQP-01 crítico só com um parâmetro revisto que falha; aviso para confirmar os lidos; informação para o
+  que a ficha não diz. EQP-02: `EQUIPMENT_DATASHEET_MAX_AGE_YEARS` (3), ficha sem data = informação. EQP-03 uma vez por
+  equipamento. Categoria «Fichas técnicas», ação `open_equipment` (ecrã F).
+- Chave nova `eq.aparelhagem_serie` (estava na SPEC 7.2), sem leitor.
+
 ## Comandos
 - make setup                 # .venv + dependências Python + npm ci + Chromium do Playwright
 - make env                   # gera .env local com segredos aleatórios de desenvolvimento
@@ -218,6 +271,9 @@ Decisões da Fase 6 (6 out 2026; as oito do plano aprovadas pelo utilizador, o r
 - make form-templates        # modelos vazios dos formulários a partir de R1 (data/fixtures)
 - make diff-report           # docs/fase4-diff-R1.md (R1 montado na stack, com os adaptativos gerados)
 - make anexo-c-report        # docs/fase5-anexo-c.md (casos do Anexo C na validação; só o Postgres do compose)
+- make fichas-report         # docs/fase7-fichas-R1.md (equipamentos de R1 contra as fichas técnicas; só o Postgres do compose)
+- make create-user EMAIL=… NAME="…" ROLES=redator,tecnico  # cria ou atualiza uma conta (pede a password)
+- make users                 # lista as contas
 - Sem make (Windows): `winget install ezwinports.make`
 
 ## Dados
@@ -233,12 +289,12 @@ Seguem a recomendação da secção 16 da SPEC enquanto a equipa não decidir o 
 | D2 | PostgreSQL 16 + pgvector | Recomendação seguida |
 | D3 | Embeddings Gemini | ✅ Decidido |
 | D4 | Alojamento cloud na UE | Recomendação seguida; por agora só ambiente local |
-| D5 | Termos da Gemini API | **Pendente (direção).** Até lá nenhum dado real vai ao LLM; só fixtures anonimizadas |
-| D6 | Autenticação Entra ID, se aplicável | Por decidir com a TI (não decidida na Fase 2; o login de desenvolvimento continua) |
+| D5 | Termos da Gemini API | ✅ Aceite (8 out 2026, comunicado pelo utilizador): texto de projetos reais pode ir à Google, à Groq e à Anthropic, sempre sem valores nem dados pessoais (marcadores e guarda de privacidade); LLM ligado por omissão, o admin desliga por projeto |
+| D6 | Autenticação Entra ID, se aplicável | Por decidir com a TI. Até lá (8 out 2026): contas com email e password, como no Registo de Temas Estratégicos |
 | D7 | Curador | A designar (coordenação) |
 | D8 | Esqueletos da secção 8.3 | Seguidos tal como estão, a validar com os técnicos |
 | D9 | Integração TUU Maestro | Endpoint de exportação no MVP |
-| D10 | Gemini Flash | ✅ Decidido; na Fase 4 usa-se Flash-Lite pela quota [A CONFIRMAR] |
+| D10 | Gemini Flash | ✅ Alargada (8 out 2026): Gemini, Groq e Claude, principal escolhido pelo admin; Flash-Lite pela quota [A CONFIRMAR]; modelo do Claude por definir |
 | D11 | MVP em eletricidade | ✅ Decidido |
 | D12 | Leitura de DWG | Adiada |
 | D13 | Severidade da CAL-01 | Aviso |
@@ -265,9 +321,26 @@ Decisões da Fase 0:
     o histórico do Git fica como está. Também passam por placeholder no que for enviado ao LLM.
 
 ## Estado atual
-- Fase: 6 **implementada** (6 out 2026). Fases 0, 1 e 2 concluídas; a 3 está implementada e à espera do curador (D7):
+- Fase: 7 **implementada** (7 out 2026). Fases 0, 1 e 2 concluídas; a 3 está implementada e à espera do curador (D7):
   fecha quando os blocos estiverem aprovados. Até lá, as secções montadas dizem «bloco não aprovado» e só sai o
-  rascunho (o conjunto oficial exige os blocos aprovados). As 4 e 5 estão implementadas.
+  rascunho (o conjunto oficial exige os blocos aprovados). As 4, 5 e 6 estão implementadas. Critério da 7 em parte
+  (8 out 2026, docs/fase7-fichas-R1.md, `make fichas-report`): dos 32 equipamentos do CTE de R1, 20 têm ficha do
+  fabricante; com os parâmetros dados como revistos, 5 cumprem, 1 fica por confirmar (a ficha da tomada schuko não diz
+  o IP), 14 não têm requisitos no CTE e **nenhum falha**; 12 ficam sem ficha (descontinuados, só por email, site
+  bloqueado ou só documentos parciais, em `fichas.json`). Para fechar: as fichas que faltam (a equipa) e o curador
+  rever os parâmetros (D7).
+- Feito na Fase 7:
+  - biblioteca de equipamentos (0017): 77 equipamentos, 81 parâmetros do CTE e 87 requisitos propostos de R1/R2 por
+    `make seed-library`; secção «Equipamentos» em docs/revisao-curador.md;
+  - fichas técnicas no S3, leitura por padrões com a página, data e língua; API do curador (rever, corrigir,
+    acrescentar, aprovar); slots do CTE montado com alternativas, quantidade e ilustração; EQP-01/02/03;
+  - ecrã F (verificação parâmetro a parâmetro, alternativas, escolher com justificação) e separador «Biblioteca de
+    equipamentos» no ecrã G.
+- Feito a 8 out 2026 (ramo `fase7`): início de sessão com email e password (0020); fichas técnicas de R1 (20/32 equipamentos, nenhum falha; 12 sem ficha
+  ignoradas por decisão do utilizador), LLM ligado por omissão (0018), três fornecedores com o principal escolhido no
+  ecrã Definições (0019).
+- Melhorias de 6 out 2026 (ramo `melhorias`): índice gerado sem `updateFields` (LibreOffice), luminárias na COE-01,
+  COE-02 pela data da carimbadura.
 - Feito na Fase 6:
   - valores manuais na ficha-base; técnico responsável, aprovação com as condições reais e revisões (0015);
   - DiffView e diff entre revisões; ecrã H (condições com razão e ligação, responsável, data do cabeçalho, aprovar,
@@ -303,6 +376,10 @@ Decisões da Fase 0:
   - formulários (0012): perfil do técnico cifrado, FE, Identificação e Termo; `GET /projects/{id}/forms[/{kind}]`;
   - docs/fase4-diff-R1.md: MDJ 225/268 entradas iguais, CTE 172/242, **zero defeitos**; C1 repetida pelo agente e C2
     não repetida (a deteção é da Fase 5); C3 resolvida pelo perfil.
+- Verificado (7 out 2026, Fase 7 e melhorias, Windows 11 + Docker Desktop): `make lint` e `make pii-check` limpos;
+  pytest 763 em contentor (`make test-docker`, com o LibreOffice); Vitest 86; Playwright 91 (+ percursos opcionais);
+  percurso RUN_EQUIPMENT_JOURNEY verde contra a stack (portinhola de R1 «Cumpre» com a ficha revista, os outros 31
+  equipamentos «Sem ficha», a imagem do espelho escolhido no rascunho do CTE); Anexo C 14/14 sem alterações nos casos.
 - Verificado (6 out 2026, Fase 6, Windows 11 + Docker Desktop): `make lint` e `make pii-check` limpos; pytest 695 (8
   saltados: os do LibreOffice, que passam no contentor com `make test-docker`: .docx, formulários e conjunto, PDF
   incluído); Vitest 77; Playwright 85 (+ percursos opcionais); percurso RUN_EXPORT_JOURNEY verde contra a stack (R1
@@ -319,6 +396,8 @@ Decisões da Fase 0:
   Percurso RUN_R1_EDITOR_JOURNEY verde, com o Gemini em 503 «high demand» respondido pela alternativa Groq.
   A lista branca da NUM-01 aceita «16 A a 250 V» como «16A-250V» (28 set 2026).
 - [A CONFIRMAR] pela equipa:
+  - Fase 7: as decisões acima, cada equipamento e requisito de docs/revisao-curador.md (nomes de linhas longas, o
+    detetor 360º/180º de R1, os requisitos do bloco aplicados a todos os seus equipamentos) e as fichas técnicas de R1;
   - Fase 6: as decisões acima, em especial a convenção de nomes, os modelos derivados de R1, a verificação manual
     no Word/Excel e os nomes de pessoas em `docProps/core.xml` das fixtures de R1/R2;
   - Fase 5: as decisões acima e os «outros alertas reais» de docs/fase5-anexo-c.md, em especial: R2 com poder de corte
@@ -343,7 +422,9 @@ Decisões da Fase 0:
   Gemini faz o percurso falhar com a mensagem «o LLM falhou»). Percurso da Fase 5: `make up`, `make seed-library` e
   `RUN_AUDIT_JOURNEY=1 npm run e2e` (cria um projeto E2E-AUD-… com o R2 completo). Percurso da Fase 6: `make up`,
   `make seed-library` e `RUN_EXPORT_JOURNEY=1 npm run e2e` (R1-E2E-EXP-…, sem LLM; aprova **todos** os blocos: repor a BD
-  antes de voltar a correr qualquer percurso). O percurso do curador corre em
+  antes de voltar a correr qualquer percurso). Percurso da Fase 7: `make up`, `make seed-library` e
+  `RUN_EQUIPMENT_JOURNEY=1 npm run e2e` (R1-E2E-EQP-…; acrescenta uma ficha técnica à portinhola e aprova o bloco da
+  entrada de energia: repor a BD depois). O percurso do curador corre em
   último: aprova a INTRODUÇÃO, que o R1 no editor espera «não aprovado» (senão, repor a BD entre os dois). Depois de mudar dependências do
   backend: `docker compose build backend worker`. Depois de atualizar para a Fase 5: `docker compose up -d backend worker`
   (as migrações 0013/0014 correm no arranque do backend e o worker passa a ouvir a fila `validation`).
@@ -366,10 +447,13 @@ Decisões da Fase 0:
   - os valores da tabela de pseudónimos de execuções anteriores também respeitam o `allow:` dos overrides; foi assim que
     a freguesia de R1 (tomada por morada pelo mapa antigo) voltou a ficar real em 25 set 2026;
   - os PDF são gravados com o `/ID` da origem (`no_new_id`): uma nova execução só muda os PDF cujo conteúdo muda.
-- Próximo: Fase 7 (equipamentos: biblioteca semeada a partir dos CTE, fichas técnicas, requisitos, regras EQP-*).
+- Próximo: Fase 8 (piloto: três projetos reais de eletricidade, SPEC 14), que depende de D6 e D7
+  e de a equipa rever
+  as Fases 3–7. Para fechar a 7: as 12 fichas de R1 que faltam (lista em data/fixtures/fichas-tecnicas/R1/fichas.json;
+  pô-las na pasta e acrescentar a entrada) e a revisão do curador.
   Antes do uso real da Fase 6: a verificação manual (docs/fase6-verificacao-manual.md), modelos .docx TUU vazios (hoje o
   pacote de R1) e dos formulários, a convenção de nomes confirmada pela TUU, o curador (D7) para haver conjunto oficial.
   Trabalho futuro da Fase 6: PDF assinado,
   integração mais funda com o TUU Maestro (D9). Trabalho futuro da Fase 5: citações com locator
   nas peças humanas, extração assistida por LLM para o que fica «não comparável».
-  Continuam pendentes D7 (curador), D8 (esqueletos), D5 (dados reais no LLM; agora também a Groq) e D6 (Entra ID).
+  Continuam pendentes D7 (curador), D8 (esqueletos), D6 (Entra ID) e o modelo do Claude (3.º fornecedor).

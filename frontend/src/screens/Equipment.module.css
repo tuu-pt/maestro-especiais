@@ -1,0 +1,193 @@
+.stack {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+}
+.top {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+.h2 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+}
+.h3 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+.h4 {
+  margin: 14px 0 6px;
+  font-size: 13px;
+  font-weight: 700;
+}
+.pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.num {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.mono {
+  font-family: var(--f-mono);
+  font-size: 12px;
+}
+.muted {
+  color: var(--ink-3);
+  font-size: 12px;
+  margin: 2px 0 0;
+}
+.rowButton {
+  font: inherit;
+  font-weight: 600;
+  text-align: left;
+  color: var(--ink);
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  overflow-wrap: anywhere;
+}
+.rowButton:hover {
+  text-decoration: underline;
+}
+.on td {
+  background: var(--surface-2);
+}
+.on td:first-child {
+  box-shadow: inset 3px 0 0 var(--yellow);
+}
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 260px);
+  gap: 16px;
+  align-items: start;
+}
+@media (max-width: 900px) {
+  .layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.side {
+  display: grid;
+  gap: 14px;
+  align-content: start;
+  min-width: 0;
+}
+.detail {
+  min-width: 0;
+}
+.detailHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: start;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 10px 0;
+}
+.suggestion {
+  margin: 12px 0 0;
+  font-size: 13px;
+  color: var(--ink-2);
+}
+.no {
+  color: var(--crit);
+  font-weight: 700;
+}
+.ok {
+  color: var(--ok);
+  font-weight: 700;
+}
+.crit {
+  color: var(--crit);
+  font-weight: 700;
+}
+.warn {
+  color: var(--warn);
+  font-weight: 700;
+}
+.mute,
+.info {
+  color: var(--ink-3);
+  font-weight: 700;
+}
+.resultLabel {
+  margin-left: 6px;
+  font-size: 12px;
+  color: var(--ink-2);
+}
+.lib {
+  display: grid;
+  gap: 6px;
+  margin: 0 0 10px;
+}
+.lib div {
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 6px 10px;
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+.lib dt {
+  font-size: 18px;
+  min-width: 2.2ch;
+  font-weight: 750;
+  font-variant-numeric: tabular-nums;
+}
+.lib dd {
+  margin: 0;
+  font-size: 12px;
+  color: var(--ink-3);
+}
+.note {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--ink-2);
+  border-left: 3px solid var(--info);
+  background: var(--info-bg);
+  padding: 8px 10px;
+  border-radius: 0 6px 6px 0;
+}
+.choose {
+  border-top: 1px solid var(--line);
+  margin-top: 14px;
+  padding-top: 4px;
+}
+.label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink-2);
+  margin: 6px 0 4px;
+}
+.input {
+  width: 100%;
+  font: inherit;
+  font-size: 13px;
+  padding: 6px 8px;
+  border: 1px solid var(--line-2);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--ink);
+  box-sizing: border-box;
+}
+.sources {
+  margin: 0;
+  padding-left: 18px;
+  display: grid;
+  gap: 6px;
+  font-size: 13px;
+}

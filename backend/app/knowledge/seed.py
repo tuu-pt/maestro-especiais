@@ -211,6 +211,8 @@ def seed_knowledge(
 def main() -> None:
     from app.config import get_settings
     from app.db import session_factory
+    from app.equipment.datasheets import seed_datasheets
+    from app.equipment.seed import seed_equipment
     from app.library.seed import seed_blocks
     from app.library.sources import seed_sources
     from app.llm.blocked import seed_blocked_terms
@@ -226,6 +228,12 @@ def main() -> None:
         summary = seed_knowledge(db, root)
         summary |= seed_sources(db, store, root, REFERENCE_PROJECTS)
         summary |= seed_blocks(db, root, REFERENCE_PROJECTS)
+        summary |= seed_equipment(db)
+        for code in REFERENCE_PROJECTS:  # the manufacturers' datasheets of the fixtures (Phase 7)
+            found = seed_datasheets(db, store, root / "fichas-tecnicas" / code)
+            summary["datasheets"] = summary.get("datasheets", 0) + found["datasheets"]
+            if found["datasheets_unmatched"]:
+                print("Fichas sem equipamento:", found["datasheets_unmatched"])
         summary["blocked_terms"] = seed_blocked_terms(db, root, REFERENCE_PROJECTS)
         db.commit()
     print("Base de conhecimento semeada:", summary)

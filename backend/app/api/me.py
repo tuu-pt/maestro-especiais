@@ -26,11 +26,12 @@ class UserOut(BaseModel):
     id: str
     name: str
     roles: list[RoleOut]
+    session: str  # account (signed in with a password) | dev (development user)
 
     @classmethod
     def of(cls, user: User) -> "UserOut":
         roles = [RoleOut(id=r, label=ROLE_LABELS_PT[r]) for r in ROLES if r in user.roles]
-        return cls(id=user.id, name=user.name, roles=roles)
+        return cls(id=user.id, name=user.name, roles=roles, session=user.via)
 
 
 class DevUserOut(UserOut):

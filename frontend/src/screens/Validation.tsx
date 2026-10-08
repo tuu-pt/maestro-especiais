@@ -328,6 +328,15 @@ function IssueCard({
               {issue.actions.includes("open_ficha") || issue.actions.includes("confirm_sheet") ? (
                 <ButtonLink to={`/projetos/${projectId}/ficha`}>Abrir na ficha</ButtonLink>
               ) : null}
+              {issue.actions.includes("open_equipment") ? (
+                <ButtonLink
+                  to={`/projetos/${projectId}/equipamentos${
+                    typeof issue.location.equipment_slot === "string" ? `?slot=${issue.location.equipment_slot}` : ""
+                  }`}
+                >
+                  Ver equipamentos
+                </ButtonLink>
+              ) : null}
               {issue.actions.includes("ask_curator") ? (
                 <ButtonLink to="/conhecimento">Pedir ao curador</ButtonLink>
               ) : null}
@@ -414,6 +423,12 @@ const EVIDENCE_LABELS: Record<string, string> = {
   reason: "Motivo",
   not_comparable: "Não comparável",
   project: "Projeto do arquivo",
+  equipment: "Equipamento",
+  required: "Exigido no CTE",
+  offered: "Ficha técnica",
+  page: "Página da ficha",
+  datasheet: "Ficha técnica (ficheiro)",
+  issue_date: "Data da ficha",
 };
 
 function OtherEvidence({ evidence }: { evidence: Record<string, unknown> }) {

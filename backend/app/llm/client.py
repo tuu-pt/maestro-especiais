@@ -5,10 +5,12 @@ retries with exponential backoff on 429/503, validation of the JSON with Pydanti
 the error in the request, then the caller leaves the section "todo"), and one LlmCall record
 without the content of the request or of the answer.
 
-When the main provider stays unavailable (5xx after the retries, e.g. Gemini's 503 "high
-demand"), the same request (already checked by the guard) goes to the fallback provider, with
-its own pace; the LlmCall records the provider and model that answered. A 429 (quota) does not
-switch: the generation pauses as before.
+The providers form a chain (app.llm.providers: the main one chosen by the admin, then the
+others): when one fails after its retries, for any reason of the service (unavailable, no
+connection, timeout, quota used up), the same request, already checked by the guard, goes to the
+next one, with its own pace and model; the LlmCall records the provider and model that answered.
+Only when every provider has used up its daily quota does the generation pause. The privacy
+guard and an invalid answer never change provider: they are about the request, not the service.
 """
 
 import json
@@ -45,6 +47,15 @@ class LlmPaused(LlmFailed):
 
 
 @dataclass
+class Link:
+    """One provider of the chain, with its pace and its model per purpose."""
+
+    provider: LlmProvider
+    limiter: RateLimiter
+    models: dict[str, str]
+
+
+@dataclass
 class LlmClient:
     provider: LlmProvider
     limiter: RateLimiter
@@ -54,14 +65,37 @@ class LlmClient:
     calls: list[LlmCall] = field(default_factory=list)
     fallback: LlmProvider | None = None
     fallback_limiter: RateLimiter | None = None
+    links: list[Link] | None = None  # the chain; None: provider, then fallback
+
+    def chain(self) -> list[Link]:
+        if self.links:
+            return self.links
+        s = self.settings
+        out = [
+            Link(
+                self.provider,
+                self.limiter,
+                {"drafting": s.llm_model_drafting, "extraction": s.llm_model_extraction},
+            )
+        ]
+        if self.fallback is not None and self.fallback_limiter is not None:
+            out.append(
+                Link(
+                    self.fallback,
+                    self.fallback_limiter,
+                    {p: self.fallback_model_for(p) for p in ("drafting", "extraction")},
+                )
+            )
+        return out  # fmt: skip
+
+    def _usable(self, purpose: str) -> list[Link]:
+        return [link for link in self.chain() if link.models.get(purpose)]
 
     def model_for(self, purpose: Purpose) -> str:
-        name = self.settings.llm_model_drafting if purpose == "drafting" else (
-            self.settings.llm_model_extraction
-        )  # fmt: skip
-        if not name:
+        usable = self._usable(purpose)
+        if not usable:
             raise LlmFailed(f"Sem modelo definido para «{purpose}» (LLM_MODEL_* no .env).")
-        return name
+        return usable[0].models[purpose]
 
     def fallback_model_for(self, purpose: str) -> str:
         s = self.settings
@@ -74,9 +108,11 @@ class LlmClient:
         section_id: uuid.UUID | None = None, profile: dict[str, str] | None = None,
         temperature: float = 0.2,
     ) -> tuple[T, LlmCall]:  # fmt: skip
+        model = self.model_for(purpose)
         call = LlmCall(
-            project_id=project.id, section_id=section_id, provider=self.provider.name,
-            model=self.model_for(purpose), purpose=purpose, prompt_version=prompt_version,
+            project_id=project.id, section_id=section_id,
+            provider=self._usable(purpose)[0].provider.name, model=model, purpose=purpose,
+            prompt_version=prompt_version,
             status="failed", attempts=0,
         )  # fmt: skip
         db.add(call)
@@ -86,7 +122,7 @@ class LlmClient:
             if not project.llm_allowed:
                 call.status, call.error = (
                     "refused",
-                    "D5 pendente: este projeto não pode usar o LLM.",
+                    "LLM desligado neste projeto: só o admin o volta a ligar.",
                 )
                 raise LlmNotAllowed(call.error)
             terms = terms_for(db, project.id, profile) + personal_terms(db, self.settings)
@@ -132,27 +168,27 @@ class LlmClient:
 
     def _send(self, call: LlmCall, system: str, messages: list[Message],
               json_schema: dict[str, object], temperature: float) -> str:  # fmt: skip
-        on_fallback = self.fallback is not None and call.provider == self.fallback.name
-        if not on_fallback:
+        """Down the chain from the provider of the call (the second attempt of the validation
+        stays where the first one was answered)."""
+        links = self._usable(call.purpose)
+        names = [link.provider.name for link in links]
+        start = names.index(call.provider) if call.provider in names else 0
+        errors: list[str] = []
+        paused: str | None = None
+        for link in links[start:]:
+            call.provider, call.model = link.provider.name, link.models[call.purpose]
             try:
-                return self._try(self.provider, self.limiter, call, system, messages,
+                return self._try(link.provider, link.limiter, call, system, messages,
                                  json_schema, temperature)  # fmt: skip
+            except LlmPaused as exc:  # this provider's day is used up: the next one
+                paused = str(exc)
             except ProviderError as exc:
-                if not (exc.unavailable and self.fallback and self.fallback_limiter):
-                    call.error = str(exc)
-                    raise LlmFailed(f"O LLM não respondeu: {exc}") from None
-                main = str(exc)
-            call.provider, call.model = self.fallback.name, self.fallback_model_for(call.purpose)
-            if not call.model:
-                call.error = f"{main} Sem modelo alternativo (LLM_FALLBACK_MODEL_*)."
-                raise LlmFailed(f"O LLM não respondeu: {main}")
-        assert self.fallback is not None and self.fallback_limiter is not None
-        try:
-            return self._try(self.fallback, self.fallback_limiter, call, system, messages,
-                             json_schema, temperature)  # fmt: skip
-        except ProviderError as exc:
-            call.error = str(exc)
-            raise LlmFailed(f"O LLM não respondeu (também o alternativo): {exc}") from None
+                errors.append(f"{link.provider.name}: {exc}")
+        if errors:
+            call.status, call.error = "failed", "; ".join(errors)
+            others = " (nem os alternativos)" if len(links) - start > 1 else ""
+            raise LlmFailed(f"O LLM não respondeu{others}: {errors[-1]}")
+        raise LlmPaused(paused or "Quota diária esgotada em todos os fornecedores.")
 
     def _try(
         self,
@@ -204,6 +240,10 @@ def make_provider(settings: Settings, name: str | None = None) -> LlmProvider:
         from app.llm.groq import GroqProvider
 
         return GroqProvider(settings.groq_api_key, settings.llm_timeout_s)
+    if name == "claude":
+        from app.llm.claude import ClaudeProvider
+
+        return ClaudeProvider(settings.anthropic_api_key, settings.llm_timeout_s)
     from app.llm.gemini import GeminiProvider
 
     return GeminiProvider(settings.gemini_api_key, settings.llm_timeout_s)

@@ -25,6 +25,7 @@ status=0
 for arg in "$@"; do
   case "$arg" in
     --annex-c-report=*) report="${arg#*=}"; cp "/work/$report" "/repo/$report" ;;
+    --fichas-report=*) report="${arg#*=}"; cp "/work/$report" "/repo/$report" ;;
   esac
 done
 exit $status

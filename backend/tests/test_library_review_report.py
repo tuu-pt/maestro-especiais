@@ -44,7 +44,8 @@ def test_it_covers_everything_the_curator_reviews(text: str) -> None:
     assert "«apartamento» (proposto): encontrado" in text
     assert "Paramétrico com evidência de um só projeto: `{{v:ele.potencia_alimentar_kva}}`" in text
     assert "| Despacho n.º 1/2018 da DGEG |" in text and "**não citado**" in text
-    assert "| Portinhola | Portinhola PBT Tri | Quitérios | +32470 | sim | R1 | proposto |" in text
+    row = "| Portinhola | Portinhola PBT Tri | Quitérios | +32470 | sim | — | R1 | proposto |"
+    assert row in text
     assert "icc_ka >= 25 kA (do bloco)" in text
 
 

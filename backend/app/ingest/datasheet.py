@@ -31,6 +31,7 @@ _DATING = (
 )
 _DATE = (
     r"(?P<d>\d{4}-\d{2}(?:-\d{2})?"  # 2021-03 or 2021-03-15
+    r"|\d{4}[/.]\d{2}[/.]\d{2}"  # 2020.01.03 (JSL: «DATA / DATE: 2020.01.03»)
     r"|\d{1,2}[/.]\d{1,2}[/.]\d{4}"  # 15/03/2021
     r"|\d{1,2}[/.]\d{4}"  # 03/2021
     rf"|(?:{'|'.join(sorted(MONTHS, key=len, reverse=True))})\.?\s*(?:de\s+)?\d{{4}})"
@@ -84,7 +85,7 @@ def issue_date(text: str) -> tuple[date | None, str | None]:
 
 def _to_date(raw: str) -> date | None:
     try:
-        if m := re.fullmatch(r"(\d{4})-(\d{2})(?:-(\d{2}))?", raw):
+        if m := re.fullmatch(r"(\d{4})[-/.](\d{2})(?:[-/.](\d{2}))?", raw):
             return date(int(m[1]), int(m[2]), int(m[3] or 1))
         if m := re.fullmatch(r"(\d{1,2})[/.](\d{1,2})[/.](\d{4})", raw):
             return date(int(m[3]), int(m[2]), int(m[1]))

@@ -203,9 +203,12 @@ Decisões da Fase 6 (6 out 2026; as oito do plano aprovadas pelo utilizador, o r
 - O worker também tem `DEV_AUTH` em desenvolvimento (resolve o perfil do técnico nas exportações e na guarda do LLM).
 
 Decisões da Fase 7 (7 out 2026; as quatro primeiras aprovadas pelo utilizador, o resto [A CONFIRMAR]):
-- Fichas técnicas: a equipa coloca os PDF dos fabricantes (públicos, sem anonimização) em `data/fixtures/fichas-tecnicas/`;
-  até lá os testes escrevem PDFs pequenos (backend/tests/pdfs.py) e o critério da Fase 7 (R1 com fichas verificadas)
-  fica pendente.
+- Fichas técnicas: PDF públicos dos fabricantes em `data/fixtures/fichas-tecnicas/<projeto>/`, sem anonimização, com
+  `fichas.json` (origem, data, equipamentos da biblioteca por fabricante + referência ou modelo, o que ficou sem ficha).
+  As 17 de R1 foram descarregadas dos sites oficiais em 8 out 2026 (com autorização do utilizador); `make seed-library`
+  liga-as aos equipamentos (20 ligações). Os contactos de empresas que o pii-check toma por pessoais ficam no
+  `.pii-allowlist.json` da pasta (hashes, só esses valores). Os testes que não precisam delas continuam com os PDFs
+  pequenos de backend/tests/pdfs.py.
 - Parâmetros lidos por padrões, sem LLM (app/equipment/params.py), no CTE e nas fichas; tudo `extracted` até o curador
   rever; só os revistos decidem a EQP-01.
 - Requisitos propostos a partir do texto do CTE; aprovados com o bloco (aprovar um bloco CTE aprova os seus requisitos
@@ -218,6 +221,10 @@ Decisões da Fase 7 (7 out 2026; as quatro primeiras aprovadas pelo utilizador, 
   fabricante + referência + modelo + código + nome (R1 e R2 com a mesma linha dão um só equipamento).
 - [A CONFIRMAR] comparação: IP por dígito (um X na ficha para um dígito exigido = «não comparável»), IK por número,
   Euroclasse por ordem; potência e temperatura de cor iguais; os outros mínimos `>=`. Requisitos `>=class`/`>=`/`=`.
+  A tensão é só informação, como as dimensões (8 out 2026): nas fichas reais aparecem alimentações, gamas e correntes
+  de relés (Hikvision «Max. 30 VDC»), e o «12 V» do CTE de R1 é das fitas LED, não de todas as luminárias. Alcance de
+  deteção também em inglês e italiano («Detection distance», «rilevamento», «360° max 14 m»); data de emissão também
+  `2020.01.03`. A data no rodapé das fichas da Quitérios é a da geração do PDF e não se lê.
 - [A CONFIRMAR] slot = entrada do bloco que nomeia o equipamento, com o do projeto de onde a entrada vem; trocar só
   por um da mesma categoria, com justificação (≥ 10); quantidade do MQT/LPU: luminárias pelo código, o resto pelo
   artigo ligado à chave da ficha (`eq.*`).
@@ -242,6 +249,7 @@ Decisões da Fase 7 (7 out 2026; as quatro primeiras aprovadas pelo utilizador, 
 - make form-templates        # modelos vazios dos formulários a partir de R1 (data/fixtures)
 - make diff-report           # docs/fase4-diff-R1.md (R1 montado na stack, com os adaptativos gerados)
 - make anexo-c-report        # docs/fase5-anexo-c.md (casos do Anexo C na validação; só o Postgres do compose)
+- make fichas-report         # docs/fase7-fichas-R1.md (equipamentos de R1 contra as fichas técnicas; só o Postgres do compose)
 - Sem make (Windows): `winget install ezwinports.make`
 
 ## Dados
@@ -291,8 +299,12 @@ Decisões da Fase 0:
 ## Estado atual
 - Fase: 7 **implementada** (7 out 2026). Fases 0, 1 e 2 concluídas; a 3 está implementada e à espera do curador (D7):
   fecha quando os blocos estiverem aprovados. Até lá, as secções montadas dizem «bloco não aprovado» e só sai o
-  rascunho (o conjunto oficial exige os blocos aprovados). As 4, 5 e 6 estão implementadas. A 7 fecha quando houver
-  fichas técnicas dos equipamentos de R1 (a equipa) e o curador as rever.
+  rascunho (o conjunto oficial exige os blocos aprovados). As 4, 5 e 6 estão implementadas. Critério da 7 em parte
+  (8 out 2026, docs/fase7-fichas-R1.md, `make fichas-report`): dos 32 equipamentos do CTE de R1, 20 têm ficha do
+  fabricante; com os parâmetros dados como revistos, 5 cumprem, 1 fica por confirmar (a ficha da tomada schuko não diz
+  o IP), 14 não têm requisitos no CTE e **nenhum falha**; 12 ficam sem ficha (descontinuados, só por email, site
+  bloqueado ou só documentos parciais, em `fichas.json`). Para fechar: as fichas que faltam (a equipa) e o curador
+  rever os parâmetros (D7).
 - Feito na Fase 7:
   - biblioteca de equipamentos (0017): 77 equipamentos, 81 parâmetros do CTE e 87 requisitos propostos de R1/R2 por
     `make seed-library`; secção «Equipamentos» em docs/revisao-curador.md;
@@ -409,8 +421,8 @@ Decisões da Fase 0:
     a freguesia de R1 (tomada por morada pelo mapa antigo) voltou a ficar real em 25 set 2026;
   - os PDF são gravados com o `/ID` da origem (`no_new_id`): uma nova execução só muda os PDF cujo conteúdo muda.
 - Próximo: Fase 8 (piloto: três projetos reais de eletricidade, SPEC 14), que depende de D5, D6 e D7 e de a equipa rever
-  as Fases 3–7. Para fechar a 7: as fichas
-  técnicas de R1 em `data/fixtures/fichas-tecnicas/` e um teste `RUN_R1_DATASHEETS` que as liga e verifica.
+  as Fases 3–7. Para fechar a 7: as 12 fichas de R1 que faltam (lista em data/fixtures/fichas-tecnicas/R1/fichas.json;
+  pô-las na pasta e acrescentar a entrada) e a revisão do curador.
   Antes do uso real da Fase 6: a verificação manual (docs/fase6-verificacao-manual.md), modelos .docx TUU vazios (hoje o
   pacote de R1) e dos formulários, a convenção de nomes confirmada pela TUU, o curador (D7) para haver conjunto oficial.
   Trabalho futuro da Fase 6: PDF assinado,

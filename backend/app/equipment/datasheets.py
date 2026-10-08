@@ -6,9 +6,12 @@ datasheet (SHA-256).
 """
 
 import hashlib
+import json
 import uuid
 from dataclasses import dataclass
 from datetime import date
+from pathlib import Path
+from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -70,3 +73,33 @@ def add_datasheet(db: Session, store: ObjectStore, equipment: Equipment, filenam
     db.flush()
     db.refresh(equipment)
     return Added(sheet, False)
+
+
+MANIFEST = "fichas.json"
+
+
+def seed_datasheets(db: Session, store: ObjectStore, folder: Path) -> dict[str, Any]:
+    """The datasheets of a folder of the fixtures, each linked by `fichas.json` to the items of
+    the library (manufacturer + reference or model). Idempotent (the same file is the same
+    datasheet); an item not in the library (not seeded yet) is reported, never created."""
+    manifest = folder / MANIFEST
+    if not manifest.is_file():
+        return {"datasheets": 0, "datasheets_unmatched": []}
+    entries = json.loads(manifest.read_text(encoding="utf-8"))["fichas"]
+    added, unmatched = 0, []
+    for entry in entries:
+        data = (folder / entry["ficheiro"]).read_bytes()
+        for wanted in entry["equipamentos"]:
+            query = select(Equipment).where(Equipment.manufacturer == wanted["fabricante"])
+            if "referencia" in wanted:
+                query = query.where(Equipment.reference == wanted["referencia"])
+            else:
+                query = query.where(Equipment.model == wanted["modelo"])
+            items = list(db.scalars(query))
+            if not items:
+                unmatched.append(f"{entry['ficheiro']} → {wanted}")
+            for item in items:
+                done = add_datasheet(db, store, item, entry["ficheiro"], data, "seed")
+                added += not done.duplicate
+    db.flush()
+    return {"datasheets": added, "datasheets_unmatched": unmatched}

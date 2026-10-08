@@ -149,19 +149,22 @@ def _equipment(db: Session) -> Iterator[str]:
 
     items = db.scalars(select(Equipment).order_by(Equipment.category, Equipment.code,
                                                   Equipment.name)).all()  # fmt: skip
-    yield (f"{len(items)} equipamentos de referência propostos dos CTE de R1 e R2. Nenhum tem "
-           "ficha técnica: carregá-las no ecrã G e rever os parâmetros (EQP-01 só usa os "
-           "revistos).")  # fmt: skip
+    with_sheet = sum(1 for e in items if any(d.status == "current" for d in e.datasheets))
+    yield (f"{len(items)} equipamentos de referência propostos dos CTE de R1 e R2; {with_sheet} "
+           "com ficha técnica (data/fixtures/fichas-tecnicas). Os parâmetros lidos ficam por "
+           "rever no ecrã G (EQP-01 só usa os revistos); a verificação de R1 com as fichas está "
+           "em docs/fase7-fichas-R1.md.")  # fmt: skip
     yield ""
-    yield ("| Categoria | Equipamento | Fabricante | Modelo / referência | «ou equivalente» | Onde "
-           "| Estado |")  # fmt: skip
-    yield "|---|---|---|---|---|---|---|"
+    yield ("| Categoria | Equipamento | Fabricante | Modelo / referência | «ou equivalente» "
+           "| Ficha | Onde | Estado |")  # fmt: skip
+    yield "|---|---|---|---|---|---|---|---|"
     for e in items:
         model = " · ".join(x for x in (e.code, e.model, e.reference) if x)
         where = ", ".join(sorted({s["project"] for s in e.sources}))
         equivalent = "sim" if e.or_equivalent else "**não**"
+        sheet = next((d.file_name for d in e.datasheets if d.status == "current"), "—")
         yield (f"| {CATEGORIES.get(e.category, e.category)} | {_cell(e.name)} | "
-               f"{_cell(e.manufacturer)} | {_cell(model)} | {equivalent} "
+               f"{_cell(e.manufacturer)} | {_cell(model)} | {equivalent} | {_cell(sheet)} "
                f"| {where} | {STATUS[e.status]} |")  # fmt: skip
     yield ""
     yield "Requisitos propostos dos CTE (aprovados com o bloco):"

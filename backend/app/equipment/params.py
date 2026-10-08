@@ -57,10 +57,13 @@ PARAMS: dict[str, Param] = {p.name: p for p in (
           _p(rf"(?<![\w,.]){_NUM}\s?lm\b")),
     Param("color_temperature_k", "Temperatura de cor", "K", EQ,
           _p(r"(?<![\w,.])(\d{4})\s?K\b")),
-    Param("voltage_v", "Tensão", "V", EQ,
+    # information only: a sheet lists supplies, ranges and relay ratings (Hikvision «Max. 30 VDC»)
+    Param("voltage_v", "Tensão", "V", INFO,
           _p(r"(?<![\w,.])(\d{2,4})\s?V(?:\s?(?:AC|DC|ac|dc))?(?![\w])")),
+    # «deteção com 14 m», «Detection distance up to 12 m», «rilevamento ca. 12 m», «360° max 14 m»
     Param("detection_range_m", "Alcance de deteção", "m", GE,
-          _p(rf"(?:dete[cç][aã]o|alcance)\D{{0,25}}?{_NUM}\s?m\b")),
+          _p(rf"(?:(?:dete[cç][aã]o|alcance|detection\s+(?:range|distance)|rilevamento|portata)"
+             rf"\D{{0,25}}?|[º°]\s*max\.?\s*){_NUM}\s?m\b")),
     Param("detection_angle_deg", "Ângulo de deteção", "º", GE,
           _p(r"(?<![\w,.])(\d{2,3})\s?[º°](?!\s?C\b)")),
     Param("efficiency_pct", "Eficiência", "%", GE,

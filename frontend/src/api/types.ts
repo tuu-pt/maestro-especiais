@@ -1,7 +1,8 @@
 /** Shapes returned by the backend (backend/app/schemas.py and app/api/*.py). */
 
 export type Role = { id: string; label: string };
-export type User = { id: string; name: string; roles: Role[] };
+/** session: "account" (signed in with an email and a password) or "dev" (development user). */
+export type User = { id: string; name: string; roles: Role[]; session?: "account" | "dev" };
 export type DevUser = User & { login: string };
 
 export type Project = {

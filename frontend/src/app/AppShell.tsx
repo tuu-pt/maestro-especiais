@@ -1,9 +1,9 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { type ReactNode, useState } from "react";
-import { Link, NavLink, Outlet } from "react-router";
+import { Link, Navigate, NavLink, Outlet, useLocation, useNavigate } from "react-router";
 
-import { getDevUser, setDevUser } from "../api/client";
-import { useDevUsers, useProject } from "../api/queries";
+import { ApiError, getDevUser, setDevUser } from "../api/client";
+import { useDevUsers, useLogout, useMe, useProject } from "../api/queries";
 import { useActiveProject } from "./activeProject";
 import s from "./AppShell.module.css";
 import { applyTheme, storedTheme, type Theme } from "./theme";
@@ -128,9 +128,36 @@ function ThemeSelect() {
   );
 }
 
+/** Who is signed in, and the way out (accounts with a password; until D6). */
+function SessionTools() {
+  const { data: me } = useMe();
+  const logout = useLogout();
+  const navigate = useNavigate();
+  if (me?.session !== "account") return <DevUserSwitcher />;
+  return (
+    <>
+      <span className={s.who}>{me.name}</span>
+      <button
+        type="button"
+        className={s.out}
+        disabled={logout.isPending}
+        onClick={() => logout.mutate(undefined, { onSuccess: () => navigate("/entrar", { replace: true }) })}
+      >
+        Sair
+      </button>
+    </>
+  );
+}
+
 export default function AppShell() {
   const projectId = useActiveProject();
   const { data: project } = useProject(projectId);
+  const { error } = useMe();
+  const location = useLocation();
+  if (error instanceof ApiError && error.status === 401) {
+    const back = encodeURIComponent(`${location.pathname}${location.search}`);
+    return <Navigate to={`/entrar?volta=${back}`} replace />;
+  }
   return (
     <>
       <header className={s.band}>
@@ -140,7 +167,7 @@ export default function AppShell() {
             Maestro Especiais <span>TUU · Building Design Management</span>
           </Link>
           <div className={s.tools}>
-            <DevUserSwitcher />
+            <SessionTools />
             <ThemeSelect />
           </div>
         </div>

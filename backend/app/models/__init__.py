@@ -44,10 +44,12 @@ from app.models.llm import BlockedTerm, LlmCall
 from app.models.profile import TechnicianProfile
 from app.models.project import Project, ProjectFile
 from app.models.setting import AppSetting
+from app.models.user import AppUser
 from app.models.validation import PieceFacts, ValidationIssue, ValidationRun
 
 __all__ = [
     "AppSetting",
+    "AppUser",
     "ArchiveChunk",
     "ArchiveDoc",
     "AuditEvent",

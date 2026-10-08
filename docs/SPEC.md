@@ -684,7 +684,7 @@ No fim de cada fase: testes a passar, um commit por tarefa e `CLAUDE.md` atualiz
 | D3 | Embeddings | ✅ Decidido: modelo de embeddings do Gemini | — |
 | D4 | Alojamento | Cloud na UE para o piloto | Direção |
 | D5 | Termos de tratamento de dados da Gemini API | Confirmar a aplicação das regras de serviço pago no EEE; ponderar plano pago no piloto. **✅ 8 out 2026: aceite (Gemini, Groq e Claude); o LLM fica ligado por omissão** | Direção |
-| D6 | Autenticação | Microsoft Entra ID, se aplicável | TI |
+| D6 | Autenticação | Microsoft Entra ID, se aplicável. **8 out 2026: até lá, contas com email e password (`make create-user`), cookie de sessão assinado** | TI |
 | D7 | Curador do corpus, blocos e dicionários | Um técnico sénior de eletricidade, ~2 h/mês | Coordenação |
 | D8 | Esqueletos e blocos obrigatórios (CNT-01) | Validar a secção 8.3 com a equipa | Técnicos |
 | D9 | Integração com o TUU Maestro | Endpoint de exportação no MVP | Equipa TUU Maestro |

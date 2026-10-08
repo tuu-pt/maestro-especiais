@@ -5,6 +5,7 @@ import { FichaScreen } from "../screens/Ficha";
 import { NewProjectScreen, ProjectFilesScreen } from "../screens/NewProject";
 import { NotFoundScreen } from "../screens/NotFound";
 import { KnowledgeScreen } from "../screens/Knowledge";
+import { LoginScreen } from "../screens/Login";
 import { EditorScreen } from "../screens/Editor";
 import { EquipmentScreen } from "../screens/Equipment";
 import { ReviewScreen } from "../screens/Review";
@@ -19,6 +20,7 @@ const scoped = (path: string, element: JSX.Element): RouteObject[] => [
 ];
 
 export const routes: RouteObject[] = [
+  { path: "/entrar", element: <LoginScreen /> },
   {
     path: "/",
     element: <AppShell />,

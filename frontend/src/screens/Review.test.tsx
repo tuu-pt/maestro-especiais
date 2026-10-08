@@ -114,7 +114,7 @@ describe("review and export (screen H)", () => {
     expect(await screen.findByRole("button", { name: "Exportar conjunto oficial" })).toBeDisabled();
     expect(screen.getByText("O conjunto oficial precisa do MDJ e do CTE.")).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: "Descarregar R9_Conjunto_RASCUNHO-nao-aprovado.zip" }),
+      await screen.findByRole("button", { name: "Descarregar R9_Conjunto_RASCUNHO-nao-aprovado.zip" }),
     ).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "Exportar rascunho" }));
 

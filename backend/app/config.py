@@ -20,6 +20,11 @@ class Settings(BaseSettings):
     s3_create_bucket: bool = False
     # Development only: simulated users chosen with the X-Dev-User header. OIDC replaces it (D6).
     dev_auth: bool = False
+    # Accounts with an email and a password (app/accounts.py): HMAC key of the session cookie
+    # (make env generates one), how long a session lasts, and https-only cookies (off for http)
+    session_secret: str = ""
+    session_ttl_hours: int = 12
+    session_cookie_secure: bool = True
     max_upload_bytes: int = 200 * 1024 * 1024
     # LLM (SPEC 6.1): model names only here, from the environment; fake for tests and offline
     llm_provider: str = "gemini"  # gemini | groq | fake

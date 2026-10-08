@@ -211,6 +211,19 @@ Decisões da Fase 6 (6 out 2026; as oito do plano aprovadas pelo utilizador, o r
   fixtures de R1/R2 trazem nomes de pessoas em `docProps/core.xml` (a assinalar à equipa; não passam para a exportação).
 - O worker também tem `DEV_AUTH` em desenvolvimento (resolve o perfil do técnico nas exportações e na guarda do LLM).
 
+Início de sessão (8 out 2026, pedido do utilizador: «estilo o do Registo de Temas Estratégicos»; até à D6):
+- Contas com email e password (`AppUser`, migração 0020) criadas pelo admin com `make create-user EMAIL=… NAME="…"
+  ROLES=…` (pede a password, ≥ 10 caracteres; sem página de registo, como no Registo); `make users` lista-as.
+- Diferenças em relação ao Registo, de propósito: scrypt da biblioteca padrão (sem dependência nova); cookie
+  `maestro_session` HttpOnly, SameSite=Lax, assinado com HMAC (`SESSION_SECRET`), só com o id da conta (nome próprio,
+  para não colidir com os cookies das outras apps de apps.tuu.pt); papéis e conta ativa lidos da BD em cada pedido;
+  mudar a password termina as outras sessões; 5 passwords erradas bloqueiam 15 min; a mesma resposta para email
+  desconhecido, password errada, conta bloqueada ou desativada; nem o email nem a password vão para os logs.
+- Com `DEV_AUTH` os utilizadores de desenvolvimento continuam (cabeçalho X-Dev-User); a conta com sessão iniciada
+  ganha. Sem `DEV_AUTH`, quem não tem sessão vai para `/entrar`. A D6 (SSO) só substitui `current_user`.
+- [A CONFIRMAR] sessão de 12 h (`SESSION_TTL_HOURS`), sem restrição de domínio do email, papéis por conta (não por
+  grupos), ids `user:<uuid>` na auditoria e nos perfis dos técnicos.
+
 Decisões da Fase 7 (7 out 2026; as quatro primeiras aprovadas pelo utilizador, o resto [A CONFIRMAR]):
 - Fichas técnicas: PDF públicos dos fabricantes em `data/fixtures/fichas-tecnicas/<projeto>/`, sem anonimização, com
   `fichas.json` (origem, data, equipamentos da biblioteca por fabricante + referência ou modelo, o que ficou sem ficha).
@@ -259,6 +272,8 @@ Decisões da Fase 7 (7 out 2026; as quatro primeiras aprovadas pelo utilizador, 
 - make diff-report           # docs/fase4-diff-R1.md (R1 montado na stack, com os adaptativos gerados)
 - make anexo-c-report        # docs/fase5-anexo-c.md (casos do Anexo C na validação; só o Postgres do compose)
 - make fichas-report         # docs/fase7-fichas-R1.md (equipamentos de R1 contra as fichas técnicas; só o Postgres do compose)
+- make create-user EMAIL=… NAME="…" ROLES=redator,tecnico  # cria ou atualiza uma conta (pede a password)
+- make users                 # lista as contas
 - Sem make (Windows): `winget install ezwinports.make`
 
 ## Dados
@@ -275,7 +290,7 @@ Seguem a recomendação da secção 16 da SPEC enquanto a equipa não decidir o 
 | D3 | Embeddings Gemini | ✅ Decidido |
 | D4 | Alojamento cloud na UE | Recomendação seguida; por agora só ambiente local |
 | D5 | Termos da Gemini API | ✅ Aceite (8 out 2026, comunicado pelo utilizador): texto de projetos reais pode ir à Google, à Groq e à Anthropic, sempre sem valores nem dados pessoais (marcadores e guarda de privacidade); LLM ligado por omissão, o admin desliga por projeto |
-| D6 | Autenticação Entra ID, se aplicável | Por decidir com a TI (não decidida na Fase 2; o login de desenvolvimento continua) |
+| D6 | Autenticação Entra ID, se aplicável | Por decidir com a TI. Até lá (8 out 2026): contas com email e password, como no Registo de Temas Estratégicos |
 | D7 | Curador | A designar (coordenação) |
 | D8 | Esqueletos da secção 8.3 | Seguidos tal como estão, a validar com os técnicos |
 | D9 | Integração TUU Maestro | Endpoint de exportação no MVP |
@@ -321,7 +336,7 @@ Decisões da Fase 0:
     acrescentar, aprovar); slots do CTE montado com alternativas, quantidade e ilustração; EQP-01/02/03;
   - ecrã F (verificação parâmetro a parâmetro, alternativas, escolher com justificação) e separador «Biblioteca de
     equipamentos» no ecrã G.
-- Feito a 8 out 2026 (ramo `fase7`): fichas técnicas de R1 (20/32 equipamentos, nenhum falha; 12 sem ficha
+- Feito a 8 out 2026 (ramo `fase7`): início de sessão com email e password (0020); fichas técnicas de R1 (20/32 equipamentos, nenhum falha; 12 sem ficha
   ignoradas por decisão do utilizador), LLM ligado por omissão (0018), três fornecedores com o principal escolhido no
   ecrã Definições (0019).
 - Melhorias de 6 out 2026 (ramo `melhorias`): índice gerado sem `updateFields` (LibreOffice), luminárias na COE-01,

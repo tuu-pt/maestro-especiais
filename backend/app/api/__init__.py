@@ -18,12 +18,14 @@ from app.api import (
     project_equipment,
     projects,
     review,
+    session,
     settings,
     validation,
 )
 
 api_router = APIRouter(prefix="/api")
 api_router.include_router(me.router)
+api_router.include_router(session.router)
 api_router.include_router(projects.router)
 api_router.include_router(events.router)
 api_router.include_router(ficha.router)

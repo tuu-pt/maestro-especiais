@@ -15,6 +15,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.accounts import names
 from app.api.audit import AuditOut, _codes, _out
 from app.api.projects import get_project
 from app.audit import record
@@ -235,5 +236,5 @@ def block_history(block_id: uuid.UUID, db: DB, _: CurrentUser) -> list[AuditOut]
         .where(AuditEvent.entity_type == "template_block", AuditEvent.entity_id == b.id)
         .order_by(AuditEvent.at, AuditEvent.id)
     ).all()
-    codes = _codes(db)
-    return [_out(e, codes) for e in events]
+    codes, known = _codes(db), names(db)
+    return [_out(e, codes, known) for e in events]

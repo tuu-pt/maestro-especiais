@@ -65,7 +65,13 @@ export const keys = {
   validation: (projectId: string) => ["projects", projectId, "validation"] as const,
 };
 
-export const useMe = () => useQuery({ queryKey: keys.me, queryFn: () => request<User>("/me") });
+export const useMe = () =>
+  useQuery({
+    queryKey: keys.me,
+    queryFn: () => request<User>("/me"),
+    // not signed in: straight to the login page, no retry
+    retry: (count, error) => !(error instanceof ApiError && error.status === 401) && count < 1,
+  });
 
 export const useDevUsers = () =>
   useQuery({
@@ -616,5 +622,23 @@ export function useSetPrimaryLlm() {
       client.setQueryData(["settings", "llm"], data);
       void client.invalidateQueries({ queryKey: keys.activity });
     },
+  });
+}
+
+// ---------------------------------------------------------------- signing in (until D6)
+
+export function useLogin() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { email: string; password: string }) => postJson<User>("/auth/login", body),
+    onSuccess: () => client.clear(),
+  });
+}
+
+export function useLogout() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: () => postJson<{ ended: boolean }>("/auth/logout"),
+    onSuccess: () => client.clear(),
   });
 }

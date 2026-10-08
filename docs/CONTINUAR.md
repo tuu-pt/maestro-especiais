@@ -43,6 +43,8 @@ make e2e
 ```
 
 Interface em http://localhost:5173 (utilizador de desenvolvimento escolhido no topo).
+Contas reais (email e password, sem `DEV_AUTH`): `make create-user EMAIL=nome@tuu.pt NAME="Nome" ROLES=admin`
+(pede a password; nunca a escrever no chat) e `make users` para as listar; a página de entrada é `/entrar`.
 
 ## 4. O `.env` a preencher
 
@@ -65,7 +67,8 @@ ANTHROPIC_API_KEY=              # https://console.anthropic.com (3.º fornecedor
 # pelo make env (num .env existente: make env-update)
 ```
 
-Num `.env` que já existe, `make env-update` acrescenta as variáveis novas sem mexer nas outras.
+Num `.env` que já existe, `make env-update` acrescenta as variáveis novas sem mexer nas outras
+(desde 8 out 2026: `SESSION_SECRET`, `SESSION_TTL_HOURS`, `SESSION_COOKIE_SECURE`).
 Depois de mudar o `.env`: `docker compose up -d backend worker` (o `restart` não relê o `.env`).
 
 ## 5. Regras de trabalho (resumo; as completas estão no `CLAUDE.md`)

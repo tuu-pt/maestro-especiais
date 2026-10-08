@@ -61,7 +61,7 @@ def test_a_project_without_llm_allowed_never_reaches_the_provider(db: Session) -
     fake = FakeProvider(['{"text": "x"}'])
     c, _ = client(fake)
 
-    with pytest.raises(LlmNotAllowed, match="D5 pendente"):
+    with pytest.raises(LlmNotAllowed, match="LLM desligado"):
         ask(c, db, project(db, allowed=False))
 
     assert fake.sent == []

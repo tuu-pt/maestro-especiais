@@ -103,7 +103,8 @@ Decisões da Fase 4 (28 set 2026; as quatro primeiras aprovadas pelo utilizador,
 - Guarda de privacidade antes de cada pedido ao LLM: valores `personal_data` da ficha, campos pessoais dos perfis,
   `BlockedTerm` (nomes da equipa; em desenvolvimento semeados das fixtures) e os padrões de app/library/privacy.py.
   Uma ocorrência bloqueia; `LlmCall` guarda o tipo e o sítio, nunca o valor nem o conteúdo.
-- D5: `Project.llm_allowed` (falso por omissão), só o admin o liga; sem ele, HTTP 409 «D5 pendente», na auditoria.
+- D5: `Project.llm_allowed`; desde 8 out 2026 **verdadeiro por omissão** (decisão do utilizador, migração 0018: só os
+  projetos novos); só o admin o desliga ou volta a ligar; desligado, HTTP 409 «LLM desligado neste projeto», na auditoria.
 - DOCX: rascunho sobre o pacote do MDJ/CTE de R1 (modelo provisório até haver modelo TUU vazio); a exportação oficial
   (Fase 6) só com blocos aprovados e secções revistas (`export_readiness`, já testada).
 - Chaves de troços e artigos: `circ.<origem_destino>.<campo>` e `bom.<código>.<campo>`; sem agregados calculados.
@@ -265,7 +266,7 @@ Seguem a recomendação da secção 16 da SPEC enquanto a equipa não decidir o 
 | D2 | PostgreSQL 16 + pgvector | Recomendação seguida |
 | D3 | Embeddings Gemini | ✅ Decidido |
 | D4 | Alojamento cloud na UE | Recomendação seguida; por agora só ambiente local |
-| D5 | Termos da Gemini API | **Pendente (direção).** Até lá nenhum dado real vai ao LLM; só fixtures anonimizadas |
+| D5 | Termos da Gemini API | **LLM ligado por omissão** (decisão do utilizador, 8 out 2026, contra a recomendação de esperar pela direção): texto de projetos reais pode ir à Google e à Groq, sempre sem valores nem dados pessoais (marcadores e guarda de privacidade); o admin desliga por projeto. Termos da Gemini e da Groq por confirmar com a direção |
 | D6 | Autenticação Entra ID, se aplicável | Por decidir com a TI (não decidida na Fase 2; o login de desenvolvimento continua) |
 | D7 | Curador | A designar (coordenação) |
 | D8 | Esqueletos da secção 8.3 | Seguidos tal como estão, a validar com os técnicos |
@@ -420,7 +421,8 @@ Decisões da Fase 0:
   - os valores da tabela de pseudónimos de execuções anteriores também respeitam o `allow:` dos overrides; foi assim que
     a freguesia de R1 (tomada por morada pelo mapa antigo) voltou a ficar real em 25 set 2026;
   - os PDF são gravados com o `/ID` da origem (`no_new_id`): uma nova execução só muda os PDF cujo conteúdo muda.
-- Próximo: Fase 8 (piloto: três projetos reais de eletricidade, SPEC 14), que depende de D5, D6 e D7 e de a equipa rever
+- Próximo: Fase 8 (piloto: três projetos reais de eletricidade, SPEC 14), que depende de D6 e D7, da confirmação da D5
+  e de a equipa rever
   as Fases 3–7. Para fechar a 7: as 12 fichas de R1 que faltam (lista em data/fixtures/fichas-tecnicas/R1/fichas.json;
   pô-las na pasta e acrescentar a entrada) e a revisão do curador.
   Antes do uso real da Fase 6: a verificação manual (docs/fase6-verificacao-manual.md), modelos .docx TUU vazios (hoje o
@@ -428,4 +430,5 @@ Decisões da Fase 0:
   Trabalho futuro da Fase 6: PDF assinado,
   integração mais funda com o TUU Maestro (D9). Trabalho futuro da Fase 5: citações com locator
   nas peças humanas, extração assistida por LLM para o que fica «não comparável».
-  Continuam pendentes D7 (curador), D8 (esqueletos), D5 (dados reais no LLM; agora também a Groq) e D6 (Entra ID).
+  Continuam pendentes D7 (curador), D8 (esqueletos), a confirmação da D5 pela direção (termos da Gemini e da Groq;
+  o LLM já está ligado por omissão) e D6 (Entra ID).

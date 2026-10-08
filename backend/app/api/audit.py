@@ -129,7 +129,7 @@ def describe(action: str, payload: dict[str, Any]) -> str:
             extra = " (valores da ficha alterados)" if payload.get("values_changed") else ""
             return f"Editou «{payload.get('title', '')}»{extra}"
         case "llm.refused":
-            return "Pedido ao LLM recusado: D5 pendente"
+            return "Pedido ao LLM recusado: LLM desligado neste projeto"
         case "project.llm_allowed":
             return "Permitiu o uso do LLM" if payload.get("allowed") else "Retirou o uso do LLM"
         case "form.downloaded":

@@ -70,8 +70,8 @@ Depois de mudar o `.env`: `docker compose up -d backend worker` (o `restart` nã
 - Nunca ler, listar nem abrir `data/private/`; nunca correr `make anonymize` nem `tools/anonymize.py`
   (é a equipa que o faz). O `.claude/settings.json` do repositório bloqueia `data/private/`.
 - O agente não decide nem calcula; o LLM nunca escreve números, nomes nem valores (`{{v:chave}}`).
-- Dados pessoais nunca vão ao LLM nem aos logs. **D5 pendente**: só dados de `data/fixtures` vão
-  ao LLM (`Project.llm_allowed`, ligado só pelo admin).
+- Dados pessoais nunca vão ao LLM nem aos logs. D5: desde 8 out 2026 o LLM está **ligado por omissão**
+  (`Project.llm_allowed`, decisão do utilizador); o admin desliga-o por projeto. Falta a confirmação da direção.
 - Interface em PT-PT; código, tabelas, endpoints e commits em inglês.
 - Uma tarefa, um commit, com testes. **Push só com autorização explícita.**
 - Decisões por confirmar seguem a recomendação e ficam registadas como [A CONFIRMAR] no `CLAUDE.md`.
@@ -105,8 +105,8 @@ coloca em `data/fixtures/fichas-tecnicas/`; a seguir, a Fase 8 (piloto), que dep
 no `CLAUDE.md`. Rever antes os [A CONFIRMAR] das Fases 5 a 7 e fazer a verificação manual da Fase 6
 (`docs/fase6-verificacao-manual.md`).
 
-**Decisões pendentes:** D4 (alojamento: cloud UE ou VPS da TUU), D5 (termos da Gemini API e agora
-da Groq), D6 (Entra ID), D7 (curador), D8 (esqueletos com os técnicos), D10 (Flash-Lite e a
+**Decisões pendentes:** D4 (alojamento: cloud UE ou VPS da TUU), D5 (confirmar com a direção os termos da
+Gemini e da Groq; o LLM já está ligado por omissão), D6 (Entra ID), D7 (curador), D8 (esqueletos com os técnicos), D10 (Flash-Lite e a
 alternativa Groq em vez do Flash).
 
 **Ações da equipa:** rever os códigos postais «NNNN – NNN» (com travessão) que o anonimizador pode

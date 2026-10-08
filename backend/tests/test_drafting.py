@@ -17,7 +17,7 @@ from app.llm.client import LlmClient
 from app.llm.fake import FakeProvider, echo_first_source
 from app.llm.provider import Message
 from app.llm.ratelimit import MemoryRateLimiter
-from app.models import BlockedTerm, LlmCall, Section
+from app.models import BlockedTerm, LlmCall, Project, Section
 from app.storage import ObjectStore
 
 pytestmark = pytest.mark.usefixtures("inline_ingestion")
@@ -84,11 +84,17 @@ def versions(api: Api, section_id: str) -> list[dict[str, Any]]:
 # ---------------------------------------------------------------- D5
 
 
-def test_without_llm_allowed_nothing_is_drafted(
+def test_the_llm_is_on_by_default_and_off_only_by_the_admin(
     api: Api, db: Session, store: ObjectStore, drafts: InlineDraftQueue
 ) -> None:
     seed_library(db, store)
     project_id = load_confirmed(api, "R1")
+    assert db.get(Project, project_id).llm_allowed is True  # type: ignore[union-attr]
+    off = api.as_("admin").patch(
+        f"/api/projects/{project_id}/llm",
+        json={"allowed": False, "reason": "Cliente não autoriza."},
+    )
+    assert off.status_code == 200
     doc = (
         api.as_("redator")
         .post(f"/api/projects/{project_id}/documents", json={"type": "MDJ"})
@@ -97,10 +103,11 @@ def test_without_llm_allowed_nothing_is_drafted(
 
     response = api.as_("redator").post(f"/api/documents/{doc['id']}/generate")
 
-    assert response.status_code == 409 and response.json()["detail"].startswith("D5 pendente")
+    assert response.status_code == 409
+    assert response.json()["detail"].startswith("LLM desligado neste projeto")
     assert drafts.provider.sent == []
     audit = api.as_("redator").get(f"/api/projects/{project_id}/audit").json()
-    assert audit[-1]["description"] == "Pedido ao LLM recusado: D5 pendente"
+    assert audit[-1]["description"] == "Pedido ao LLM recusado: LLM desligado neste projeto"
 
 
 def test_only_an_admin_lets_a_project_use_the_llm(api: Api, r1: dict[str, Any]) -> None:

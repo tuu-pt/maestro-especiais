@@ -1,8 +1,8 @@
 """Drafting with the LLM (SPEC 8.4, screen D): generate, requests in natural language, versions.
 
-Every request to the LLM checks D5 first (Project.llm_allowed): while the terms of the Gemini
-API are pending, only projects built from data/fixtures may use it, and only an admin turns it
-on. The agent's text always arrives as a proposed version; a person accepts or rejects it.
+Every request to the LLM checks D5 first (Project.llm_allowed): on by default (user's decision,
+8 Oct 2026); an admin may turn it off for a project, and on again. The agent's text always
+arrives as a proposed version; a person accepts or rejects it.
 """
 
 import uuid
@@ -29,7 +29,7 @@ Queue = Annotated[DraftQueue, Depends(get_draft_queue)]
 Writer = Annotated[User, Depends(require_role("redator", "tecnico"))]
 Admin = Annotated[User, Depends(require_role("admin"))]
 INACTIVE = "A secção não está ativa: ative-a com justificação antes de a redigir."
-D5 = "D5 pendente: este projeto não pode usar o LLM (só projetos criados a partir das fixtures)."
+D5 = "LLM desligado neste projeto: só o admin o volta a ligar."
 
 
 class RequestIn(BaseModel):
@@ -178,7 +178,7 @@ def reject_version(version_id: uuid.UUID, body: DecisionIn, db: DB, user: Writer
 def set_llm_allowed(
     project_id: uuid.UUID, body: LlmAllowedIn, db: DB, user: Admin
 ) -> dict[str, Any]:
-    """D5: only an admin lets a project use the LLM (while pending, only fixture projects)."""
+    """D5: only an admin turns the LLM off for a project, or on again (on by default)."""
     project = get_project(db, project_id)
     project.llm_allowed = body.allowed
     record(db, user, "project.llm_allowed", "project", project.id,

@@ -26,9 +26,9 @@ class Project(Entity):
     specialties: Mapped[list[str]] = mapped_column(ARRAY(String(20)), default=lambda: ["ELE"])
     public_procurement: Mapped[bool] = mapped_column(default=False)
     status: Mapped[str] = mapped_column(String(20), default="active")
-    # D5: the LLM may be used for this project (only projects built from data/fixtures while the
-    # terms of the Gemini API are pending); only an admin turns it on
-    llm_allowed: Mapped[bool] = mapped_column(default=False, server_default="false")
+    # D5: the LLM may be used for this project. On by default (user's decision, 8 Oct 2026); only
+    # an admin turns it off or on again
+    llm_allowed: Mapped[bool] = mapped_column(default=True, server_default="true")
 
     files: Mapped[list["ProjectFile"]] = relationship(
         back_populates="project", order_by="ProjectFile.created_at"

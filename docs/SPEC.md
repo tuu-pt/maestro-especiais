@@ -167,8 +167,8 @@ class LlmClient:                      # o que a aplicação usa (Fase 4)
                  schema: type[T], section_id=None, profile=None) -> tuple[T, LlmCall]: ...
 ```
 
-`LlmClient.generate` faz, por esta ordem: verificação da D5 (`Project.llm_allowed`; sem ela, HTTP 409
-«D5 pendente», na auditoria) → guarda de privacidade → ritmo (por minuto e por dia) → repetições
+`LlmClient.generate` faz, por esta ordem: verificação da D5 (`Project.llm_allowed`, verdadeiro por omissão desde
+8 out 2026; desligado pelo admin, HTTP 409 «LLM desligado neste projeto», na auditoria) → guarda de privacidade → ritmo (por minuto e por dia) → repetições
 em 429/5xx com espera exponencial → validação Pydantic (uma repetição com o erro) → registo
 `LlmCall` **sem conteúdo** (fornecedor, modelo, finalidade, versão do prompt, tokens, ms, estado e,
 se bloqueado, o tipo e o sítio da ocorrência, nunca o valor).
@@ -679,7 +679,7 @@ No fim de cada fase: testes a passar, um commit por tarefa e `CLAUDE.md` atualiz
 | D2 | Base de dados | PostgreSQL + pgvector | Equipa técnica |
 | D3 | Embeddings | ✅ Decidido: modelo de embeddings do Gemini | — |
 | D4 | Alojamento | Cloud na UE para o piloto | Direção |
-| D5 | Termos de tratamento de dados da Gemini API | Confirmar a aplicação das regras de serviço pago no EEE; ponderar plano pago no piloto | Direção |
+| D5 | Termos de tratamento de dados da Gemini API | Confirmar a aplicação das regras de serviço pago no EEE; ponderar plano pago no piloto. **8 out 2026: o LLM fica ligado por omissão (decisão do utilizador); falta a confirmação da direção, também para a Groq** | Direção |
 | D6 | Autenticação | Microsoft Entra ID, se aplicável | TI |
 | D7 | Curador do corpus, blocos e dicionários | Um técnico sénior de eletricidade, ~2 h/mês | Coordenação |
 | D8 | Esqueletos e blocos obrigatórios (CNT-01) | Validar a secção 8.3 com a equipa | Técnicos |

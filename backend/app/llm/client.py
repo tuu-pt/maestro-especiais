@@ -86,7 +86,7 @@ class LlmClient:
             if not project.llm_allowed:
                 call.status, call.error = (
                     "refused",
-                    "D5 pendente: este projeto não pode usar o LLM.",
+                    "LLM desligado neste projeto: só o admin o volta a ligar.",
                 )
                 raise LlmNotAllowed(call.error)
             terms = terms_for(db, project.id, profile) + personal_terms(db, self.settings)

@@ -4,6 +4,7 @@ import { fetchHealth, type HealthResponse } from "../api/health";
 import { useMe } from "../api/queries";
 import { Card, Pill } from "../components/ui";
 import c from "./common.module.css";
+import { LlmCard } from "./LlmSettings";
 import { Screen } from "./Screen";
 
 const SERVICE_LABELS: Record<string, string> = {
@@ -60,6 +61,7 @@ export function SettingsScreen() {
     >
       <div className={c.grid2}>
         <ServicesCard />
+        <LlmCard />
         <Card title="Utilizador atual">
           {me ? (
             <p>

@@ -14,6 +14,7 @@ import type {
   DevUser,
   Ficha,
   FichaValue,
+  LlmSettings,
   KnowledgeKind,
   Project,
   ProjectFile,
@@ -600,4 +601,20 @@ export function useEquipmentActions(id: string) {
       onSuccess,
     }),
   };
+}
+
+// ---------------------------------------------------------------- LLM providers (screen Definições)
+
+export const useLlmSettings = () =>
+  useQuery({ queryKey: ["settings", "llm"], queryFn: () => request<LlmSettings>("/settings/llm") });
+
+export function useSetPrimaryLlm() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { primary: string; reason: string }) => put<LlmSettings>("/settings/llm", body),
+    onSuccess: (data) => {
+      client.setQueryData(["settings", "llm"], data);
+      void client.invalidateQueries({ queryKey: keys.activity });
+    },
+  });
 }

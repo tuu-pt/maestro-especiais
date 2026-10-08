@@ -760,3 +760,17 @@ export type ProjectEquipment = {
 
 export type EquipmentCategory = { id: string; label: string };
 export type EquipmentParamInfo = { name: string; label: string; unit: string; operator: string };
+
+// ---------------------------------------------------------------- LLM providers (8 Oct 2026)
+
+export type LlmProviderInfo = {
+  name: "gemini" | "groq" | "claude";
+  label: string;
+  key_set: boolean;
+  models: { drafting: string; extraction: string };
+  rpm: number;
+  rpd: number;
+  configured: boolean;
+};
+
+export type LlmSettings = { primary: string; order: string[]; providers: LlmProviderInfo[] };

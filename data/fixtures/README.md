@@ -4,6 +4,10 @@ Projetos de referência **anonimizados** por `tools/anonymize.py` (secção 12.2
 
 - `R1/`: moradia unifamiliar, projeto de execução de eletricidade.
 - `R2/`: reabilitação de biblioteca municipal, projeto de execução de eletricidade com FV, VE, SADI, KNX, UPS e audiovisual.
+- `fichas-tecnicas/R1/`: fichas técnicas **públicas** dos fabricantes dos equipamentos do CTE de R1 (Fase 7), descarregadas
+  dos sites oficiais em 8 out 2026; não passam pelo anonimizador. `fichas.json` diz de onde vem cada uma e a que
+  equipamentos da biblioteca se liga; os contactos de empresas que o pii-check toma por dados pessoais ficam no
+  `.pii-allowlist.json` da pasta.
 
 Regras:
 

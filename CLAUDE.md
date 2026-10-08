@@ -145,7 +145,13 @@ Decisões da Fase 5 (28 set 2026; as do plano aprovado pelo utilizador, o resto 
 - [A CONFIRMAR] NUM-01 só no texto do agente; REF-01 no texto humano é aviso com pedido ao curador; REF-02 «por
   confirmar pelo curador» é uma informação por peça (nada é citável enquanto D7 estiver pendente).
 - [A CONFIRMAR] COE-01: referência = ficha-base, ou a fonte da ficha (Tabela, depois MQT/LPU) quando não tem valor;
-  crítico se diverge a MDJ ou o CTE, aviso se só o MQT/LPU; luminárias por comparar (trabalho futuro).
+  crítico se diverge a MDJ ou o CTE, aviso se só o MQT/LPU. Luminárias (6 out 2026): por **tipo** (o CTE lista os tipos
+  sem quantidades): tipos L#/SNC da lista do CTE/MDJ (secções de iluminação, não de comandos) contra os artigos do
+  MQT/LPU (designação «L1», «L8 / L7», «L1 - Luminária…»); referência = MQT, depois LPU; variantes contam como o tipo
+  (L5.1, L5.2 → L5); aviso; linha «Tipos de luminárias» na matriz. R1 e R2 coerentes (sem alertas novos).
+- [A CONFIRMAR] COE-02 (6 out 2026): as peças desenhadas datam-se pelo mês da carimbadura (`pd.carimbadura.data`, o
+  mais recente), não pelo dia do carregamento; são «mais recentes» só num mês posterior ao da confirmação da ficha-base
+  (`Piece.date` = `2026-06`, `date_source` = `carimbadura`). Os outros ficheiros continuam pela data de carregamento.
 - [A CONFIRMAR] COE-04: forma mais curta = igual (nome curto na capa, obra abreviada na carimbadura); dois ou mais
   campos diferentes ou vazios → «reaproveitada de outro projeto» (C7); técnico comparado entre peças, leitura
   «Confirmar com o perfil do técnico» (C3).
@@ -182,7 +188,13 @@ Decisões da Fase 6 (6 out 2026; as oito do plano aprovadas pelo utilizador, o r
   `make env-update` acrescenta-os a um `.env` existente.
 - [A CONFIRMAR] «byte a byte» = conteúdo de cada parte do pacote, mesma ordem e datas no zip (o fluxo comprimido pode
   mudar); a FE só muda o XML da folha, a identificação e o termo só `word/document.xml` (+ cabeçalhos no rascunho).
-- [A CONFIRMAR] o índice sai com `updateFields`: o Word pergunta se atualiza os campos (não é reparação).
+- Índice (melhoria de 6 out 2026): as entradas são escritas a partir dos títulos da própria peça (app/assembly/toc.py:
+  secções omitidas saem, novas e editadas entram, numeração recalculada pelo numbering.xml, marcador `_Toc` do título
+  ou um novo `_TocMaestro<n>`); na exportação com LibreOffice, os números de página vêm de um PDF de uma cópia com
+  `§n§` antes de cada título (app/export/toc.py) e sai sem `updateFields`: o Word já não pergunta. Sem LibreOffice
+  (Windows) ou na descarga rápida do rascunho (`draft.docx`), fica `updateFields`. Fontes métricas compatíveis na
+  imagem (Carlito = Calibri, Liberation = Arial/Times, OFL): com elas, as páginas de R1 coincidem com o PDF feito
+  pelo Word em 30 de 31 títulos (o índice guardado no .docx de R1 estava desatualizado). [A CONFIRMAR] no Word.
 - [A CONFIRMAR] uma entrada editada à mão sai como texto com o estilo do parágrafo de origem; os IDs repetidos de
   imagens e marcadores (fragmentos de R1 e R2) recebem IDs novos, só os repetidos.
 - [A CONFIRMAR] descarga: rascunho → redator e técnico; oficial → também o admin; nunca o curador. Pedir o oficial: técnico.
@@ -357,7 +369,7 @@ Decisões da Fase 0:
 - Próximo: Fase 7 (equipamentos: biblioteca semeada a partir dos CTE, fichas técnicas, requisitos, regras EQP-*).
   Antes do uso real da Fase 6: a verificação manual (docs/fase6-verificacao-manual.md), modelos .docx TUU vazios (hoje o
   pacote de R1) e dos formulários, a convenção de nomes confirmada pela TUU, o curador (D7) para haver conjunto oficial.
-  Trabalho futuro da Fase 6: o índice gerado sem `updateFields` (LibreOffice a atualizar os campos), PDF assinado,
-  integração mais funda com o TUU Maestro (D9). Trabalho futuro da Fase 5: luminárias na COE-01, citações com locator
-  nas peças humanas, COE-02 por data de desenho (carimbadura), extração assistida por LLM para o que fica «não comparável».
+  Trabalho futuro da Fase 6: PDF assinado,
+  integração mais funda com o TUU Maestro (D9). Trabalho futuro da Fase 5: citações com locator
+  nas peças humanas, extração assistida por LLM para o que fica «não comparável».
   Continuam pendentes D7 (curador), D8 (esqueletos), D5 (dados reais no LLM; agora também a Groq) e D6 (Entra ID).

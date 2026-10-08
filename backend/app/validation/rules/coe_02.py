@@ -2,7 +2,9 @@
 
 The ficha-base is the source of truth but may be wrong: when a file is more recent than the
 confirmed ficha-base and says something else, the proposal is to update the ficha (a new
-revision), never the pieces. Only the ficha keys (SPEC 7.2) a file gives are compared.
+revision), never the pieces. Only the ficha keys (SPEC 7.2) a file gives are compared. A file
+is dated by the day it was uploaded; the drawings by the month of their title block (a later
+month than the confirmation of the ficha-base).
 """
 
 from app.ingest.keys import KEYS
@@ -10,7 +12,7 @@ from app.validation.compare import evidence, location, observations
 from app.validation.context import Context
 from app.validation.core import OPEN_FICHA, Finding, Rule
 from app.validation.likely import NEWER_THAN_FICHA, newer
-from app.validation.normalize import same
+from app.validation.normalize import same, shown_date
 
 FILES = ("FICHA_ELE", "CALC", "MQT", "LPU", "DRAWINGS", "IDENTIFICACAO", "TERMO")
 SKIP = {"ele.quadros", "ele.cabos", "pd.indice", "pd.folhas"}  # compared by COE-01/06, DES-01
@@ -21,6 +23,7 @@ def check(ctx: Context) -> list[Finding]:
     for piece in ctx.of_kind(*FILES):
         if not newer(piece, ctx.ficha_date):
             continue
+        when = shown_date(piece.date) + (" pela carimbadura" if piece.date_source else "")
         keys = {f.key for f in ctx.data[piece.ref].facts if f.key in KEYS and f.key not in SKIP}
         for key in sorted(keys):
             ref = ctx.ficha_value(key)
@@ -29,8 +32,8 @@ def check(ctx: Context) -> list[Finding]:
                 continue
             personal = KEYS[key].personal
             out.append(RULE.finding(
-                f"{piece.name} (de {piece.date}) é posterior à ficha-base (confirmada a "
-                f"{ctx.ficha_date}) e diverge em «{KEYS[key].label_pt}».",
+                f"{piece.name} (de {when}) é posterior à ficha-base (confirmada a "
+                f"{shown_date(ctx.ficha_date)}) e diverge em «{KEYS[key].label_pt}».",
                 key=f"{piece.ref}|{key}", location=location(piece, obs[0].fact),
                 evidence=evidence(ctx, ref, "ficha-base", obs, obs, personal=personal),
                 likely_reading=NEWER_THAN_FICHA.format(name=piece.name),

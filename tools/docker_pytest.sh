@@ -7,7 +7,7 @@ set -e
 apt-get update -qq >/dev/null && apt-get install -y -qq git >/dev/null
 # LibreOffice for the fidelity check of the exported .docx (Phase 6); SKIP_LIBREOFFICE=1 to skip
 if [ -z "$SKIP_LIBREOFFICE" ]; then
-  apt-get install -y -qq --no-install-recommends libreoffice-writer-nogui libreoffice-calc-nogui fonts-dejavu-core >/dev/null
+  apt-get install -y -qq --no-install-recommends libreoffice-writer-nogui libreoffice-calc-nogui fonts-dejavu-core fonts-crosextra-carlito fonts-liberation2 >/dev/null
 fi
 mkdir -p /work
 tar -C /repo --exclude=./.venv --exclude=./frontend/node_modules --exclude=./frontend/test-results \

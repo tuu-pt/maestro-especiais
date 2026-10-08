@@ -56,9 +56,10 @@ class Piece:
     kind: str  # a key of KINDS
     origin: str  # assembled | existing | file
     content_hash: str
-    date: str | None = None  # ISO date of the piece (file date, or last edit)
+    date: str | None = None  # ISO date of the piece (file date, or last edit), or ISO month
     document_id: str | None = None
     file_id: str | None = None
+    date_source: str | None = None  # "carimbadura": the month of the drawings' title block
 
     @property
     def column(self) -> str:

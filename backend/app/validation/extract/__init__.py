@@ -19,7 +19,7 @@ from app.storage import ObjectStore
 from app.validation.pieces import Piece, PieceData
 
 # Bump when an extractor changes: every cached reading is then read again.
-EXTRACTOR_VERSION = 1
+EXTRACTOR_VERSION = 2  # 2: luminaire types
 
 
 @dataclass

@@ -13,7 +13,14 @@ from typing import Any
 from app.validation.compare import observations, shown
 from app.validation.context import Context
 from app.validation.core import Finding
-from app.validation.extract.text import CABLE, POWER, PV_KWP, QTY_BOARDS, QTY_EV
+from app.validation.extract.text import (
+    CABLE,
+    LUMINAIRE_TYPES,
+    POWER,
+    PV_KWP,
+    QTY_BOARDS,
+    QTY_EV,
+)
 from app.validation.likely import Observation, reading, split
 from app.validation.normalize import same
 from app.validation.pieces import COLUMNS, MASK
@@ -89,6 +96,9 @@ def build(ctx: Context, findings: list[Finding] | None = None) -> dict[str, Any]
             obs += coe_01._named_boards(ctx, coe_01._reference_names(ctx))
         rows.append(_row(ctx, label, reference, obs, same,
                          _finding(found, "COE-01", f"{key}|")))  # fmt: skip
+    reference, _ = coe_01.luminaire_reference(ctx)
+    rows.append(_row(ctx, "Tipos de luminárias", reference, observations(ctx, LUMINAIRE_TYPES),
+                     same, _finding(found, "COE-01", f"{LUMINAIRE_TYPES}|")))  # fmt: skip
     cables = _finding(found, "COE-06")
     families = [Observation(o.piece, o.fact) for o in _all(ctx, CABLE)]
     rows.append(_cables(ctx, families, cables))

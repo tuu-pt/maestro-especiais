@@ -350,7 +350,8 @@ A biblioteca inicial de blocos é **extraída dos documentos de referência** (F
   provisório (até haver modelos TUU vazios); fixos e paramétricos com o OOXML original e os valores
   escritos na primeira run; adaptativos como parágrafos novos com as propriedades do parágrafo de
   origem; imagens e relações de R2 copiadas do S3; cabeçalho com `tec.nome` e mês/ano paramétricos;
-  campos (índice) atualizados ao abrir. Um paramétrico editado à mão exporta-se como texto com o
+  índice escrito a partir dos títulos da peça (as páginas, na exportação, pelo LibreOffice; sem ele, o Word
+  atualiza-as ao abrir). Um paramétrico editado à mão exporta-se como texto com o
   estilo do parágrafo.
 - A diferença para o original de R1 está em `docs/fase4-diff-R1.md` (`make diff-report`).
 
@@ -422,7 +423,8 @@ As regras são módulos independentes (`backend/app/validation/rules/`), cada um
 Implementação (Fase 5): regras determinísticas, sem LLM, sobre factos extraídos de cada peça (`app/validation/extract/`): nas peças escritas, cada extrator só lê as secções do seu tema (potência nas de alimentação, carregadores na de veículos elétricos, quadros nas de quadros); números por extenso e uma única multiplicação escrita ("N pedestais com capacidade de M carregadores em cada"); cabos pelo localizador da Fase 3; capa e assinatura pelas etiquetas. O que não se lê com confiança fica "não comparável" (informação, com a razão). Os dados pessoais comparam-se no backend e a evidência sai mascarada (•••). Decisões por regra [A CONFIRMAR]:
 
 - NUM-01 só no texto do agente (no texto humano os números são das pessoas); REF-01 no texto do agente é crítico, e uma citação do texto humano fora do corpus é aviso com pedido ao curador; REF-02: revogado é crítico, por confirmar pelo curador é uma informação por peça.
-- COE-01: quadros, carregadores VE e módulos FV (luminárias: trabalho futuro); a referência é a ficha-base e, sem valor, a fonte de onde a ficha o tira (Tabela, depois MQT/LPU); um texto que só nomeia quadros é comparável quando nomeia os mesmos; um valor da ficha editado à mão numa peça montada é COE-01.
+- COE-01: quadros, carregadores VE e módulos FV por quantidade; luminárias por tipo (o CTE lista os tipos L1, L7,
+  SNC… sem quantidades: comparados com os artigos do MQT/LPU, as variantes L5.1/L5.2 como L5, aviso); a referência é a ficha-base e, sem valor, a fonte de onde a ficha o tira (Tabela, depois MQT/LPU); um texto que só nomeia quadros é comparável quando nomeia os mesmos; um valor da ficha editado à mão numa peça montada é COE-01.
 - COE-03 e CNT-01 usam as regras de ativação do esqueleto 8.3 (regra "sempre" → CNT-01; regra que depende de um sistema → COE-03); a CNT-01 exige ainda que a MDJ indique a potência a alimentar (C6).
 - COE-04: uma forma mais curta conta como igual (nome curto na capa, obra sem a designação completa); uma peça que difere em dois ou mais campos de identificação (ou os deixa vazios) é "reaproveitada de outro projeto" (C7); os dados do técnico comparam-se entre peças e a leitura é "Confirmar com o perfil do técnico" (C3).
 - COE-06: a referência é a Tabela; MDJ e CTE comparam-se juntas e o MQT/LPU à parte; rígido vs flexível é crítico; sem equivalência aprovada, aviso e pedido ao curador; condutores de terra não se comparam.
@@ -436,7 +438,7 @@ Implementação (Fase 5): regras determinísticas, sem LLM, sobre factos extraí
 | REF-03 | Referências | Referência incompleta, ex.: "secção das RTIEBT" ou "secções da RTIEBT" sem número | Aviso |
 | NUM-01 | Referências | Número no texto sem origem (fora de *placeholder* e da lista branca) | Crítico |
 | COE-01 | Coerência | Quantidade de um elemento (quadros, carregadores, módulos, luminárias…) difere entre peças e ficha-base | Crítico se afetar MDJ ou CTE; aviso se afetar só o MQT |
-| COE-02 | Coerência | Fonte com data posterior à ficha-base e que diverge dela → propor atualização da **ficha** | Aviso |
+| COE-02 | Coerência | Fonte com data posterior à ficha-base e que diverge dela → propor atualização da **ficha** (ficheiros pela data de carregamento; peças desenhadas pelo mês da carimbadura) | Aviso |
 | COE-03 | Coerência | Sistema presente na ficha ou na Tabela de Cálculo sem bloco correspondente na MDJ ou no CTE, ou o inverso (ex.: troços `ENT` sem bloco de canalizações enterradas) | Aviso |
 | COE-04 | Coerência | Identificação diferente entre peças: requerente, obra, localização, tipo de utilização ou dados do técnico (MDJ, CTE, MQT, ficha eletrotécnica, identificação, termo, carimbadura dos desenhos) | Crítico |
 | COE-05 | Coerência | Potência instalada ou a alimentar diferente entre ficha eletrotécnica, identificação, MDJ, CTE e 1.ª linha da Tabela de Cálculo | Crítico |
@@ -533,6 +535,9 @@ Os ecrãs seguem o layout, os estados e as interações do mock-up, adaptados a 
 - Propriedades do documento: autor, «último a alterar» e empresa = TUU; título `<CÓDIGO> · <peça>`; nunca nomes de
   pessoas. Nada de `{{v:…}}`, marcas do editor nem `[falta: …]` no oficial (a exportação recusa e diz que valores
   faltam, só pelas etiquetas).
+- **Índice**: as entradas saem dos títulos da própria peça (secções omitidas, novas ou editadas; numeração e
+  marcadores `_Toc`), com o estilo das entradas do modelo; os números de página saem de um PDF do LibreOffice
+  (com fontes métricas compatíveis: Carlito, Liberation) e o ficheiro já não pede ao Word para atualizar os campos.
 - **Verificações automáticas** (`app/export/checks.py`), em cada exportação e nos testes: pacote (tipos de conteúdo,
   relações), IDs únicos, abre com o python-docx, estilos usados existem no modelo, imagens/fórmulas/tabelas iguais às
   secções de origem, LibreOffice converte (headless, na imagem do backend); .xlsm: todas as partes exceto a folha iguais

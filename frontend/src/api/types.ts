@@ -539,9 +539,10 @@ export type PieceInfo = {
   origin: "assembled" | "existing" | "file";
   name: string;
   column: string;
-  date: string | null;
+  date: string | null; // ISO date, or ISO month for the drawings (title block)
   document_id: string | null;
   file_id: string | null;
+  date_source?: "carimbadura" | null;
 };
 
 export type ValidationRun = {

@@ -13,10 +13,12 @@ o conjunto de R1 e de novo quando mudar o modelo ou a montagem.
 ## MDJ e CTE (.docx), oficial e rascunho
 
 - [ ] Abrem no Word **sem** «O Word encontrou conteúdo ilegível» nem pedido de reparação.
-- [ ] O Word pergunta se atualiza os campos (o índice): responder Sim. É esperado (`updateFields`), não é reparação.
+- [ ] O Word **não** pergunta se atualiza os campos (conjunto exportado com LibreOffice). O `draft.docx` do editor
+      ainda pergunta (é esperado: responder Sim).
 - [ ] Estilos TUU: faixas de título de nível 1 (tabela de 1 célula), «Heading 2», «Estilo1», listas, legendas.
 - [ ] Numeração dos títulos e das listas igual à do original de R1.
-- [ ] Índice: depois de atualizar, lista as secções desta peça (não as de R1) com os números de página certos.
+- [ ] Índice: lista as secções desta peça (não as de R1), com a numeração dos títulos; números de página iguais
+      aos do Word (F9 no índice → «Atualizar só os números de página» não muda nenhum, ou no máximo um).
 - [ ] Imagens e fórmulas (quedas de tensão, curto-circuito) no sítio e legíveis; «Imagens meramente ilustrativas».
 - [ ] Tabelas IP/IK completas, sem células desalinhadas.
 - [ ] Cabeçalho da 1.ª página: «TÉCNICO RESPONSÁVEL: <nome do perfil>», «DATA | REVISÃO:» sem data (ou a data que o

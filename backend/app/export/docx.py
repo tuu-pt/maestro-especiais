@@ -2,7 +2,9 @@
 
 Built by app.assembly.docx on the package of the template (the R1 document until TUU gives empty
 templates [A CONFIRMAR]); the header gets the técnico, the date only if they wrote it (P8) and
-the revision R<nn>; the document properties name TUU and the document, never people.
+the revision R<nn>; the document properties name TUU and the document, never people. With
+LibreOffice, the index gets its page numbers and Word no longer asks to update the fields
+(app.export.toc); the quick download of a draft skips it (`paginate=False`).
 """
 
 import io
@@ -25,6 +27,7 @@ from app.export import (
     draft_name,
     official_name,
 )
+from app.export.toc import paginate as paginate_toc
 from app.models import Document, FichaRevision, Project, TemplateBlock
 from app.profiles import revision_profile
 from app.review import conditions, file_version, header_revision
@@ -70,7 +73,7 @@ def _visible_xml(data: bytes) -> str:
 
 
 def export_docx(db: Session, store: ObjectStore, settings: Settings, document: Document, *,
-                official: bool) -> Exported:  # fmt: skip
+                official: bool, paginate: bool = True) -> Exported:  # fmt: skip
     project = db.get(Project, document.project_id)
     revision = db.get(FichaRevision, document.ficha_revision_id)
     assert project is not None and revision is not None
@@ -91,6 +94,8 @@ def export_docx(db: Session, store: ObjectStore, settings: Settings, document: D
         subject=SUBJECTS.get(project.phase, SUBJECTS["execucao"]),
     )
     data = draft_docx(db, store, document, values, options)
+    if paginate:
+        data = paginate_toc(data) or data
     missing = sorted(set(re.findall(r"\[falta: ([^\]]+)\]", _visible_xml(data))))
     if official and missing:  # labels only, never values
         raise ExportRefused([f"Há valores em falta no {document.type}: {', '.join(missing)}."])

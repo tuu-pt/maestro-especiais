@@ -1,12 +1,17 @@
 """COE-01 (SPEC 9): the quantity of an element differs between the pieces and the ficha-base.
 
-Boards, EV chargers and PV modules (luminaires: not comparable yet, future work). The reference
-is the ficha-base; when it has no value, the source the ficha-base takes it from (SPEC 7.2: the
-Tabela de Cálculo, then the MQT/LPU), and the evidence says so. A text that names the boards
-without saying how many is comparable only when it names exactly the boards of the reference.
+Boards, EV chargers and PV modules by quantity; luminaires by type (L1, L7, SNC…), since the CTE
+lists the types without quantities. The reference is the ficha-base; when it has no value,
+the source the ficha-base takes it from (SPEC 7.2: the Tabela de Cálculo, then the MQT/LPU),
+and the evidence says so. A text that names the boards without saying how many is comparable
+only when it names exactly the boards of the reference.
 
 Critical when the MDJ or the CTE differs; a warning when only the MQT/LPU does. A value from the
 ficha-base edited by hand in an assembled piece (screen D) is a COE-01 of its own.
+
+Luminaires [A CONFIRMAR]: the reference is the MQT/LPU (the ficha-base has no luminaires); the
+types of the MDJ/CTE are compared with its types, a variant with its type (L5.1, L5.2 → L5); a
+type missing from one side is a warning (types are not quantities).
 """
 
 from typing import Any
@@ -23,7 +28,13 @@ from app.validation.compare import (
 )
 from app.validation.context import Context
 from app.validation.core import OPEN_EDITOR, OPEN_FICHA, Finding, Rule
-from app.validation.extract.text import BOARD_NAMES, QTY_BOARDS, QTY_EV, QTY_PV_MODULES
+from app.validation.extract.text import (
+    BOARD_NAMES,
+    LUMINAIRE_TYPES,
+    QTY_BOARDS,
+    QTY_EV,
+    QTY_PV_MODULES,
+)
 from app.validation.likely import Observation, reading
 from app.validation.normalize import same
 from app.validation.pieces import Fact
@@ -105,6 +116,48 @@ def quantities(ctx: Context) -> list[Finding]:
     return out
 
 
+def luminaire_reference(ctx: Context) -> tuple[list[str] | None, str]:
+    """The luminaire types of the MQT (or the LPU): the ficha-base has none."""
+    for kind in BOM:
+        obs = observations(ctx, LUMINAIRE_TYPES, [kind])
+        if obs:
+            return list(obs[0].fact.value), f"ficha-base sem valor: {obs[0].piece.name}"
+    return None, "ficha-base sem valor"
+
+
+def _difference(ref: list[str], value: list[str]) -> str:
+    missing = [t for t in ref if t not in value]
+    extra = [t for t in value if t not in ref]
+    parts = ([f"sem {', '.join(missing)}"] if missing else []) + (
+        [f"a mais {', '.join(extra)}"] if extra else []
+    )
+    return "; ".join(parts)
+
+
+def luminaires(ctx: Context) -> list[Finding]:
+    ref, ref_label = luminaire_reference(ctx)
+    if ref is None:
+        return []
+    reference_piece = next(o.piece.ref for o in observations(ctx, LUMINAIRE_TYPES, BOM))
+    obs = [o for o in observations(ctx, LUMINAIRE_TYPES) if o.piece.ref != reference_piece]
+    d = compare(ref, obs)
+    if not d.divergent:
+        return []
+    first = d.divergent[0]
+    return [RULE.finding(
+        f"Tipos de luminárias diferentes da referência ({shown(ref)}): "
+        + "; ".join(f"{o.piece.name} {_difference(ref, list(o.fact.value))}"
+                    for o in d.divergent) + ".",
+        key=f"{LUMINAIRE_TYPES}|" + ",".join(sorted(o.piece.ref for o in d.divergent)),
+        severity="warning", location=location(first.piece, first.fact),
+        evidence={**evidence(ctx, ref, ref_label, obs, d.divergent), "element": "luminárias"},
+        likely_reading=reading(d, ctx.ficha_date),
+        suggested_fix="Acertar a lista de luminárias do CTE com os artigos do MQT/LPU (ou o "
+        "contrário).",
+        actions=[OPEN_EDITOR],
+    )]  # fmt: skip
+
+
 def edited_values(ctx: Context) -> list[Finding]:
     """Values of the ficha-base edited by hand in an assembled piece (SPEC 10.D)."""
     out = []
@@ -132,7 +185,7 @@ def edited_values(ctx: Context) -> list[Finding]:
 
 
 def check(ctx: Context) -> list[Finding]:
-    return quantities(ctx) + edited_values(ctx)
+    return quantities(ctx) + luminaires(ctx) + edited_values(ctx)
 
 
 RULE = Rule("COE-01", "coherence", "critical", "Quantidades diferentes entre peças", check)

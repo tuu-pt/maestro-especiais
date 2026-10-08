@@ -26,6 +26,7 @@ from app.storage import ObjectStore
 from app.validation.context import Context
 from app.validation.core import Finding, Rule
 from app.validation.extract import Sources, collect, read
+from app.validation.extract.files import date_drawings
 from app.validation.matrix import build as build_matrix
 from app.validation.rules import all_rules
 
@@ -171,6 +172,7 @@ def run_validation(db: Session, store: ObjectStore | None, settings: Settings,
         data[piece.ref], again = read(sources, project, piece)
         reread += again
         publish(project.id, event(run, f"A ler as peças ({n}/{len(pieces)})"))
+    date_drawings(pieces, data)
     run.pieces = [p.as_json() for p in pieces]
     run.document_ids = [p.document_id for p in pieces if p.document_id]
 

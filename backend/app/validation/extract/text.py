@@ -2,7 +2,8 @@
 
 Each extractor reads only the sections of its subject (the key of the section, as in the
 Phase 3 split): the power in the supply sections, the chargers in the section on electric
-vehicles, the boards in the sections on boards. Outside them nothing is read, so that "um
+vehicles, the boards in the sections on boards, the luminaire types (L1, L7, SNC…) in the
+sections on lighting. Outside them nothing is read, so that "um
 carregador" of a microphone is not an EV charger. What cannot be read reliably is a fact marked
 "não comparável", with the reason.
 
@@ -26,6 +27,7 @@ QTY_BOARDS = "qty.quadros"
 BOARD_NAMES = "names.quadros"
 QTY_EV = "qty.ve_carregadores"
 QTY_PV_MODULES = "qty.fv_modulos"
+LUMINAIRE_TYPES = "types.luminarias"
 PV_KWP = "fv.potencia_kwp"
 CABLE = "cabo"
 POWER = "ele.potencia_alimentar_kva"
@@ -36,11 +38,20 @@ NOT_PERSONAL = {"tec.titulo", "doc.local", "doc.data"}
 BOARD_SECTIONS = ("quadro", "distribuicao")
 EV_SECTIONS = ("veiculos_eletricos",)
 PV_SECTIONS = ("fotovolt",)
+LIGHTING_SECTIONS = ("iluminacao",)
+NOT_LIGHTING_SECTIONS = ("comando",)
 
 _KVA = re.compile(r"(?<![\w,.])(\d+(?:[.,]\d+)?)\s*kVA\b", re.I)
 _KWP = re.compile(r"(?<![\w,.])(\d+(?:[.,]\d+)?)\s*kWp\b", re.I)
 _NOT_SUPPLY = re.compile(r"\b(?:ups|gerador|grupo|transformador|inversor|bateria)s?\b\W*$")
 _EXISTING = re.compile(r"\b(?:atualmente|actualmente|existente|atual|actual)\b")
+LUMINAIRE_CODE = r"(?:L\d+(?:\.\d+)?|SNC)"
+# "Tipo L1 - …", "L1 e L5 - …", "SNC - …" (hyphen or en dash): a line of the list of luminaires
+# of the CTE
+_LUMINAIRE_LINE = re.compile(
+    rf"^\s*(?:tipo\s+)?({LUMINAIRE_CODE}(?:\s*(?:e|,|/)\s*{LUMINAIRE_CODE})*)\s*[-\u2013\u2014:]",
+    re.I,
+)
 _BOARD = re.compile(r"\(?\bQ\.\s?(?:E\.?\s?G|P|[A-Z])[\w.\- ]*?\)?(?=[\s,;:)]|$)")
 
 
@@ -106,6 +117,42 @@ def boards(paragraphs: Iterable[Paragraph], piece: str) -> list[Fact]:
     return out
 
 
+def luminaire_codes(text: str) -> list[str]:
+    return [c.upper() for c in re.findall(LUMINAIRE_CODE, text, re.I)]
+
+
+def luminaire_type(code: str) -> str:
+    """The type a code belongs to: L5.1 and L5.2 are variants of L5 (compared by type)."""
+    return re.sub(r"\.\d+$", "", code.upper())
+
+
+def _natural(code: str) -> tuple[str, int]:
+    digits = re.sub(r"\D", "", code)
+    return (code.rstrip("0123456789"), int(digits) if digits else 0)
+
+
+def luminaire_fact(codes: list[str], piece: str, locator: dict[str, object], note: str) -> Fact:
+    types = sorted({luminaire_type(c) for c in codes}, key=_natural)
+    return Fact(LUMINAIRE_TYPES, types, piece, locator, shown=", ".join(dict.fromkeys(codes)),
+                note=note)  # fmt: skip
+
+
+def luminaires(paragraphs: Iterable[Paragraph], piece: str) -> list[Fact]:
+    """The luminaire types listed in the lighting sections (types only: no quantities)."""
+    codes: list[str] = []
+    first: Paragraph | None = None
+    for p in paragraphs:
+        if not _in(p, LIGHTING_SECTIONS) or _in(p, NOT_LIGHTING_SECTIONS):
+            continue
+        m = _LUMINAIRE_LINE.match(p.text)
+        if m:
+            codes += luminaire_codes(m.group(1))
+            first = first or p
+    if not codes or first is None:
+        return []
+    return [luminaire_fact(codes, piece, where(first), "tipos listados no texto (sem quantidades)")]
+
+
 def ev_chargers(paragraphs: Iterable[Paragraph], piece: str) -> list[Fact]:
     for p in paragraphs:
         if not _in(p, EV_SECTIONS):
@@ -169,6 +216,7 @@ def identification(paragraphs: list[Paragraph], piece: str) -> list[Fact]:
 def read(paragraphs: list[Paragraph], piece: str, *, with_identification: bool) -> list[Fact]:
     facts = power(paragraphs, piece) + boards(paragraphs, piece)
     facts += ev_chargers(paragraphs, piece) + pv(paragraphs, piece) + cable_facts(paragraphs, piece)
+    facts += luminaires(paragraphs, piece)
     if with_identification:
         facts += identification(paragraphs, piece)
     return facts

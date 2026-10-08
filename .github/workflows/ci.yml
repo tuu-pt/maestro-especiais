@@ -42,7 +42,7 @@ jobs:
       - name: LibreOffice (verificação de fidelidade das peças exportadas)
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y -qq --no-install-recommends libreoffice-writer-nogui libreoffice-calc-nogui fonts-dejavu-core
+          sudo apt-get install -y -qq --no-install-recommends libreoffice-writer-nogui libreoffice-calc-nogui fonts-dejavu-core fonts-crosextra-carlito fonts-liberation2
       - run: ruff check backend tools
       - run: ruff format --check backend tools
       - run: mypy backend/app backend/tests

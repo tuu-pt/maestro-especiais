@@ -112,10 +112,18 @@ Decisões da Fase 4 (28 set 2026; as quatro primeiras aprovadas pelo utilizador,
   LLM_MODEL_EMBEDDING vazia (não usada). Ritmo LLM_RPM=10, LLM_RPD=200; geração no worker (fila `llm`) com retoma.
 - Alternativa (decisão do utilizador, 28 set 2026): principal Gemini `gemini-3.5-flash-lite`; quando fica indisponível
   (5xx depois das repetições, ex.: 503 «high demand» do nível gratuito), o mesmo pedido, já verificado pela guarda, vai para
-  a Groq com `openai/gpt-oss-120b` (LLM_FALLBACK_*, ritmo próprio LLM_FALLBACK_RPM=2); um 429 não muda de fornecedor.
+  a Groq com `openai/gpt-oss-120b` (LLM_FALLBACK_*, ritmo próprio LLM_FALLBACK_RPM=2).
   GroqProvider sem SDK (httpx, API compatível com OpenAI), espera o `retry-after`. Avaliação R2 (28 set): Flash-Lite 5/5;
   gpt-oss-120b 4/5 (o 5.º com chaves inventadas, que ficam «falta dado»); gemini-3.6-flash rejeitado (NUM-01 com
-  números de R2 e 20 pedidos/dia). Os termos da Groq não foram vistos: [A CONFIRMAR] com a D5, e muda a D10.
+  números de R2 e 20 pedidos/dia).
+- Três fornecedores (decisão do utilizador, 8 out 2026): Gemini, Groq e Claude (Anthropic, SDK `anthropic`, saída
+  `json_schema`), todos disponíveis. O principal escolhe-o o admin no ecrã Definições (`AppSetting` «llm.primary»,
+  migração 0019, `PUT /settings/llm` com justificação, na auditoria; sem escolha, `LLM_PROVIDER`); os outros seguem
+  pela ordem Gemini, Groq, Claude. Muda-se para o seguinte em **qualquer falha do serviço** (5xx, 429 que persiste,
+  sem ligação, quota do dia esgotada); a guarda e o JSON inválido não mudam de fornecedor; pausa só quando todos estão
+  sem quota. Um fornecedor sem chave ou sem modelo fica de fora. Variáveis próprias `LLM_<FORNECEDOR>_MODEL_*`,
+  `_RPM`, `_RPD` e `ANTHROPIC_API_KEY`; vazias, valem as antigas (`LLM_MODEL_*` para o `LLM_PROVIDER`,
+  `LLM_FALLBACK_*` para o `LLM_FALLBACK_PROVIDER`). Modelo do Claude por definir (é a 3.ª escolha).
 - Texto do agente chega sempre como versão **proposta**; aceitar/rejeitar no diff. Pedidos em linguagem natural idem.
 - NUM-01 com lista branca em backend/app/llm/whitelist.yaml; os números copiados das fontes (distâncias
   regulamentares) também são assinalados: ficam para o técnico confirmar (a regra não é relaxada).
@@ -266,12 +274,12 @@ Seguem a recomendação da secção 16 da SPEC enquanto a equipa não decidir o 
 | D2 | PostgreSQL 16 + pgvector | Recomendação seguida |
 | D3 | Embeddings Gemini | ✅ Decidido |
 | D4 | Alojamento cloud na UE | Recomendação seguida; por agora só ambiente local |
-| D5 | Termos da Gemini API | **LLM ligado por omissão** (decisão do utilizador, 8 out 2026, contra a recomendação de esperar pela direção): texto de projetos reais pode ir à Google e à Groq, sempre sem valores nem dados pessoais (marcadores e guarda de privacidade); o admin desliga por projeto. Termos da Gemini e da Groq por confirmar com a direção |
+| D5 | Termos da Gemini API | ✅ Aceite (8 out 2026, comunicado pelo utilizador): texto de projetos reais pode ir à Google, à Groq e à Anthropic, sempre sem valores nem dados pessoais (marcadores e guarda de privacidade); LLM ligado por omissão, o admin desliga por projeto |
 | D6 | Autenticação Entra ID, se aplicável | Por decidir com a TI (não decidida na Fase 2; o login de desenvolvimento continua) |
 | D7 | Curador | A designar (coordenação) |
 | D8 | Esqueletos da secção 8.3 | Seguidos tal como estão, a validar com os técnicos |
 | D9 | Integração TUU Maestro | Endpoint de exportação no MVP |
-| D10 | Gemini Flash | ✅ Decidido; na Fase 4 usa-se Flash-Lite pela quota [A CONFIRMAR] |
+| D10 | Gemini Flash | ✅ Alargada (8 out 2026): Gemini, Groq e Claude, principal escolhido pelo admin; Flash-Lite pela quota [A CONFIRMAR]; modelo do Claude por definir |
 | D11 | MVP em eletricidade | ✅ Decidido |
 | D12 | Leitura de DWG | Adiada |
 | D13 | Severidade da CAL-01 | Aviso |
@@ -313,6 +321,9 @@ Decisões da Fase 0:
     acrescentar, aprovar); slots do CTE montado com alternativas, quantidade e ilustração; EQP-01/02/03;
   - ecrã F (verificação parâmetro a parâmetro, alternativas, escolher com justificação) e separador «Biblioteca de
     equipamentos» no ecrã G.
+- Feito a 8 out 2026 (ramo `fase7`): fichas técnicas de R1 (20/32 equipamentos, nenhum falha; 12 sem ficha
+  ignoradas por decisão do utilizador), LLM ligado por omissão (0018), três fornecedores com o principal escolhido no
+  ecrã Definições (0019).
 - Melhorias de 6 out 2026 (ramo `melhorias`): índice gerado sem `updateFields` (LibreOffice), luminárias na COE-01,
   COE-02 pela data da carimbadura.
 - Feito na Fase 6:
@@ -421,7 +432,7 @@ Decisões da Fase 0:
   - os valores da tabela de pseudónimos de execuções anteriores também respeitam o `allow:` dos overrides; foi assim que
     a freguesia de R1 (tomada por morada pelo mapa antigo) voltou a ficar real em 25 set 2026;
   - os PDF são gravados com o `/ID` da origem (`no_new_id`): uma nova execução só muda os PDF cujo conteúdo muda.
-- Próximo: Fase 8 (piloto: três projetos reais de eletricidade, SPEC 14), que depende de D6 e D7, da confirmação da D5
+- Próximo: Fase 8 (piloto: três projetos reais de eletricidade, SPEC 14), que depende de D6 e D7
   e de a equipa rever
   as Fases 3–7. Para fechar a 7: as 12 fichas de R1 que faltam (lista em data/fixtures/fichas-tecnicas/R1/fichas.json;
   pô-las na pasta e acrescentar a entrada) e a revisão do curador.
@@ -430,5 +441,4 @@ Decisões da Fase 0:
   Trabalho futuro da Fase 6: PDF assinado,
   integração mais funda com o TUU Maestro (D9). Trabalho futuro da Fase 5: citações com locator
   nas peças humanas, extração assistida por LLM para o que fica «não comparável».
-  Continuam pendentes D7 (curador), D8 (esqueletos), a confirmação da D5 pela direção (termos da Gemini e da Groq;
-  o LLM já está ligado por omissão) e D6 (Entra ID).
+  Continuam pendentes D7 (curador), D8 (esqueletos), D6 (Entra ID) e o modelo do Claude (3.º fornecedor).

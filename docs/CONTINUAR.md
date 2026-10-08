@@ -58,6 +58,9 @@ LLM_FALLBACK_PROVIDER=groq
 LLM_FALLBACK_MODEL_DRAFTING=openai/gpt-oss-120b
 LLM_FALLBACK_MODEL_EXTRACTION=openai/gpt-oss-120b
 LLM_FALLBACK_RPM=2
+ANTHROPIC_API_KEY=              # https://console.anthropic.com (3.º fornecedor; com LLM_CLAUDE_MODEL_*)
+# LLM_<GEMINI|GROQ|CLAUDE>_MODEL_*, _RPM, _RPD: vazias, valem as de cima. O principal escolhe-se no
+# ecrã Definições (admin); os outros entram por ordem quando ele falha.
 # PROFILE_ENCRYPTION_KEY, EXPORT_LINK_SECRET, MAESTRO_SERVICE_TOKEN, POSTGRES_*, REDIS_*, S3_* são gerados
 # pelo make env (num .env existente: make env-update)
 ```
@@ -71,7 +74,7 @@ Depois de mudar o `.env`: `docker compose up -d backend worker` (o `restart` nã
   (é a equipa que o faz). O `.claude/settings.json` do repositório bloqueia `data/private/`.
 - O agente não decide nem calcula; o LLM nunca escreve números, nomes nem valores (`{{v:chave}}`).
 - Dados pessoais nunca vão ao LLM nem aos logs. D5: desde 8 out 2026 o LLM está **ligado por omissão**
-  (`Project.llm_allowed`, decisão do utilizador); o admin desliga-o por projeto. Falta a confirmação da direção.
+  (`Project.llm_allowed`, D5 aceite); o admin desliga-o por projeto. Fornecedores: Gemini, Groq e Claude.
 - Interface em PT-PT; código, tabelas, endpoints e commits em inglês.
 - Uma tarefa, um commit, com testes. **Push só com autorização explícita.**
 - Decisões por confirmar seguem a recomendação e ficam registadas como [A CONFIRMAR] no `CLAUDE.md`.
@@ -105,9 +108,8 @@ coloca em `data/fixtures/fichas-tecnicas/`; a seguir, a Fase 8 (piloto), que dep
 no `CLAUDE.md`. Rever antes os [A CONFIRMAR] das Fases 5 a 7 e fazer a verificação manual da Fase 6
 (`docs/fase6-verificacao-manual.md`).
 
-**Decisões pendentes:** D4 (alojamento: cloud UE ou VPS da TUU), D5 (confirmar com a direção os termos da
-Gemini e da Groq; o LLM já está ligado por omissão), D6 (Entra ID), D7 (curador), D8 (esqueletos com os técnicos), D10 (Flash-Lite e a
-alternativa Groq em vez do Flash).
+**Decisões pendentes:** D4 (alojamento: cloud UE ou VPS da TUU), D6 (Entra ID), D7 (curador), D8 (esqueletos com os técnicos), D10 (Flash-Lite; o modelo do Claude
+por definir).
 
 **Ações da equipa:** rever os códigos postais «NNNN – NNN» (com travessão) que o anonimizador pode
 não ter apanhado nas fixtures (Identificação de R1, FE de R2) e voltar a anonimizar; confirmar a

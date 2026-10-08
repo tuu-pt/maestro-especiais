@@ -193,10 +193,14 @@ EMBEDDING_DIM=768                     # tem de coincidir com a coluna pgvector
 - **Nomes de modelos nunca no código**: só na configuração. Confirmar os nomes atuais no Google AI Studio.
 - **Limites da quota gratuita**: controlo do ritmo de pedidos (por minuto e por dia, configurável), repetição com espera exponencial em 429/503 e indicação ao utilizador quando um pedido está em fila. A geração retoma a partir do último bloco concluído.
 - **Validação da saída**: resposta JSON sempre validada com Pydantic. Se falhar, repete uma vez com o erro no pedido; se voltar a falhar, o bloco fica em `todo` com a mensagem de erro.
-- **Alternativa** (Fase 4): `LLM_FALLBACK_PROVIDER` e `LLM_FALLBACK_MODEL_*` (ex.: Groq com
-  `openai/gpt-oss-120b`). Quando o principal fica indisponível (5xx depois das repetições), o mesmo
-  pedido segue para a alternativa, com ritmo próprio; um 429 (quota) não muda de fornecedor. O
-  `LlmCall` regista o fornecedor e o modelo que responderam. [A CONFIRMAR: termos da Groq, D5 e D10]
+- **Fornecedores** (8 out 2026): Gemini, Groq e Claude (Anthropic). O admin escolhe o principal no
+  ecrã Definições (`PUT /settings/llm`, com justificação, na auditoria); os outros seguem pela ordem
+  Gemini, Groq, Claude. Em qualquer falha do serviço (5xx, 429 que persiste depois das repetições,
+  sem ligação, quota do dia esgotada) o mesmo pedido, já verificado pela guarda, segue para o
+  seguinte, com ritmo próprio; a guarda e o JSON inválido não mudam de fornecedor. Um fornecedor sem
+  chave ou sem modelo fica de fora. Variáveis `ANTHROPIC_API_KEY`, `LLM_<GEMINI|GROQ|CLAUDE>_MODEL_*`,
+  `_RPM` e `_RPD`; vazias, valem `LLM_MODEL_*` (para `LLM_PROVIDER`) e `LLM_FALLBACK_*` (para
+  `LLM_FALLBACK_PROVIDER`). O `LlmCall` regista o fornecedor e o modelo que responderam.
 - **Fila**: a geração corre no worker (fila RQ `llm`), com o progresso por SSE no canal do projeto
   (`queued`, `generating`, `generated`, `failed`, `paused`).
 - **Avaliação**: `backend/tests/llm_eval/` (`RUN_LLM_EVAL=1`) com casos fixos (a partir das *fixtures* anonimizadas) e verificações automáticas (zero NUM-01, zero TIP-01, blocos obrigatórios presentes) para comparar modelos e prompts antes de os trocar.
@@ -679,12 +683,12 @@ No fim de cada fase: testes a passar, um commit por tarefa e `CLAUDE.md` atualiz
 | D2 | Base de dados | PostgreSQL + pgvector | Equipa técnica |
 | D3 | Embeddings | ✅ Decidido: modelo de embeddings do Gemini | — |
 | D4 | Alojamento | Cloud na UE para o piloto | Direção |
-| D5 | Termos de tratamento de dados da Gemini API | Confirmar a aplicação das regras de serviço pago no EEE; ponderar plano pago no piloto. **8 out 2026: o LLM fica ligado por omissão (decisão do utilizador); falta a confirmação da direção, também para a Groq** | Direção |
+| D5 | Termos de tratamento de dados da Gemini API | Confirmar a aplicação das regras de serviço pago no EEE; ponderar plano pago no piloto. **✅ 8 out 2026: aceite (Gemini, Groq e Claude); o LLM fica ligado por omissão** | Direção |
 | D6 | Autenticação | Microsoft Entra ID, se aplicável | TI |
 | D7 | Curador do corpus, blocos e dicionários | Um técnico sénior de eletricidade, ~2 h/mês | Coordenação |
 | D8 | Esqueletos e blocos obrigatórios (CNT-01) | Validar a secção 8.3 com a equipa | Técnicos |
 | D9 | Integração com o TUU Maestro | Endpoint de exportação no MVP | Equipa TUU Maestro |
-| D10 | LLM | ✅ Decidido: Gemini Flash (quota gratuita) no desenvolvimento | — |
+| D10 | LLM | ✅ Decidido: Gemini Flash (quota gratuita) no desenvolvimento; desde 8 out 2026 também Groq e Claude, principal escolhido pelo admin | — |
 | D11 | Especialidade do MVP | ✅ Decidido: instalações elétricas (ITED na Fase 9) | — |
 | D12 | Leitura de DWG (fase posterior) | Avaliar conversor DWG→DXF e respetiva licença | Equipa técnica |
 | D13 | Severidade da CAL-01 | Aviso, com confirmação do projetista na folha | Técnicos |

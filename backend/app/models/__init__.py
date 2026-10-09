@@ -41,6 +41,7 @@ from app.models.library import (
     TemplateBlock,
 )
 from app.models.llm import BlockedTerm, LlmCall
+from app.models.pilot import PilotTime
 from app.models.profile import TechnicianProfile
 from app.models.project import Project, ProjectFile
 from app.models.setting import AppSetting
@@ -72,6 +73,7 @@ __all__ = [
     "FichaValue",
     "LlmCall",
     "PieceFacts",
+    "PilotTime",
     "Project",
     "ProjectEquipment",
     "ProjectFile",

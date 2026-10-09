@@ -15,6 +15,7 @@ from app.api import (
     knowledge,
     library,
     me,
+    pilot,
     project_equipment,
     projects,
     review,
@@ -42,3 +43,4 @@ api_router.include_router(exports.router)
 api_router.include_router(equipment.router)
 api_router.include_router(project_equipment.router)
 api_router.include_router(settings.router)
+api_router.include_router(pilot.router)

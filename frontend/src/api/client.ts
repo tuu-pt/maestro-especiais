@@ -82,6 +82,19 @@ export async function download(path: string, filename: string): Promise<void> {
   URL.revokeObjectURL(url);
 }
 
+/** A small POST whose answer does not matter (e.g. the pilot's heartbeat); never throws. */
+export async function beacon(path: string, body: unknown): Promise<void> {
+  try {
+    await fetch(`/api${path}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...authHeaders() },
+      body: JSON.stringify(body),
+    });
+  } catch {
+    // offline: this beat is lost, the next one counts
+  }
+}
+
 export function postJson<T>(path: string, body?: unknown): Promise<T> {
   return request<T>(path, {
     method: "POST",

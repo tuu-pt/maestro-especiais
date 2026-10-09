@@ -7,6 +7,7 @@ import { useDevUsers, useLogout, useMe, useProject } from "../api/queries";
 import { useActiveProject } from "./activeProject";
 import s from "./AppShell.module.css";
 import { applyTheme, storedTheme, type Theme } from "./theme";
+import { usePilotClock } from "./usePilotClock";
 
 const icon = (d: ReactNode) => (
   <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
@@ -153,6 +154,7 @@ export default function AppShell() {
   const projectId = useActiveProject();
   const { data: project } = useProject(projectId);
   const { error } = useMe();
+  usePilotClock(project?.id);
   const location = useLocation();
   if (error instanceof ApiError && error.status === 401) {
     const back = encodeURIComponent(`${location.pathname}${location.search}`);

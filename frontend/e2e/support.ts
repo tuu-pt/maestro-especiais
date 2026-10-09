@@ -37,6 +37,7 @@ export async function mockApi(page: Page, extra: Extra = {}): Promise<void> {
       "/health": { status: "ok", services: { database: { status: "ok" }, redis: { status: "ok" } } },
     };
     const body = path in extra ? extra[path] : base[path];
+    if (path.endsWith("/pilot/heartbeat")) return route.fulfill({ status: 204, body: "" });
     if (path.endsWith("/events")) {
       return route.fulfill({ status: 200, contentType: "text/event-stream", body: "" });
     }

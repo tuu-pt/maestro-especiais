@@ -33,6 +33,7 @@ export async function mockApi(page: Page, extra: Extra = {}): Promise<void> {
       "/knowledge/typologies": [],
       "/library/blocks": [],
       "/settings/llm": { primary: "gemini", order: [], providers: [] },
+      "/pilot/summary": [],
       "/knowledge/regulations": [],
       "/health": { status: "ok", services: { database: { status: "ok" }, redis: { status: "ok" } } },
     };
@@ -54,6 +55,7 @@ export const SCREENS: [path: string, title: string][] = [
   ["/validacao", "Validação"],
   ["/equipamentos", "Equipamentos e fichas técnicas"],
   ["/revisao", "Revisão e exportação"],
+  ["/piloto", "Piloto"],
   ["/conhecimento", "Base de conhecimento"],
   ["/definicoes", "Definições"],
 ];

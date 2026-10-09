@@ -4,6 +4,7 @@ import { DashboardScreen } from "../screens/Dashboard";
 import { FichaScreen } from "../screens/Ficha";
 import { NewProjectScreen, ProjectFilesScreen } from "../screens/NewProject";
 import { NotFoundScreen } from "../screens/NotFound";
+import { PilotScreen } from "../screens/Pilot";
 import { KnowledgeScreen } from "../screens/Knowledge";
 import { LoginScreen } from "../screens/Login";
 import { EditorScreen } from "../screens/Editor";
@@ -33,6 +34,7 @@ export const routes: RouteObject[] = [
       ...scoped("validacao", <ValidationScreen />),
       ...scoped("equipamentos", <EquipmentScreen />),
       ...scoped("revisao", <ReviewScreen />),
+      ...scoped("piloto", <PilotScreen />),
       { path: "conhecimento", element: <KnowledgeScreen /> },
       { path: "definicoes", element: <SettingsScreen /> },
       { path: "*", element: <NotFoundScreen /> },

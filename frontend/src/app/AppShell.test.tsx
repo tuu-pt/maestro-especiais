@@ -18,6 +18,7 @@ describe("application shell", () => {
       "Validação",
       "Equipamentos",
       "Revisão",
+      "Piloto",
       "Conhecimento",
       "Definições",
     ]);

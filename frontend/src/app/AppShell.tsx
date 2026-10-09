@@ -5,6 +5,7 @@ import { Link, Navigate, NavLink, Outlet, useLocation, useNavigate } from "react
 import { ApiError, getDevUser, setDevUser } from "../api/client";
 import { useDevUsers, useLogout, useMe, useProject } from "../api/queries";
 import { useActiveProject } from "./activeProject";
+import { ProblemButton } from "./ProblemButton";
 import s from "./AppShell.module.css";
 import { applyTheme, storedTheme, type Theme } from "./theme";
 import { usePilotClock } from "./usePilotClock";
@@ -56,6 +57,12 @@ const ICONS = {
       <path d="M8 4.5V8l2.5 1.5" />
     </>,
   ),
+  pilot: icon(
+    <>
+      <path d="M2.5 13.5h11" />
+      <path d="M4 11V8M7 11V5.5M10 11V7M13 11V3.5" />
+    </>,
+  ),
   set: icon(
     <>
       <circle cx="8" cy="8" r="2.2" />
@@ -73,6 +80,7 @@ const NAV: NavItem[] = [
   { label: "Validação", icon: ICONS.val, path: "validacao", scoped: true },
   { label: "Equipamentos", icon: ICONS.equip, path: "equipamentos", scoped: true },
   { label: "Revisão", icon: ICONS.review, path: "revisao", scoped: true },
+  { label: "Piloto", icon: ICONS.pilot, path: "piloto", scoped: true },
   { label: "Conhecimento", icon: ICONS.kb, path: "conhecimento", scoped: false },
   { label: "Definições", icon: ICONS.set, path: "definicoes", scoped: false },
 ];
@@ -169,6 +177,7 @@ export default function AppShell() {
             Maestro Especiais <span>TUU · Building Design Management</span>
           </Link>
           <div className={s.tools}>
+            <ProblemButton projectId={project?.id} />
             <SessionTools />
             <ThemeSelect />
           </div>

@@ -781,3 +781,59 @@ export type LlmProviderInfo = {
 };
 
 export type LlmSettings = { primary: string; order: string[]; providers: LlmProviderInfo[] };
+
+// ---------------------------------------------------------------- pilot (Phase 8)
+
+export type PilotStep = { step: string; label: string; seconds: number; estimate_min: [number, number] | null };
+export type PilotGroupCount = { found: number; open: number; ignored: number };
+export type PilotApproval = {
+  document: string;
+  revision: string;
+  approved_at: string;
+  groups: Record<"identificacao" | "potencia" | "cabos", PilotGroupCount>;
+  clean: boolean;
+};
+export type PilotGoal = {
+  reduction: number | null;
+  time_ok: boolean;
+  approved: boolean;
+  coherent: boolean;
+  met: boolean;
+};
+export type PilotBaseline = {
+  steps: Record<string, [number, number]>;
+  rounds: number | null;
+  errors: string | null;
+  typology: string | null;
+  updated_by: string | null;
+  updated_at: string | null;
+};
+export type PilotNote = {
+  id: string;
+  project_id: string | null;
+  screen: string;
+  step: string | null;
+  text: string;
+  status: "open" | "resolved";
+  created_by: string | null;
+  created_at: string;
+  resolved_by: string | null;
+  resolved_at: string | null;
+};
+export type PilotSummary = {
+  project_id: string;
+  code: string;
+  typology: string | null;
+  steps: PilotStep[];
+  seconds: number;
+  estimate_seconds: number | null;
+  reduction: number | null;
+  has_estimate: boolean;
+  rounds_estimate: number | null;
+  errors_estimate: string | null;
+  approvals: PilotApproval[];
+  goal: PilotGoal;
+  notes_open: number;
+  notes_total: number;
+};
+export type PilotProject = PilotSummary & { baseline: PilotBaseline | null; notes: PilotNote[] };

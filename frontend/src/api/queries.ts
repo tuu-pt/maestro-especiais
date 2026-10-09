@@ -3,6 +3,10 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ApiError, postJson, request } from "./client";
 import type {
   ApproveAllResult,
+  PilotBaseline,
+  PilotNote,
+  PilotProject,
+  PilotSummary,
   AuditEntry,
   BlockDetail,
   BlockEdit,
@@ -654,5 +658,48 @@ export function useLogout() {
   return useMutation({
     mutationFn: () => postJson<{ ended: boolean }>("/auth/logout"),
     onSuccess: () => client.clear(),
+  });
+}
+
+// ---------------------------------------------------------------- pilot (Phase 8)
+
+export const usePilot = (projectId: string | undefined) =>
+  useQuery({
+    queryKey: ["pilot", projectId ?? ""],
+    queryFn: () => request<PilotProject>(`/projects/${projectId}/pilot`),
+    enabled: Boolean(projectId),
+  });
+
+export const usePilotSummary = () =>
+  useQuery({ queryKey: ["pilot", "summary"], queryFn: () => request<PilotSummary[]>("/pilot/summary") });
+
+export function useSaveBaseline(projectId: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (body: Omit<PilotBaseline, "updated_by" | "updated_at">) =>
+      put<PilotBaseline>(`/projects/${projectId}/pilot/baseline`, body),
+    onSuccess: () => void client.invalidateQueries({ queryKey: ["pilot"] }),
+  });
+}
+
+export function useAddPilotNote() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { text: string; screen: string; project_id: string | null; hint: string | null }) =>
+      postJson<PilotNote>("/pilot/notes", body),
+    onSuccess: () => void client.invalidateQueries({ queryKey: ["pilot"] }),
+  });
+}
+
+export function useSetPilotNote() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, status }: { id: string; status: PilotNote["status"] }) =>
+      request<PilotNote>(`/pilot/notes/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status }),
+      }),
+    onSuccess: () => void client.invalidateQueries({ queryKey: ["pilot"] }),
   });
 }

@@ -23,7 +23,6 @@ from app.pilot.metrics import (
     pilot_projects,
     project_metrics,
 )
-from app.pilot.steps import GOAL_STEPS
 from app.profiles import personal_terms
 
 LEFT_OUT = "(texto omitido: tinha um dado pessoal do projeto ou de uma pessoa)"
@@ -54,8 +53,9 @@ def _project(m: ProjectMetrics, notes: list[str]) -> list[str]:
         estimate = f"{r.estimate[0]}\u2013{r.estimate[1]} min" if r.estimate else "—"
         lines.append(f"| {r.label} | {minutes(r.seconds)} | {estimate} |")
     data = m.as_json()
+    estimated = minutes(data["estimate_seconds"])
     lines.append(f"| **Total** | **{minutes(data['seconds'])}** | "
-                 f"**{minutes(data['estimate_seconds'])}** (meio do intervalo) |")  # fmt: skip
+                 f"**{estimated}** (meio do intervalo, passos com estimativa) |")  # fmt: skip
     goal = m.goal
     lines += ["", f"- Redução no total (passos com estimativa): {percent(m.reduction())}.",
               f"- Redução na MDJ, no CTE e nos formulários (meta ≥ {GOAL_REDUCTION:.0%}): "
@@ -88,8 +88,8 @@ def render(db: Session, today: datetime | None = None) -> str:
     lines = ["# Fase 8 · Piloto", "",
              f"Gerado por `make pilot-report` em {when}. Só números, o código de cada projeto e os "
              "problemas registados (com os dados pessoais omitidos).", "",
-             f"Meta (SPEC 1): reduzir pelo menos {GOAL_REDUCTION:.0%} do tempo de "
-             f"{', '.join(GOAL_STEPS)} e zero incoerências de identificação, potência e cabos nas "
+             f"Meta (SPEC 1): reduzir pelo menos {GOAL_REDUCTION:.0%} do tempo da MDJ, do CTE e "
+             "dos formulários, e zero incoerências de identificação, potência e cabos nas "
              "peças aprovadas. O tempo na aplicação é o tempo ativo medido por ecrã (sem pausas "
              "de mais de 2 minutos); o tempo fora da aplicação não conta.", ""]  # fmt: skip
     if not projects:

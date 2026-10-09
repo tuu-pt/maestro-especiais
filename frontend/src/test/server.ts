@@ -31,6 +31,7 @@ export const defaultHandlers = [
   }),
   http.get(api("/dev/users"), () => HttpResponse.json(DEV_USERS)),
   http.post(api("/projects/:id/pilot/heartbeat"), () => new HttpResponse(null, { status: 204 })),
+  http.get(api("/pilot/summary"), () => HttpResponse.json([])),
   http.get(api("/projects"), () => HttpResponse.json([])),
   http.get(api("/activity"), () => HttpResponse.json([])),
   http.get(api("/knowledge/cables"), () => HttpResponse.json({ designations: [], equivalences: [] })),

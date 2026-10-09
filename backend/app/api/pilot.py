@@ -2,7 +2,7 @@
 
 import uuid
 from datetime import UTC, datetime
-from typing import Annotated, Literal
+from typing import Annotated, Any, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from pydantic import BaseModel, Field, field_validator
@@ -16,6 +16,7 @@ from app.auth import CurrentUser, User, require_role
 from app.db import get_session
 from app.models import AuditEvent
 from app.models.pilot import PilotBaseline, PilotNote, PilotTime
+from app.pilot.metrics import pilot_projects, project_metrics
 from app.pilot.steps import STEPS, step_for
 
 router = APIRouter(tags=["piloto"])
@@ -188,3 +189,24 @@ def set_note_status(note_id: uuid.UUID, body: NoteStatusIn, db: DB, user: Triage
            project_id=note.project_id)  # fmt: skip
     db.commit()
     return note_out(note)
+
+
+# ---------------------------------------------------------------- what the pilot measured
+
+
+@router.get("/projects/{project_id}/pilot")
+def project_pilot(project_id: uuid.UUID, db: DB, _: CurrentUser) -> dict[str, Any]:
+    """Time per step against the estimate, incoherences at each approval, the goal, the notes."""
+    project = get_project(db, project_id)
+    baseline = db.scalars(select(PilotBaseline).where(PilotBaseline.project_id == project.id)
+                          ).first()  # fmt: skip
+    notes = db.scalars(select(PilotNote).where(PilotNote.project_id == project.id)
+                       .order_by(PilotNote.created_at.desc())).all()  # fmt: skip
+    return {**project_metrics(db, project).as_json(),
+            "baseline": baseline_out(baseline), "notes": [note_out(n) for n in notes]}  # fmt: skip
+
+
+@router.get("/pilot/summary")
+def pilot_summary(db: DB, _: CurrentUser) -> list[dict[str, Any]]:
+    """Every project of the pilot (time measured or an estimate written)."""
+    return [project_metrics(db, p).as_json() for p in pilot_projects(db)]

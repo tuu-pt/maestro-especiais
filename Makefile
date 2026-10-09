@@ -8,7 +8,7 @@ PYTHON ?= python
 NPM := npm --prefix frontend
 PROJECTS ?= R1 R2
 
-.PHONY: help setup env env-update up down logs lint format test test-docker test-integration e2e seed-library curator-review diff-report anexo-c-report fichas-report form-templates anonymize pii-check create-user users
+.PHONY: help setup env env-update up down logs lint format test test-docker test-integration e2e seed-library curator-review diff-report anexo-c-report fichas-report form-templates anonymize pii-check create-user users pilot-report
 
 help:
 	@echo "setup            .venv, dependencias Python, npm ci e Chromium do Playwright"
@@ -30,6 +30,7 @@ help:
 	@echo "pii-check        procura padroes de dados pessoais em data/fixtures"
 	@echo "create-user      cria ou atualiza uma conta: EMAIL=... NAME=\"Nome\" ROLES=redator,tecnico,curador,admin (pede a password)"
 	@echo "users            lista as contas (email, nome, papeis, estado)"
+	@echo "pilot-report     escreve docs/fase8-piloto.md (tempos, estimativas, incoerencias e problemas do piloto)"
 
 setup:
 	$(PYTHON) -m venv .venv
@@ -87,6 +88,9 @@ create-user:
 
 users:
 	docker compose exec backend python -m app.accounts list
+
+pilot-report:
+	docker compose exec -T backend python -m app.pilot.report > docs/fase8-piloto.md
 
 curator-review:
 	docker compose exec -T backend python -m app.library.review_report > docs/revisao-curador.md

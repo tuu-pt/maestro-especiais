@@ -229,6 +229,24 @@ Início de sessão (8 out 2026, pedido do utilizador: «estilo o do Registo de T
 - [A CONFIRMAR] sessão de 12 h (`SESSION_TTL_HOURS`), sem restrição de domínio do email, papéis por conta (não por
   grupos), ids `user:<uuid>` na auditoria e nos perfis dos técnicos.
 
+Decisões da Fase 8 (9 out 2026; as três primeiras escolhidas pelo utilizador, o resto [A CONFIRMAR]):
+- Tempo medido automaticamente por ecrã: o frontend envia um batimento a cada 30 s com o separador visível e uma
+  interação nos últimos 2 min (`usePilotClock`); o backend soma-o (`PilotTime`, 0021) num dos 8 passos da pergunta
+  aos técnicos (app/pilot/steps.py), no máximo 60 s por batimento, sem auditoria. No editor, `data-pilot-step` diz
+  MDJ, CTE ou formulários; Ficha/Editor/Formulários depois do 1.º envio para revisão contam como «correções».
+- A estimativa do processo manual escreve-se por projeto, no ecrã Piloto (técnico ou admin; minutos «de… a…» por
+  passo, voltas de correção, erros frequentes; `PilotBaseline`, 0022), de preferência antes de começar.
+- «Registar problema» no topo de todos os ecrãs (`PilotNote`, 0022): qualquer papel; resolver: admin ou curador;
+  a auditoria não guarda o texto.
+- [A CONFIRMAR] redução contra o meio do intervalo, só nos passos com estimativa; meta = ≥ 40 % na MDJ, no CTE e nos
+  formulários **e** zero incoerências abertas ou ignoradas em cada aprovação; incoerências por projeto (os alertas
+  não têm ligação à peça) na última validação terminada antes de cada aprovação, nos grupos identificação (COE-04),
+  potência (COE-05; o plano dizia COE-01, que conta quadros, VE e FV) e cabos (COE-06); entram no piloto os projetos
+  com tempo ou estimativa (sem marca «piloto»); o tempo fora da aplicação não conta.
+- `make pilot-report` → docs/fase8-piloto.md: código, tipologia, números e problemas; os padrões de privacidade
+  mascarados e uma nota com um valor pessoal do projeto, de um perfil ou um nome bloqueado é omitida. O nome do
+  projeto nunca sai. Guia: docs/fase8-guia-piloto.md. O agente não corre o relatório sobre projetos reais.
+
 Decisões da Fase 7 (7 out 2026; as quatro primeiras aprovadas pelo utilizador, o resto [A CONFIRMAR]):
 - Fichas técnicas: PDF públicos dos fabricantes em `data/fixtures/fichas-tecnicas/<projeto>/`, sem anonimização, com
   `fichas.json` (origem, data, equipamentos da biblioteca por fabricante + referência ou modelo, o que ficou sem ficha).
@@ -279,6 +297,7 @@ Decisões da Fase 7 (7 out 2026; as quatro primeiras aprovadas pelo utilizador, 
 - make fichas-report         # docs/fase7-fichas-R1.md (equipamentos de R1 contra as fichas técnicas; só o Postgres do compose)
 - make create-user EMAIL=… NAME="…" ROLES=redator,tecnico  # cria ou atualiza uma conta (pede a password)
 - make users                 # lista as contas
+- make pilot-report          # docs/fase8-piloto.md (tempos, estimativas, incoerências e problemas do piloto)
 - Sem make (Windows): `winget install ezwinports.make`
 
 ## Dados
@@ -326,7 +345,9 @@ Decisões da Fase 0:
     o histórico do Git fica como está. Também passam por placeholder no que for enviado ao LLM.
 
 ## Estado atual
-- Fase: 7 **implementada** (7 out 2026). Fases 0, 1 e 2 concluídas; a 3 está implementada e à espera do curador (D7):
+- Fase: 8 **instrumentada** (9 out 2026): a aplicação mede o piloto (tempo por passo, estimativa, incoerências na
+  aprovação, problemas, relatório); falta fazer os três projetos reais (o utilizador e os técnicos, docs/fase8-guia-piloto.md).
+  Fase 7 **implementada** (7 out 2026). Fases 0, 1 e 2 concluídas; a 3 está implementada e à espera do curador (D7):
   fecha quando os blocos estiverem aprovados. Até lá, as secções montadas dizem «bloco não aprovado» e só sai o
   rascunho (o conjunto oficial exige os blocos aprovados). As 4, 5 e 6 estão implementadas. Critério da 7 em parte
   (8 out 2026, docs/fase7-fichas-R1.md, `make fichas-report`): dos 32 equipamentos do CTE de R1, 20 têm ficha do
@@ -452,9 +473,10 @@ Decisões da Fase 0:
   - os valores da tabela de pseudónimos de execuções anteriores também respeitam o `allow:` dos overrides; foi assim que
     a freguesia de R1 (tomada por morada pelo mapa antigo) voltou a ficar real em 25 set 2026;
   - os PDF são gravados com o `/ID` da origem (`no_new_id`): uma nova execução só muda os PDF cujo conteúdo muda.
-- Próximo: Fase 8 (piloto: três projetos reais de eletricidade, SPEC 14). Decisões de 8 out 2026 (utilizador): D4 só
-  no PC dele, D6 contas com password, D7 e D8 dados como bons e corrigidos nos testes, modelo do Claude mais tarde.
-  Falta a equipa rever as Fases 3–7 e um humano com o papel Curador aprovar os blocos na aplicação. Para fechar a 7: as 12 fichas de R1 que faltam (lista em data/fixtures/fichas-tecnicas/R1/fichas.json;
+- Próximo: fazer os três projetos reais do piloto (o utilizador e os técnicos; guia em docs/fase8-guia-piloto.md) e
+  `make pilot-report`. Decisões de 8 out 2026 (utilizador): D4 só no PC dele, D6 contas com password, D7 e D8 dados
+  como bons e corrigidos nos testes, modelo do Claude mais tarde. Os 95 blocos foram aprovados pelo admin em 9 out
+  2026 (D7 provisória). Antes de entregar um projeto: trocar o perfil de teste do técnico pelo real. Para fechar a 7: as 12 fichas de R1 que faltam (lista em data/fixtures/fichas-tecnicas/R1/fichas.json;
   pô-las na pasta e acrescentar a entrada) e a revisão do curador.
   Antes do uso real da Fase 6: a verificação manual (docs/fase6-verificacao-manual.md), modelos .docx TUU vazios (hoje o
   pacote de R1) e dos formulários, a convenção de nomes confirmada pela TUU, o curador (D7) para haver conjunto oficial.

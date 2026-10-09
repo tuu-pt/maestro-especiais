@@ -106,8 +106,9 @@ Depois de mudar o `.env`: `docker compose up -d backend worker` (o `restart` nã
 
 ## 7. O que falta
 
-**Próximo trabalho:** a Fase 7 (equipamentos) está implementada e fecha com as fichas técnicas de R1, que a equipa
-coloca em `data/fixtures/fichas-tecnicas/`; a seguir, a Fase 8 (piloto), que depende de D5, D6 e D7. Ver «Próximo»
+**Próximo trabalho:** a Fase 8 (piloto) está instrumentada: falta fazer os três projetos reais
+(`docs/fase8-guia-piloto.md`) e correr `make pilot-report`. Depois de atualizar: `docker compose up -d backend`
+(migrações 0021/0022). Ver «Próximo»
 no `CLAUDE.md`. Rever antes os [A CONFIRMAR] das Fases 5 a 7 e fazer a verificação manual da Fase 6
 (`docs/fase6-verificacao-manual.md`).
 

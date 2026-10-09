@@ -56,3 +56,14 @@ export function fileSize(bytes: number): string {
   if (bytes < 1024 * 1024) return `${number.format(Math.round(bytes / 102.4) / 10)} KB`;
   return `${number.format(Math.round(bytes / (1024 * 102.4)) / 10)} MB`;
 }
+
+/** A time of the pilot: minutes up to 90, then hours with a decimal comma. */
+export function duration(seconds: number | null): string {
+  if (seconds === null) return "—";
+  if (seconds < 90 * 60) return `${Math.round(seconds / 60)} min`;
+  return `${(seconds / 3600).toFixed(1).replace(".", ",")} h`;
+}
+
+export function percent(value: number | null): string {
+  return value === null ? "—" : `${Math.round(value * 100)} %`;
+}

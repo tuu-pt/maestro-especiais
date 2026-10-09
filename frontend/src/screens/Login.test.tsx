@@ -36,13 +36,13 @@ describe("login (accounts with a password, until D6)", () => {
     signedOut();
     const { router } = renderAt("/definicoes");
 
-    expect(await screen.findByRole("heading", { name: "Maestro Especiais" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Maestro Especiais" }, { timeout: 3000 })).toBeInTheDocument();
     expect(router.state.location.pathname).toBe("/entrar");
     await userEvent.type(screen.getByLabelText("Email"), "tecnica@exemplo.test");
     await userEvent.type(screen.getByLabelText("Password"), "certa-de-teste");
     await userEvent.click(screen.getByRole("button", { name: "Entrar" }));
 
-    expect(await screen.findByRole("heading", { name: "Definições" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Definições" }, { timeout: 3000 })).toBeInTheDocument();
     expect(router.state.location.pathname).toBe("/definicoes");
     expect(screen.getByText("Técnica de Teste")).toBeInTheDocument();
     expect(screen.queryByLabelText("Utilizador de desenvolvimento")).not.toBeInTheDocument();

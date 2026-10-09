@@ -135,6 +135,14 @@ def describe(action: str, payload: dict[str, Any]) -> str:
             return f"Editou «{payload.get('title', '')}»{extra}"
         case "llm.refused":
             return "Pedido ao LLM recusado: LLM desligado neste projeto"
+        case "pilot.baseline":
+            return "Escreveu a estimativa do processo manual (piloto)"
+        case "pilot.note":
+            return "Registou um problema do piloto"
+        case "pilot.note_resolved":
+            return "Marcou um problema do piloto como resolvido"
+        case "pilot.note_open":
+            return "Reabriu um problema do piloto"
         case "auth.login":
             return "Iniciou sessão"
         case "auth.logout":

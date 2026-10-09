@@ -33,10 +33,12 @@ export async function mockApi(page: Page, extra: Extra = {}): Promise<void> {
       "/knowledge/typologies": [],
       "/library/blocks": [],
       "/settings/llm": { primary: "gemini", order: [], providers: [] },
+      "/pilot/summary": [],
       "/knowledge/regulations": [],
       "/health": { status: "ok", services: { database: { status: "ok" }, redis: { status: "ok" } } },
     };
     const body = path in extra ? extra[path] : base[path];
+    if (path.endsWith("/pilot/heartbeat")) return route.fulfill({ status: 204, body: "" });
     if (path.endsWith("/events")) {
       return route.fulfill({ status: 200, contentType: "text/event-stream", body: "" });
     }
@@ -53,6 +55,7 @@ export const SCREENS: [path: string, title: string][] = [
   ["/validacao", "Validação"],
   ["/equipamentos", "Equipamentos e fichas técnicas"],
   ["/revisao", "Revisão e exportação"],
+  ["/piloto", "Piloto"],
   ["/conhecimento", "Base de conhecimento"],
   ["/definicoes", "Definições"],
 ];

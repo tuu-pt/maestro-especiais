@@ -106,7 +106,7 @@ function ProjectEditor({ projectId }: { projectId: string }) {
     );
   }
   return (
-    <div className={s.stack}>
+    <div className={s.stack} data-pilot-step={type === "CTE" ? "cte" : "mdj"}>
       <div className={s.docTabs} role="group" aria-label="Documento">
         {(["MDJ", "CTE"] as const).map((t) => (
           <button
@@ -166,7 +166,7 @@ function ProjectEditor({ projectId }: { projectId: string }) {
 function FormsPanel({ projectId }: { projectId: string }) {
   const { data: forms = [], error } = useForms(projectId, true);
   return (
-    <section className={s.forms} aria-labelledby="forms-title">
+    <section className={s.forms} aria-labelledby="forms-title" data-pilot-step="formularios">
       <h3 id="forms-title" className={s.h4}>
         Formulários pré-preenchidos
       </h3>
